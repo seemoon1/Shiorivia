@@ -1,4 +1,4 @@
-# 🥒 Mutsu Studio Lite (Community Edition)
+# Shiorivia — Local Edition (formerly Mutsu Studio Lite)
 
 <div align="center">
 
@@ -133,7 +133,9 @@ Licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
 You may copy, distribute and modify the software as long as you track changes/dates in source files. Any modifications to or software including (via compiler) GPL-licensed code must also be made available under the GPL along with build & install instructions.
 
-**Commercial use is strictly prohibited.** / **严禁商用。**
+Commercial use of the **software code** is permitted under AGPL-3.0, subject to the license. The Shiorivia name and official branding are governed separately by [TRADEMARKS.md](TRADEMARKS.md).
+软件**代码**可依据 AGPL-3.0 条款商业使用；Shiorivia 名称及官方品牌标识适用独立的 [品牌使用政策](TRADEMARKS.md)。
+See also [BRANDING.md](BRANDING.md) and [SECURITY.md](SECURITY.md). / 另见品牌视觉规范与安全说明。
 
 ---
 
