@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
-title Mutsu Studio Lite - Safe Boot
+title Shiorivia - Local Edition
 
 echo.
 echo ==================================================
-echo      MUTSU STUDIO LITE (Community Edition)
+echo       SHIORIVIA - LOCAL EDITION
 echo           System Initialization...
 echo ==================================================
 echo.

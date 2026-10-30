@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 const STORAGE_DIR = path.join(process.cwd(), 'data_storage');
-const MAIN_FILE = path.join(STORAGE_DIR, 'mutsu_save.json');
+const MAIN_FILE = path.join(STORAGE_DIR, 'shiorivia_save.json');
 
 const ensureDir = () => {
     if (!fs.existsSync(STORAGE_DIR)) {
@@ -34,9 +34,9 @@ export async function POST(req: Request) {
         const { data } = await req.json();
         
         if (fs.existsSync(MAIN_FILE)) {
-            const bak1 = path.join(STORAGE_DIR, 'mutsu_save.bak.1.json');
-            const bak2 = path.join(STORAGE_DIR, 'mutsu_save.bak.2.json');
-            const bak3 = path.join(STORAGE_DIR, 'mutsu_save.bak.3.json');
+            const bak1 = path.join(STORAGE_DIR, 'shiorivia_save.bak.1.json');
+            const bak2 = path.join(STORAGE_DIR, 'shiorivia_save.bak.2.json');
+            const bak3 = path.join(STORAGE_DIR, 'shiorivia_save.bak.3.json');
 
             if (fs.existsSync(bak2)) fs.copyFileSync(bak2, bak3); 
             if (fs.existsSync(bak1)) fs.copyFileSync(bak1, bak2); 

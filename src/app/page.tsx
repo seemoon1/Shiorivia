@@ -100,14 +100,14 @@ export default function Home() {
             const newId = Date.now().toString();
             const genesisSession: Session = {
                 id: newId,
-                title: "Mutsu Studio", 
+                title: "Shiorivia",
                 folderId: null,
                 characterId: "mutsu", 
                 voiceVariant: "default",
                 memoryMode: "infinite",
                 messages: [{
                     role: "assistant",
-                    content: "Mutsu Studio Lite. Ready for input.\n我是若叶睦。请下达指令。", 
+                    content: "Shiorivia is ready.\n我是若叶睦。请下达指令。",
                     modelName: "System"
                 }],
                 updatedAt: Date.now()
@@ -173,7 +173,7 @@ export default function Home() {
         const charName = CHARACTERS.find(c => c.id === charId)?.name;
 
         let initContent = "";
-        if (nextMode === 'infinite') initContent = `我是${charName}。欢迎来到 Mutsu Studio。请下达指令。`;
+        if (nextMode === 'infinite') initContent = `我是${charName}。欢迎来到 Shiorivia。请下达指令。`;
 
         const initialMessages: any[] = [];
         if (initContent) {
@@ -235,14 +235,14 @@ export default function Home() {
             const genesisId = Date.now().toString();
             const genesisSession: Session = {
                 id: genesisId,
-                title: "Mutsu Studio",
+                title: "Shiorivia",
                 folderId: null,
                 characterId: "mutsu",
                 voiceVariant: "default",
                 memoryMode: "infinite",
                 messages: [{
                     role: "assistant",
-                    content: "Mutsu Studio Lite. Ready.\n我是若叶睦。所有旧世界已归零。",
+                    content: "Shiorivia is ready.\n我是若叶睦。所有旧世界已归零。",
                     modelName: "System"
                 }],
                 updatedAt: Date.now()
@@ -572,7 +572,7 @@ export default function Home() {
             <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
 
             <CodeRepositoryModal isOpen={ui.showCodeRepo} onClose={() => ui.setShowCodeRepo(false)} repository={currentSession?.codeRepository || {}} onUpdate={engine.handleRepoUpdate} />
-            <WorldInfoModal isOpen={ui.showGlobalWorld} onClose={() => ui.setShowGlobalWorld(false)} title="Global" content={cloud.globalWorldInfo} setContent={cloud.setGlobalWorldInfo} onSave={() => localStorage.setItem("mutsu_global_world", cloud.globalWorldInfo)} />
+            <WorldInfoModal isOpen={ui.showGlobalWorld} onClose={() => ui.setShowGlobalWorld(false)} title="Global" content={cloud.globalWorldInfo} setContent={cloud.setGlobalWorldInfo} onSave={() => localStorage.setItem("shiorivia_global_world", cloud.globalWorldInfo)} />
             <WorldInfoModal isOpen={ui.showLocalWorld} onClose={() => ui.setShowLocalWorld(false)} title="Local" content={currentSession?.localWorldInfo || ""} setContent={(v: string) => cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, localWorldInfo: v } : s))} onSave={() => { }} />
 
             <EditModal

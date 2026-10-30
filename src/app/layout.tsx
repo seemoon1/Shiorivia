@@ -16,17 +16,23 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mutsu Studio",
-  description: "Advanced AI Chat Interface",
-  manifest: "/manifest.json", 
+  title: "Shiorivia",
+  description: "Shiorivia — a local-first, customizable AI story and chat experience.",
+  manifest: "/manifest.json",
+  openGraph: {
+    title: "Shiorivia",
+    description: "Where Stories Find Their Way.",
+    images: [{ url: "/shiorivia-og.png", width: 1200, height: 630, alt: "Shiorivia Star Road" }],
+  },
+  twitter: { card: "summary_large_image", images: ["/shiorivia-og.png"] },
   icons: {
-    icon: "/icon.png", 
-    apple: "/icon.png",
+    icon: "/icon.svg",
+    apple: "/shiorivia-app-icon.png",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Mutsu Studio",
+    title: "Shiorivia",
   },
 };
 
@@ -36,7 +42,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover", 
-  themeColor: "#0a0a0c",
+  themeColor: "#08182e",
 };
 
 export default function RootLayout({

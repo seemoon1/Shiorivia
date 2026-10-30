@@ -465,7 +465,7 @@ export const ChatInterface = ({
                                         <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">System</div>
                                         <div className="px-3 py-2 text-xs text-gray-500 flex justify-between">
                                             <span>Ver.</span>
-                                            <span className="font-mono">Mutsu v7.0</span>
+                                            <span className="font-mono">Shiorivia</span>
                                         </div>
                                         <div className="px-3 py-2 text-xs text-gray-500 flex justify-between">
                                             <span>Engine</span>

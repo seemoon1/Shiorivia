@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="ttl desc">
+<title id="ttl">Shiorivia Star Road — transparent mark</title>
+<desc id="desc">Vector symbol without the midnight-blue background for flexible use.</desc>
+<defs><radialGradient id="mk-night" cx="49%" cy="43%" r="72%">
+      <stop offset="0" stop-color="#143151"/>
+      <stop offset=".55" stop-color="#0D2340"/>
+      <stop offset="1" stop-color="#08182E"/>
+    </radialGradient>
+    <linearGradient id="mk-outer-ring" x1="4%" y1="90%" x2="96%" y2="8%">
+      <stop offset="0" stop-color="#BD955D"/><stop offset=".46" stop-color="#EED4A4"/><stop offset="1" stop-color="#CCA36B"/>
+    </linearGradient>
+    <linearGradient id="mk-road" x1="30%" y1="92%" x2="68%" y2="6%">
+      <stop offset="0" stop-color="#B98C54" stop-opacity=".4"/>
+      <stop offset=".28" stop-color="#D1A76B" stop-opacity=".88"/>
+      <stop offset=".55" stop-color="#FAE5BD"/>
+      <stop offset=".82" stop-color="#ECD4A4"/>
+      <stop offset="1" stop-color="#FFF0CE"/>
+    </linearGradient>
+    <linearGradient id="mk-road-light" x1="26%" y1="95%" x2="70%" y2="1%">
+      <stop offset="0" stop-color="#B18853" stop-opacity=".12"/>
+      <stop offset=".48" stop-color="#DAB77B" stop-opacity=".9"/>
+      <stop offset=".85" stop-color="#FFF3D3" stop-opacity=".98"/>
+      <stop offset="1" stop-color="#FFF6E5"/>
+    </linearGradient>
+    <linearGradient id="mk-road-left" x1="20%" y1="92%" x2="81%" y2="4%">
+      <stop offset="0" stop-color="#7E715B" stop-opacity=".08"/>
+      <stop offset=".63" stop-color="#C69E65" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#FFE4AD"/>
+    </linearGradient>
+    <linearGradient id="mk-road-right" x1="36%" y1="90%" x2="62%" y2="10%">
+      <stop offset="0" stop-color="#A38253" stop-opacity=".12"/>
+      <stop offset=".55" stop-color="#C4A06B" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#F8D7A0"/>
+    </linearGradient>
+    <linearGradient id="mk-wisps" x1="0%" y1="38%" x2="100%" y2="58%">
+      <stop offset="0" stop-color="#CBB38E" stop-opacity="0"/>
+      <stop offset=".43" stop-color="#F0D2A0" stop-opacity=".58"/>
+      <stop offset=".76" stop-color="#E0BB81" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#E0BB81" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="mk-star-halo">
+      <stop offset="0" stop-color="#FFE5AB" stop-opacity=".35"/>
+      <stop offset=".25" stop-color="#FFE5AB" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#FFE5AB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mk-star-fill" cx="42%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#FFF8E8"/>
+      <stop offset=".62" stop-color="#F9E4BF"/>
+      <stop offset="1" stop-color="#D9AF72"/>
+    </radialGradient>
+    <clipPath id="mk-circle-clip"><circle cx="622" cy="583" r="467"/></clipPath></defs><g id="mk-emblem" role="group" aria-label="Star road, celestial guide circles and constellation">
+    <!-- Quiet astrolabe guide: two circles, coordinates and an oblique axis. -->
+    <g fill="none" stroke-linecap="round">
+      <circle cx="622" cy="583" r="467" stroke="url(#mk-outer-ring)" stroke-width="2.5" opacity=".93"/>
+      <circle cx="622" cy="583" r="337" stroke="#D1AD75" stroke-width="1.65" opacity=".49"/>
+      <path d="M622 92 V1076 M132 583 H1111" stroke="#CEB083" stroke-width="1.8" opacity=".52"/>
+      <path d="M284 244 L970 935" stroke="#C9A46D" stroke-width="1.5" opacity=".35"/>
+      <path d="M235 400 C429 247 603 194 865 236" stroke="#C1A17A" stroke-width="3.8" opacity=".17"/>
+      <path d="M294 333 C475 229 667 216 874 266" stroke="#DCC093" stroke-width="3.2" opacity=".34"/>
+      <path d="M330 310 C514 234 674 237 836 268" stroke="url(#mk-wisps)" stroke-width="1.7" opacity=".6"/>
+    </g>
+    <g><circle cx="360" cy="276" r="1.6" fill="#F4DCAE" opacity="0.85"/><circle cx="391" cy="254" r="1.3" fill="#F4DCAE" opacity="0.85"/><circle cx="421" cy="243" r="1.3" fill="#F4DCAE" opacity="0.6"/><circle cx="454" cy="231" r="1.8" fill="#F4DCAE" opacity="0.9"/><circle cx="486" cy="217" r="1.3" fill="#F4DCAE" opacity="0.8"/><circle cx="522" cy="206" r="1.6" fill="#F4DCAE" opacity="0.75"/><circle cx="556" cy="202" r="1.2" fill="#F4DCAE" opacity="0.7"/><circle cx="591" cy="197" r="1.7" fill="#F4DCAE" opacity="0.9"/><circle cx="627" cy="198" r="1.1" fill="#F4DCAE" opacity="0.6"/><circle cx="660" cy="200" r="1.3" fill="#F4DCAE" opacity="0.7"/><circle cx="696" cy="206" r="1.6" fill="#F4DCAE" opacity="0.7"/><circle cx="729" cy="216" r="1.2" fill="#F4DCAE" opacity="0.8"/><circle cx="765" cy="230" r="1.3" fill="#F4DCAE" opacity="0.65"/><circle cx="797" cy="245" r="1.6" fill="#F4DCAE" opacity="0.75"/><circle cx="333" cy="654" r="1.7" fill="#F4DCAE" opacity="0.5"/><circle cx="472" cy="750" r="1.7" fill="#F4DCAE" opacity="0.65"/><circle cx="551" cy="615" r="1.7" fill="#F4DCAE" opacity="0.6"/><circle cx="585" cy="465" r="1.2" fill="#F4DCAE" opacity="0.75"/><circle cx="676" cy="433" r="1.5" fill="#F4DCAE" opacity="0.85"/><circle cx="750" cy="398" r="1.4" fill="#F4DCAE" opacity="0.68"/><circle cx="830" cy="435" r="1.8" fill="#F4DCAE" opacity="0.8"/><circle cx="910" cy="625" r="1.9" fill="#F4DCAE" opacity="0.78"/><circle cx="974" cy="432" r="1.4" fill="#F4DCAE" opacity="0.85"/><circle cx="809" cy="720" r="1.7" fill="#F4DCAE" opacity="0.7"/><circle cx="721" cy="800" r="1.3" fill="#F4DCAE" opacity="0.55"/><circle cx="492" cy="541" r="2" fill="#F4DCAE" opacity="0.8"/><circle cx="589" cy="696" r="1.6" fill="#F4DCAE" opacity="0.55"/><circle cx="468" cy="792" r="1.8" fill="#F4DCAE" opacity="0.6"/><circle cx="638" cy="733" r="1.2" fill="#F4DCAE" opacity="0.54"/></g>
+    <!-- A delicate four-node constellation in the upper-left space. -->
+    <g fill="none" stroke="#E8CE9E" stroke-width="1.35" opacity=".81"><line x1="405" y1="442" x2="534" y2="382" /><line x1="534" y1="382" x2="587" y2="391" /><line x1="587" y1="391" x2="692" y2="337" /></g>
+    <g><circle cx="405" cy="442" r="5.8" fill="#E9C58B" stroke="#FFE8BD" stroke-width=".8"/><circle cx="534" cy="382" r="6" fill="#E9C58B" stroke="#FFE8BD" stroke-width=".8"/><circle cx="587" cy="391" r="4.7" fill="#E9C58B" stroke="#FFE8BD" stroke-width=".8"/><circle cx="692" cy="337" r="6.3" fill="#E9C58B" stroke="#FFE8BD" stroke-width=".8"/></g>
+    <g clip-path="url(#mk-circle-clip)">
+      <!-- One continuous, winding main luminous route. No small hooked left spur. -->
+      <path d="M579 1082
+          C573 991 585 913 644 819
+          C696 735 759 670 760 624
+          C762 585 731 562 684 542
+          C635 520 641 496 682 477
+          C734 453 821 440 865 398
+          C878 386 883 371 884 358
+          C877 404 841 428 771 452
+          C699 478 657 491 673 518
+          C687 536 754 558 773 596
+          C815 679 734 763 700 835
+          C663 920 655 990 658 1085 Z"
+          fill="url(#mk-road)" opacity=".93"/>
+      <!-- The ivory center follows the same winding direction, narrower and brighter. -->
+      <path d="M607 1082
+          C593 980 622 883 669 814
+          C714 742 786 665 769 614
+          C751 561 690 553 666 525
+          C637 490 690 473 760 451
+          C830 426 877 398 881 371
+          C876 412 845 438 780 462
+          C717 484 665 504 689 530
+          C716 553 779 575 786 628
+          C795 704 709 795 670 887
+          C644 948 640 1020 640 1082 Z"
+          fill="url(#mk-road-light)" opacity=".94"/>
+      <!-- Luminous guiding edges (no raster glow). -->
+      <path d="M319 1014 C386 899 484 812 609 744 C691 698 715 663 703 625 C690 580 613 556 610 531 C605 512 644 494 691 481 C801 454 870 426 878 381"
+         fill="none" stroke="#BD9F74" stroke-width="15" stroke-linecap="round" opacity=".07"/>
+      <path d="M327 1008 C397 883 492 814 613 743 C691 697 718 655 702 617 C689 584 610 554 609 532 C609 513 648 495 698 480 C798 451 869 424 879 375"
+         fill="none" stroke="#F6DCA6" stroke-width="3.3" stroke-linecap="round" opacity=".82"/>
+      <path d="M688 1080 C661 983 668 930 696 857 C729 776 783 740 800 673 C813 615 776 583 720 552"
+         fill="none" stroke="#F0D3A0" stroke-width="3.8" stroke-linecap="round" opacity=".8"/>
+      <!-- Long left perspective road, well below the deleted hooked spur. -->
+      <path d="M279 984 C357 877 472 807 606 740 C640 722 667 702 692 680 C651 737 599 775 543 803 C427 861 371 941 337 1023 Z"
+            fill="url(#mk-road-left)" opacity=".56"/>
+      <!-- Right branch: a quiet alternate route peeling away from the main road. -->
+      <path d="M714 1080 C675 1004 685 947 713 900 C751 835 841 779 859 719 C869 690 864 671 849 650 C887 701 871 738 851 781 C822 842 741 905 726 966 C720 1007 732 1041 746 1080 Z"
+            fill="url(#mk-road-right)" opacity=".50"/>
+      <path d="M708 563 C796 595 848 627 859 694" fill="none" stroke="#F3C88B" stroke-width="2.8" opacity=".88" stroke-linecap="round"/>
+      <!-- Fine orbit/atmospheric accents -->
+      <path d="M366 583 C421 604 477 621 515 643" stroke="#BCA173" stroke-width="1.3" opacity=".18" fill="none"/>
+    </g>
+    <g><path d="M 367 553.00 C 371.60 571.40, 371.60 571.40, 390.00 576 C 371.60 580.60, 371.60 580.60, 367 599.00 C 362.40 580.60, 362.40 580.60, 344.00 576 C 362.40 571.40, 362.40 571.40, 367 553.00 Z" fill="#EAD0A2" opacity="0.92"/><path d="M 750 385.00 C 752.60 395.40, 752.60 395.40, 763.00 398 C 752.60 400.60, 752.60 400.60, 750 411.00 C 747.40 400.60, 747.40 400.60, 737.00 398 C 747.40 395.40, 747.40 395.40, 750 385.00 Z" fill="#EAD0A2" opacity="0.86"/><path d="M 767 505.00 C 770.60 519.40, 770.60 519.40, 785.00 523 C 770.60 526.60, 770.60 526.60, 767 541.00 C 763.40 526.60, 763.40 526.60, 749.00 523 C 763.40 519.40, 763.40 519.40, 767 505.00 Z" fill="#EAD0A2" opacity="0.85"/><path d="M 838 537.00 C 841.00 549.00, 841.00 549.00, 853.00 552 C 841.00 555.00, 841.00 555.00, 838 567.00 C 835.00 555.00, 835.00 555.00, 823.00 552 C 835.00 549.00, 835.00 549.00, 838 537.00 Z" fill="#EAD0A2" opacity="0.9"/><path d="M 868 674.00 C 873.60 696.40, 873.60 696.40, 896.00 702 C 873.60 707.60, 873.60 707.60, 868 730.00 C 862.40 707.60, 862.40 707.60, 840.00 702 C 862.40 696.40, 862.40 696.40, 868 674.00 Z" fill="#EAD0A2" opacity="0.95"/><path d="M 411 698.00 C 414.00 710.00, 414.00 710.00, 426.00 713 C 414.00 716.00, 414.00 716.00, 411 728.00 C 408.00 716.00, 408.00 716.00, 396.00 713 C 408.00 710.00, 408.00 710.00, 411 698.00 Z" fill="#EAD0A2" opacity="0.78"/><path d="M 425 500.00 C 427.00 508.00, 427.00 508.00, 435.00 510 C 427.00 512.00, 427.00 512.00, 425 520.00 C 423.00 512.00, 423.00 512.00, 415.00 510 C 423.00 508.00, 423.00 508.00, 425 500.00 Z" fill="#EAD0A2" opacity="0.7"/><path d="M 356 457.00 C 358.00 465.00, 358.00 465.00, 366.00 467 C 358.00 469.00, 358.00 469.00, 356 477.00 C 354.00 469.00, 354.00 469.00, 346.00 467 C 354.00 465.00, 354.00 465.00, 356 457.00 Z" fill="#EAD0A2" opacity="0.78"/></g><path d="M795 342 H1038 M918 222 V464" stroke="#F8DCAC" stroke-width="1.1" opacity=".28"/>
+    <circle cx="918" cy="342" r="5" fill="#D9AD70"/>
+    </g>
+</svg>

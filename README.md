@@ -1,4 +1,6 @@
-# Shiorivia — Local Edition (formerly Mutsu Studio Lite)
+# Shiorivia — Local Edition
+
+![Shiorivia Star Road](public/branding/shiorivia-banner.svg)
 
 <div align="center">
 
@@ -45,7 +47,7 @@
 
 #### 2. Installation
 1.  Download or Clone this repository.
-2.  Double-click `start_mutsu.bat` (Windows).
+2.  Double-click `start_shiorivia.bat` (Windows).
     *   It will automatically install dependencies and create necessary folders.
 3.  The browser will open at `http://localhost:3000`.
 
@@ -95,7 +97,7 @@ This is a "Fill-in-the-Blank" player. You need to put your files in public/.
 
 #### 2. 启动
 1.  下载并解压本仓库。
-2.  双击根目录下的 start_mutsu.bat。
+2.  双击根目录下的 start_shiorivia.bat。
     *   首次运行会自动安装依赖库，并创建所需的文件夹结构，请耐心等待。
 3.  启动完成后，浏览器会自动打开 http://localhost:3000。
 #### 3. 配置密钥 (.env.local)
@@ -118,7 +120,7 @@ ACCESS_CODE=123456
 > 如果您所在的地区无法直接访问 Google 或 OpenAI，请确保您的终端/系统具备访问国际互联网的能力。本项目不提供任何代理功能。
 
 ### 📂 如何添加素材
-Mutsu Studio Lite 是一个“播放器”，素材需要您自己放入 public 文件夹。
+Shiorivia 本地版是一个可定制的交互前端，素材需要您自行放入 public 文件夹。
 *   **Live2D 模型**: 将模型文件夹放入 public/live2d/，然后运行 python scripts/scan_live2d_local.py 自动生成配置。
 *   **静态立绘**: 将图片放入 public/tachie/，运行 python scripts/scan_tachie.py。
 *   **音乐**: 将 mp3 放入 public/music/，并手动编辑 src/data/bgm_library.ts 进行注册。

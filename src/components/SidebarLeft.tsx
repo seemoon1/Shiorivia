@@ -115,8 +115,8 @@ export const SidebarLeft = ({
                 >
                     <div className="p-3 flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
                         <div className="flex items-center gap-2 font-bold text-gray-800">
-                            <span className="text-xl">🥒</span>
-                            <span className="text-xs uppercase tracking-widest">Studio</span>
+                            <img src="/shiorivia-app-icon.png" alt="" width={24} height={24} className="h-6 w-6 rounded-md" />
+                            <span className="text-xs uppercase tracking-widest">Shiorivia</span>
                         </div>
                         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                             <button onClick={onClose} className="p-1.5 rounded text-gray-400 hover:text-gray-600" title="Hide Sidebar"><PanelLeftClose size={14} /></button>
