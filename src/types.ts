@@ -70,7 +70,7 @@ export type Session = {
   updatedAt: number;
   localWorldInfo?: string;
   
-  memoryMode?: 'infinite' | 'sliding' | 'novel';
+  memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat';
   stm?: string;
   stmBackup?: string; 
   ltm?: string;

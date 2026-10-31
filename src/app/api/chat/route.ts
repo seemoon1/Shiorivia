@@ -309,6 +309,19 @@ ${COLOR_INSTRUCTION}
       if (messages.length > MAX_HISTORY) {
         finalMessages = messages.slice(-MAX_HISTORY);
       }
+    } else if (memoryMode === "chat") {
+      console.log("💬 Mode: Pure Chat");
+      // Neutral chat intentionally does not inherit characters, story state,
+      // engineering file tags, game instructions, or automatic music cues.
+      finalSystemPrompt = [
+        "You are Shiorivia, a helpful conversational AI assistant.",
+        "Respond naturally and directly in the user's language.",
+        "Do not assume a fictional character, roleplay scenario, or software-engineer persona unless explicitly requested.",
+        "Never emit Shiorivia internal tags such as <game_state>, <draw>, <audio>, <file>, or <thinking>.",
+        "Use clear Markdown when it improves readability.",
+      ].join("\n");
+      if (useWebSearch) finalSystemPrompt = await injectWebSearch(finalSystemPrompt, messages);
+      finalMessages = messages.slice(-24);
     } else if (memoryMode === "infinite") {
       console.log(`⚙️ Mode: Infinite Engineering`);
       let engineerPersona = `

@@ -5,7 +5,7 @@ import {
   Smartphone, Sparkles, Terminal,
 } from "lucide-react";
 
-type ReadyMode = "infinite" | "sliding" | "novel";
+type ReadyMode = "infinite" | "sliding" | "novel" | "chat";
 
 type ModeHubProps = {
   onEnter: (mode: ReadyMode) => void;
@@ -30,8 +30,8 @@ const modes = [
   {
     id: "chat", title: "Chat", subtitle: "聊天模式",
     description: "专注交流的纯聊天空间。",
-    icon: MessageCircle, color: "text-violet-700", background: "bg-violet-50", border: "border-slate-200",
-    ready: false,
+    icon: MessageCircle, color: "text-violet-700", background: "bg-violet-50", border: "hover:border-violet-300",
+    ready: true,
   },
   {
     id: "novel", title: "Novel", subtitle: "小说模式",

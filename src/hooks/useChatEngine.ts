@@ -120,6 +120,16 @@ export const useChatEngine = ({
             }
 
             
+            if (currentSession.memoryMode === "chat") {
+                // Pure Chat is deliberately not parsed as a story/game/IDE response.
+                setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
+                    ...s,
+                    messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse }],
+                    updatedAt: Date.now(),
+                } : s));
+                return;
+            }
+
             let currentText = fullText; 
             let capturedState: any = null;
             let newFiles: Record<string, any> = {};

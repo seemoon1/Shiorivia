@@ -13,6 +13,7 @@ import { SidebarLeft } from "../components/SidebarLeft";
 import { SidebarRight } from "../components/SidebarRight";
 import { DanmakuOverlay } from "../components/DanmakuOverlay";
 import { ChatInterface } from "../components/ChatInterface";
+import { PureChatInterface } from "../components/PureChatInterface";
 import { Background } from "../components/Background";
 import { TransitionEffects } from "../components/TransitionEffects";
 import { SaveLoadModal } from "../components/SaveLoadModal";
@@ -259,7 +260,7 @@ export default function Home() {
         return finalChar;
     }, [activeCharacterId, voiceVariant]);
 
-    const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel') => {
+    const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel' | 'chat') => {
         const newId = Date.now().toString();
         const currentMode = currentSession?.memoryMode || 'sliding';
         const nextMode = targetMode || currentMode; 
@@ -280,7 +281,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'novel' ? "New Dream" : "New Chat",
+            title: nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -299,7 +300,7 @@ export default function Home() {
         }
     };
 
-    const enterMode = (mode: 'infinite' | 'sliding' | 'novel') => {
+    const enterMode = (mode: 'infinite' | 'sliding' | 'novel' | 'chat') => {
         const existing = cloud.sessions.find(session => session.memoryMode === mode);
         if (existing) {
             setCurrentSessionId(existing.id);
@@ -316,7 +317,7 @@ export default function Home() {
 
         const remainingSessions = cloud.sessions.filter(s => s.id !== id);
 
-        const realitySessions = remainingSessions.filter(s => s.memoryMode !== 'novel');
+        const realitySessions = remainingSessions.filter(s => s.memoryMode !== 'novel' && s.memoryMode !== 'chat');
 
         let finalSessions = remainingSessions;
         let nextSessionId = currentSessionId; 
@@ -434,6 +435,66 @@ export default function Home() {
                     onToggleProvider={toggleProviderDisabled}
                 />
                 <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+            </>
+        );
+    }
+
+    if (currentSession?.memoryMode === 'chat') {
+        return (
+            <>
+                <PureChatInterface
+                    sessions={cloud.sessions}
+                    currentSession={currentSession}
+                    onSelectSession={setCurrentSessionId}
+                    onCreateSession={() => { if (!engine.isLoading) createNewSession(activeCharacterId, 'chat'); }}
+                    onDeleteSession={(id) => {
+                        if (engine.isLoading || !window.confirm('确定删除这段 Chat 对话吗？')) return;
+                        const remaining = cloud.sessions.filter(s => s.id !== id);
+                        cloud.setSessions(remaining);
+                        if (id === currentSessionId) {
+                            const nextChat = remaining.find(s => s.memoryMode === 'chat');
+                            setCurrentSessionId(nextChat?.id || remaining[0]?.id || '');
+                            if (!nextChat) setShowModeHub(true);
+                        }
+                    }}
+                    onRenameSession={(id, title) => cloud.setSessions(prev => prev.map(s =>
+                        s.id === id ? { ...s, title, updatedAt: Date.now() } : s))}
+                    onHome={() => setShowModeHub(true)}
+                    onOpenSettings={() => setShowSettingsCenter(true)}
+                    input={engine.input}
+                    onInputChange={engine.setInput}
+                    onSend={() => engine.handleSend()}
+                    onStop={engine.stopGeneration}
+                    onRegenerate={engine.handleRegenerate}
+                    isLoading={engine.isLoading}
+                    selectedFile={engine.selectedFile}
+                    onClearFile={() => engine.setSelectedFile(null)}
+                    fileInputRef={fileHandler.fileInputRef}
+                    onFileSelect={fileHandler.handleFileSelect}
+                    providers={visibleProviders}
+                    apiProvider={apiProvider}
+                    onProviderChange={selectProvider}
+                    selectedModel={config.selectedModel}
+                    customModelId={config.customModelId}
+                    onSelectModel={(id) => setConfig(prev => ({ ...prev, selectedModel: id, customModelId: '' }))}
+                    onCustomModelChange={(id) => setConfig(prev => ({ ...prev, customModelId: id }))}
+                />
+                <SettingsCenter
+                    open={showSettingsCenter}
+                    onClose={() => setShowSettingsCenter(false)}
+                    values={config}
+                    onToggle={toggleSetting}
+                    debugMode={ui.debugMode}
+                    onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    onTestEffect={ui.setEffect}
+                    isStory={false}
+                    storyTheme={config.storyTheme}
+                    onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
+                    activeProvider={apiProvider}
+                    providers={allProviders}
+                    disabledProviders={disabledProviders}
+                    onToggleProvider={toggleProviderDisabled}
+                />
             </>
         );
     }
