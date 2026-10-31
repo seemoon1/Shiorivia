@@ -441,11 +441,8 @@ export default function Home() {
                     handleImportData={fileHandler.handleImportData}
                     importInputRef={fileHandler.importInputRef}
 
-                    toggleMemoryMode={() => { cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, memoryMode: s.memoryMode === 'infinite' ? 'sliding' : 'infinite' } : s)); ui.setEffect("math") }}
-
                     apiProvider={apiProvider}
                     setApiProvider={setApiProvider}
-                    memoryMode={currentSession?.memoryMode} 
                     isMobile={false} 
 
                     useWebSearch={config.webSearch}

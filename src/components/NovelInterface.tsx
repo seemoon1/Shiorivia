@@ -176,7 +176,7 @@ export const NovelInterface = ({
     const theme = THEMES[themeMode];
 
     const [showFullPlayer, setShowFullPlayer] = useState(false);
-    const [useMusicControl, setUseMusicControl] = useState(true);
+    const [useMusicControl, setUseMusicControl] = useState(false);
 
     const [directorInput, setDirectorInput] = useState("");
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>(["sakiko"]);
@@ -356,7 +356,7 @@ export const NovelInterface = ({
             } else {
                 const prompt = `[Action]: Start Chapter 1 based on the [Dream Outline]. Introduce the scene and start the action immediately.`;
                 handleSend(prompt, undefined, {
-                    useMusicControl: true,
+                    useMusicControl,
                     novelConfig,
                     modelOverride: selectedModel 
                 });
@@ -369,7 +369,7 @@ export const NovelInterface = ({
             else prompt = `[SYSTEM]: Continue the novel. Next Chapter.`;
 
             handleSend(prompt, undefined, {
-                useMusicControl: true,
+                useMusicControl,
                 novelConfig,
                 modelOverride: selectedModel 
             });

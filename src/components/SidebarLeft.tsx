@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     PanelLeftClose, Package, LayoutList, ChevronDown, ChevronRight,
     FolderPlus, Plus, Search, Folder, Trash2, Download, Upload,
-    Globe, Infinity, History, Image as ImageIcon,
+    Globe, Image as ImageIcon,
     ListChecks, CheckSquare, Square, Sparkles, Terminal, Disc,
     CloudRain, AlertTriangle, Mic,
     Cloud, RefreshCw, Check
@@ -76,7 +76,7 @@ export const SidebarLeft = ({
     activeMenuSessionId, setActiveMenuSessionId,
     updateSessionTitle, moveSessionToFolder,
     handleExportData, handleImportData,
-    toggleMemoryMode, useWebSearch, toggleWebSearch,
+    useWebSearch, toggleWebSearch,
     useImageGen, toggleImageGen,
     batchDelete,
     useMusicControl,
@@ -84,7 +84,7 @@ export const SidebarLeft = ({
     triggerEffect,
     useTTS, toggleTTS,
     syncStatus, onManualSync,
-    apiProvider, setApiProvider, memoryMode,
+    apiProvider, setApiProvider,
 }: any) => {
     const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,9 +100,6 @@ export const SidebarLeft = ({
         else newSet.add(id);
         setSelectedIds(newSet);
     };
-
-    const currentSession = sessions.find((s: any) => s.id === currentSessionId);
-    const isStory = currentSession?.memoryMode === 'sliding';
 
     return (
         <AnimatePresence mode="wait">
@@ -248,17 +245,6 @@ export const SidebarLeft = ({
                     <div className="p-3 border-t border-gray-100 bg-gray-50/30">
                         <div className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">System Control</div>
                         <div className="flex flex-col gap-1.5">
-                            <button
-                                onClick={toggleMemoryMode}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold border transition-all ${isStory ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-blue-50 border-blue-200 text-blue-600'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {isStory ? <History size={14} /> : <Infinity size={14} />}
-                                    <span>{isStory ? 'Story Mode' : 'Infinite Mode'}</span>
-                                </div>
-                            </button>
-
                             <button onClick={async () => {
                                 if (!useWebSearch) { 
                                     if (await checkEnv('tavily')) toggleWebSearch();
