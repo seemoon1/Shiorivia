@@ -17,6 +17,8 @@ type Props = {
   onToggle: (key: SettingKey) => void;
   debugMode: boolean;
   onToggleDebug: () => void;
+  engineeringTransitionEnabled: boolean;
+  onToggleEngineeringTransition: () => void;
   onTestEffect: (name: "rain" | "curtain" | "math" | "glitch") => void;
   isStory: boolean;
   storyTheme: StoryTheme;
@@ -67,7 +69,7 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
   );
 }
 
-export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider }: Props) {
+export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, engineeringTransitionEnabled, onToggleEngineeringTransition, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
   useEffect(() => {
@@ -173,6 +175,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <p className="mb-8 text-sm text-slate-400">保留原先的调试功能，移至独立分组。</p>
                 <SectionTitle>调试</SectionTitle>
                 <SwitchRow title="Debug Mode" description="显示额外的调试标签和模型输出信息。" checked={debugMode} onClick={onToggleDebug} icon={Bug} />
+                <SwitchRow title="Officina 入场转场" description="新建或首次进入工坊时播放 Math 动画；默认关闭，可随时开启。" checked={engineeringTransitionEnabled} onClick={onToggleEngineeringTransition} icon={Sparkles} />
                 <SectionTitle>转场预览</SectionTitle>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {([

@@ -72,6 +72,7 @@ export default function Home() {
         imageGen: false,
         tts: false,
         musicControl: false,
+        engineeringTransition: false,
         storyTheme: "sky" as StoryTheme,
         selectedModel: "google/gemini-3-flash-preview",
         customModelId: "",
@@ -95,6 +96,7 @@ export default function Home() {
                     imageGen: typeof saved.imageGen === "boolean" ? saved.imageGen : prev.imageGen,
                     tts: typeof saved.tts === "boolean" ? saved.tts : prev.tts,
                     musicControl: typeof saved.musicControl === "boolean" ? saved.musicControl : prev.musicControl,
+                    engineeringTransition: typeof saved.engineeringTransition === "boolean" ? saved.engineeringTransition : false,
                     storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
                 }));
             }
@@ -108,12 +110,12 @@ export default function Home() {
     useEffect(() => {
         if (!settingsHydrated) return;
         try {
-            const { webSearch, imageGen, tts, musicControl, storyTheme } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, storyTheme, disabledProviders, apiProvider }));
+            const { webSearch, imageGen, tts, musicControl, engineeringTransition, storyTheme } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, engineeringTransition, storyTheme, disabledProviders, apiProvider }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.storyTheme, disabledProviders, apiProvider]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.engineeringTransition, config.storyTheme, disabledProviders, apiProvider]);
 
     const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders, disabledProviders), [allProviders, disabledProviders]);
     useEffect(() => {
@@ -195,7 +197,7 @@ export default function Home() {
     });
 
     useEffect(() => {
-        if (cloud.initLoaded && cloud.sessions.length === 0 && !currentSessionId) {
+        if (settingsHydrated && cloud.initLoaded && cloud.sessions.length === 0 && !currentSessionId) {
             console.log("🌱 Creating Genesis Session...");
             const newId = Date.now().toString();
             const genesisSession: Session = {
@@ -215,13 +217,13 @@ export default function Home() {
             cloud.setSessions([genesisSession]);
             setCurrentSessionId(newId);
             setActiveCharacterId("mutsu");
-            ui.setEffect("math"); 
+            if (config.engineeringTransition) ui.setEffect("math");
         }
         else if (cloud.sessions.length > 0 && (!currentSessionId || !cloud.sessions.find(s => s.id === currentSessionId))) {
             setCurrentSessionId(cloud.sessions[0].id);
             if (cloud.sessions[0].characterId) setActiveCharacterId(cloud.sessions[0].characterId);
         }
-    }, [cloud.sessions, currentSessionId, cloud.initLoaded]);
+    }, [cloud.sessions, currentSessionId, cloud.initLoaded, settingsHydrated, config.engineeringTransition]);
 
     const dynamicCharacter = useMemo(() => {
         const base = CHAR_DATA.find(c => c.id === activeCharacterId) || CHAR_DATA[0];
@@ -302,7 +304,7 @@ export default function Home() {
         setActiveCharacterId(charId);
 
         if (targetMode) {
-            if (targetMode === 'infinite') ui.setEffect("math");
+            if (targetMode === 'infinite' && config.engineeringTransition) ui.setEffect("math");
             else if (targetMode === 'novel') ui.setEffect("curtain");
         }
     };
@@ -369,7 +371,7 @@ export default function Home() {
             nextSessionId = genesisId;
             nextCharId = "mutsu";
 
-            ui.setEffect("math");
+            if (config.engineeringTransition) ui.setEffect("math");
             ui.showToast("♻️ System Reset");
         } else {
             ui.showToast("🗑️ Timeline Deleted");
@@ -438,6 +440,8 @@ export default function Home() {
                     onToggle={toggleSetting}
                     debugMode={ui.debugMode}
                     onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    engineeringTransitionEnabled={config.engineeringTransition}
+                    onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                     onTestEffect={ui.setEffect}
                     isStory={false}
                     storyTheme={config.storyTheme}
@@ -478,6 +482,8 @@ export default function Home() {
                     onToggle={toggleSetting}
                     debugMode={ui.debugMode}
                     onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    engineeringTransitionEnabled={config.engineeringTransition}
+                    onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                     onTestEffect={ui.setEffect}
                     isStory={false}
                     storyTheme={config.storyTheme}
@@ -554,6 +560,8 @@ export default function Home() {
                 onToggle={toggleSetting}
                 debugMode={ui.debugMode}
                 onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                engineeringTransitionEnabled={config.engineeringTransition}
+                onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                 onTestEffect={ui.setEffect}
                 isStory={false}
                 storyTheme={config.storyTheme}
@@ -830,6 +838,8 @@ export default function Home() {
                 onToggle={toggleSetting}
                 debugMode={ui.debugMode}
                 onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                engineeringTransitionEnabled={config.engineeringTransition}
+                onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                 onTestEffect={ui.setEffect}
                 isStory={currentSession?.memoryMode === 'sliding'}
                 storyTheme={config.storyTheme}
