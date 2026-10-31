@@ -7,7 +7,7 @@ import {
     RotateCcw, Check, Square, Pencil, Trash2, RefreshCw, Copy, Cpu, FileText,
     Volume2, Loader2, Sparkles, Moon, Brain,
     Save, Terminal, ClipboardList, Guitar, Image as ImageIcon, Shirt,
-    Disc, ChevronUp, MoreHorizontal, Settings,
+    Disc, ChevronUp, MoreHorizontal, Settings, Route,
     ToggleLeft, ToggleRight, Skull, Binary, CloudRain, AlertTriangle
 } from "lucide-react";
 import { ThinkingBlock } from "./Common";
@@ -435,9 +435,9 @@ export const ChatInterface = ({
                     <div className="flex flex-col min-w-0 justify-center">
                         <span className="text-sm font-bold flex items-center gap-2 truncate">
                             {currentSession?.memoryMode === 'sliding' ? (
-                                <span className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#e11e54] to-[#ff477e] flex items-center gap-2">
-                                    <span className="text-xl">🎸</span>
-                                    <span>BanG Dream!</span>
+                                <span className="flex items-center gap-2 text-lg font-semibold tracking-wide text-[#466957]">
+                                    <Route size={19} className="text-[#a38c65]" aria-hidden="true" />
+                                    <span>Via Lata</span>
                                 </span>
                             ) : currentSession?.memoryMode === 'chat' ? (
                                 <span className="flex items-center gap-2 truncate" style={{ color: currentCharacter.hex }}>
@@ -547,15 +547,6 @@ export const ChatInterface = ({
                         </button>
                     </div>
 
-                    {currentSession?.memoryMode !== 'chat' && (
-                        <button
-                            onClick={() => createNewSession(currentCharacter.id, 'novel')}
-                            className="p-2 hover:bg-rose-50 rounded text-rose-400 hover:text-rose-600 transition-colors"
-                            title="Enter Novel Mode"
-                        >
-                            <Moon size={18} />
-                        </button>
-                    )}
 
                     <div className="hidden md:flex items-center gap-1">
                         <ToolButtons isMobile={false} />

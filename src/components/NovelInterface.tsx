@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Book, Sparkles, Settings2, AlignLeft,
+    Book, Sparkles, Settings2, PanelRight, AlignLeft,
     LogOut, RefreshCw, X, Edit2, Trash2, Check, 
     Disc, Save, ArrowUp, Sun, Moon, FileText, Square,
     AlertTriangle, CloudRain, 
@@ -146,7 +146,7 @@ const NovelContent = ({ content, onOptionClick, theme }: any) => {
 
 export const NovelInterface = ({
     currentSession, handleSend,
-    isLoading, onExit,
+    isLoading, onExit, onOpenSettings,
     dbChars, updateSessionTitle,
     deleteMessage, updateSessionInfo,
     handleRegenerate, createNewSession,
@@ -332,7 +332,7 @@ export const NovelInterface = ({
 
             const metaRegex = /<meta title="(.*?)" chapter="(.*?)" \/>/;
             const match = lastMsg.content.match(metaRegex);
-            if (match && updateSessionTitle && currentSession.title === "New Dream") {
+            if (match && updateSessionTitle && (currentSession.title === "New Dream" || currentSession.title === "未命名作品")) {
                 updateSessionTitle(currentSession.id, match[1]);
             }
 
@@ -456,7 +456,7 @@ export const NovelInterface = ({
                                     )
                                 })}
                             </div>
-                            <div className={`p-4 border-t ${theme.border}`}><button onClick={onExit} className={`flex items-center gap-2 opacity-60 hover:opacity-100 hover:text-red-400 transition-colors w-full p-2 rounded ${theme.hover} justify-center`}><LogOut size={16} /> <span className="text-xs font-bold">WAKE UP</span></button></div>
+                            <div className={`p-4 border-t ${theme.border}`}><button onClick={onExit} className={`flex items-center gap-2 opacity-60 hover:opacity-100 hover:text-red-400 transition-colors w-full p-2 rounded ${theme.hover} justify-center`}><LogOut size={16} /> <span className="text-xs font-bold">返回模式导航</span></button></div>
                         </div>
                     </motion.div>
                 )}
@@ -464,20 +464,23 @@ export const NovelInterface = ({
 
             <div className={` relative z-10  flex-1 flex flex-col relative min-w-0 ${theme.bg} transition-colors duration-500`}>
                 <div className={`
-                    flex items-center justify-between px-4 border-b ${theme.border} shrink-0
+                    grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 border-b ${theme.border} shrink-0
                     pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 h-auto
                     min-h-[3.5rem]
                 `}>
-                    <button onClick={() => setLeftOpen(!leftOpen)} className={`p-2 transition-colors opacity-60 hover:opacity-100 ${theme.text}`}><AlignLeft size={20} /></button>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 opacity-50"><Sparkles size={16} className={theme.accent} /><span className="text-xs font-mono tracking-[0.2em] hidden md:inline">DREAM WEAVER</span></div>
-                        <button onClick={() => {
+                    <div className="justify-self-start">
+                        <button type="button" onClick={() => setLeftOpen(!leftOpen)} className={`rounded-lg p-2 transition-colors ${theme.text} ${theme.hover}`} title="切换章节目录" aria-label="切换章节目录"><AlignLeft size={19} /></button>
+                    </div>
+                    <h1 className={`whitespace-nowrap text-sm font-semibold tracking-[0.24em] sm:text-base ${theme.title}`}>TELA</h1>
+                    <div className="flex items-center justify-self-end gap-0.5 sm:gap-1">
+                        <button type="button" onClick={() => {
                             const next = themeMode === 'sage' ? 'paper' : 'sage';
                             setThemeMode(next);
                             updateSessionInfo?.(currentSession.id, { novelDraft: { selectedCharIds, scenario, action, style, outline, themeMode: next } });
-                        }} className={`flex items-center gap-2 rounded-full px-3 py-2 ${theme.hover} transition-all ${theme.accent}`} title="切换鼠尾草／羊皮纸主题" aria-label="切换小说主题">{themeMode === 'sage' ? <Sun size={18} /> : <Moon size={18} />}<span className="text-[11px] font-semibold">{themeMode === 'sage' ? '鼠尾草' : '羊皮纸'}</span></button>
+                        }} className={`rounded-lg p-2 transition-colors ${theme.accent} ${theme.hover}`} title={`切换小说主题（当前：${themeMode === 'sage' ? '鼠尾草' : '羊皮纸'}）`} aria-label="切换小说主题">{themeMode === 'sage' ? <Sun size={19} /> : <Moon size={19} />}</button>
+                        <button type="button" onClick={onOpenSettings} className={`rounded-lg p-2 transition-colors ${theme.text} ${theme.hover}`} title="打开 Shiorivia 设置中心" aria-label="打开设置中心"><Settings2 size={19} /></button>
+                        <button type="button" onClick={() => setRightOpen(!rightOpen)} className={`rounded-lg p-2 transition-colors ${theme.text} ${theme.hover}`} title="切换小说设定面板" aria-label="切换小说设定面板"><PanelRight size={19} /></button>
                     </div>
-                    <button onClick={() => setRightOpen(!rightOpen)} className={`p-2 transition-colors opacity-60 hover:opacity-100 ${theme.text}`}><Settings2 size={20} /></button>
                 </div>
 
                 <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} /></div>
@@ -554,7 +557,7 @@ export const NovelInterface = ({
                             border-b ${theme.border} flex justify-between items-center
                             pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 px-6
                         `}>
-                                <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>Weaver Control</div><h2 className={`text-xl font-serif ${theme.title}`}>设定面板</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
+                                <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>TELA · CREATION</div><h2 className={`text-xl font-serif ${theme.title}`}>创作设定</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
                                 <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone={themeMode === "sage" ? "novel-sage" : "novel-paper"} />
@@ -567,7 +570,7 @@ export const NovelInterface = ({
                                 />
 
                                 <div>
-                                    <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> DREAM OUTLINE</label>
+                                    <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> GLOBAL SETTING · 全局设定</label>
                                     <textarea
                                         value={outline}
                                         onChange={e => handleOutlineChange(e.target.value)}
@@ -616,7 +619,7 @@ export const NovelInterface = ({
                                         </button>
 
                                         <p className={`text-[9px] text-center mt-2 ${theme.text} opacity-30 font-mono italic`}>
-                                            {syncStatus === 'saving' ? 'Auto-saving memory...' : 'Ready for next dream.'}
+                                            {syncStatus === 'saving' ? 'Auto-saving memory...' : 'Ready for next chapter.'}
                                         </p>
                                     </div>
                                 </div>

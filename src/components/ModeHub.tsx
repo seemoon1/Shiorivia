@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ArrowRight, BookOpen, Guitar, House, MessageCircle, Settings2,
+  ArrowRight, BookOpen, House, MessageCircle, Settings2,
   Route, Sparkles, Terminal,
 } from "lucide-react";
 
@@ -22,9 +22,9 @@ const modes = [
     ready: true,
   },
   {
-    id: "sliding", title: "Story", subtitle: "故事模式",
-    description: "角色、世界书与沉浸式对话。",
-    icon: Guitar, color: "text-rose-700", background: "bg-rose-50", border: "hover:border-rose-300",
+    id: "sliding", title: "Via Lata", subtitle: "大路 · 故事模式",
+    description: "每段人生的道路在此交织，写下可以延续的故事。",
+    icon: Route, color: "text-[#486e60]", background: "bg-[#eaf2eb]", border: "hover:border-[#92b29d]",
     ready: true,
   },
   {
@@ -34,8 +34,8 @@ const modes = [
     ready: true,
   },
   {
-    id: "novel", title: "Novel", subtitle: "小说模式",
-    description: "章节式写作与梦境叙事。",
+    id: "novel", title: "Tela", subtitle: "织机 · 小说模式",
+    description: "从创作到续写，把故事一章章编织成篇。",
     icon: BookOpen, color: "text-emerald-700", background: "bg-emerald-50", border: "hover:border-emerald-300",
     ready: true,
   },

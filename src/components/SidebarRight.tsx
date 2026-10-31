@@ -115,7 +115,7 @@ const SidebarRightComponent = ({
                     className="h-full bg-white flex flex-col shadow-xl z-30 border-l-0 overflow-hidden"
                 >
                     <div className="p-3 flex justify-between items-center font-bold text-xs text-gray-500 border-b bg-gray-50/50  pt-[calc(0.75rem+env(safe-area-inset-top))]">
-                        <span>{isStoryMode ? "TACTICAL DASHBOARD" : "CAST LIST"}</span>
+                        <span>{isStoryMode ? "VIA LATA · STORY" : "CAST LIST"}</span>
                         <button onClick={onClose}><ChevronRight size={16} /></button>
                     </div>
 

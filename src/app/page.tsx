@@ -287,7 +287,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'lime' ? "VIAE Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
+            title: nextMode === 'lime' ? "VIAE Workspace" : nextMode === 'novel' ? "未命名作品" : nextMode === 'chat' ? "新对话" : "New Chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -494,6 +494,7 @@ export default function Home() {
 
     if (currentSession?.memoryMode === 'novel') {
         return (
+            <>
             <NovelInterface
                 currentSession={currentSession}
                 initialSelectedModel={config.customModelId || config.selectedModel}
@@ -541,10 +542,28 @@ export default function Home() {
 
                 setSessions={cloud.setSessions}
                 onExit={() => setShowModeHub(true)}
+                onOpenSettings={() => setShowSettingsCenter(true)}
                 updateSessionTitle={(id: string, t: string) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, title: t } : s))}
                 deleteMessage={engine.handleDeleteMessage}
                 updateSessionInfo={(id: string, up: any) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, ...up } : s))}
             />
+            <SettingsCenter
+                open={showSettingsCenter}
+                onClose={() => setShowSettingsCenter(false)}
+                values={config}
+                onToggle={toggleSetting}
+                debugMode={ui.debugMode}
+                onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                onTestEffect={ui.setEffect}
+                isStory={false}
+                storyTheme={config.storyTheme}
+                onStoryThemeChange={value => setConfig(prev => ({ ...prev, storyTheme: value }))}
+                activeProvider={apiProvider}
+                providers={allProviders}
+                disabledProviders={disabledProviders}
+                onToggleProvider={toggleProviderDisabled}
+            />
+            </>
         );
     }
 
