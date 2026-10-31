@@ -54,7 +54,7 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeH
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col px-4 pb-10 pt-6 sm:px-8 sm:pt-10">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><Sparkles size={20} /></div>
+            <img src="/shiorivia-app-icon.png" alt="Shiorivia official icon" width={48} height={48} className="h-12 w-12 rounded-2xl shadow-sm" />
             <div>
               <p className="text-sm font-black tracking-[0.17em]">SHIORIVIA</p>
               <p className="text-[11px] text-slate-500">Local Edition</p>

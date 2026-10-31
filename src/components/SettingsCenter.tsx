@@ -5,6 +5,7 @@ import {
   BookOpen, Bug, Globe2, Image as ImageIcon, Mic, Music2,
   Settings2, Sparkles, X,
 } from "lucide-react";
+import type { PublicLocalProvider } from "../lib/localProviders";
 
 export type SettingKey = "webSearch" | "imageGen" | "tts" | "musicControl";
 export type StoryTheme = "sky" | "sage" | "rose";
@@ -21,6 +22,9 @@ type Props = {
   storyTheme: StoryTheme;
   onStoryThemeChange: (value: StoryTheme) => void;
   activeProvider: string;
+  providers: PublicLocalProvider[];
+  disabledProviders: string[];
+  onToggleProvider: (id: string) => void;
 };
 
 type Tab = "general" | "ai" | "media" | "developer";
@@ -63,7 +67,7 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
   );
 }
 
-export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider }: Props) {
+export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
   useEffect(() => {
@@ -130,12 +134,23 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
             {activeTab === "ai" && (
               <section>
                 <h2 className="mb-2 text-xl font-bold">AI 与模型</h2>
-                <p className="mb-8 text-sm text-slate-400">本轮保留现有提供商连接方式；下一轮接入 DeepSeek / OpenRouter / Google / Custom。</p>
-                <SectionTitle>模型服务</SectionTitle>
-                <div className="mb-7 rounded-xl border border-slate-200 bg-white p-4 text-sm">
-                  <p className="font-semibold">当前提供商：{activeProvider === "google" ? "Google" : "OpenRouter"}</p>
-                  <p className="mt-2 text-xs leading-6 text-slate-500">供应商和模型仍可在左侧模型面板切换。自定义供应商及禁用默认供应商功能将在后续批次实现。</p>
+                <p className="mb-8 text-sm text-slate-400">支持 DeepSeek、OpenRouter、Google 及至多四个本地自定义 OpenAI 兼容接口。所有密钥仅从服务端环境变量读取。</p>
+                <SectionTitle>供应商与可见性</SectionTitle>
+                <div className="mb-7 space-y-2">
+                  {providers.map((provider) => (
+                    <div key={provider.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-semibold">{provider.label} {activeProvider === provider.id && <span className="ml-1 text-[10px] text-emerald-600">ACTIVE</span>}</p>
+                        <p className="mt-1 text-xs text-slate-400">{provider.configured ? "已配置 API 密钥" : "尚未在 .env.local 配置"}{provider.custom ? " · 自定义" : " · 默认供应商"}</p>
+                      </div>
+                      <button type="button" disabled={!provider.configured} aria-pressed={!disabledProviders.includes(provider.id)} onClick={() => onToggleProvider(provider.id)}
+                        className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${disabledProviders.includes(provider.id) ? "border-slate-200 bg-slate-50 text-slate-400" : "border-emerald-200 bg-emerald-50 text-emerald-700"} disabled:opacity-40`}>
+                        {disabledProviders.includes(provider.id) ? "已禁用" : "已启用"}
+                      </button>
+                    </div>
+                  ))}
                 </div>
+                <p className="mb-6 text-xs leading-6 text-slate-500">自定义供应商优先显示；模型面板同时最多显示四个供应商。模型列表优先读取供应商实时目录，失败时使用离线备选模型。修改 .env.local 后请重启服务。</p>
                 <SectionTitle>扩展能力</SectionTitle>
                 <SwitchRow title="Web Search / 联网搜索" description="需要 .env.local 中配置 TAVILY_API_KEY。" checked={values.webSearch} onClick={() => onToggle("webSearch")} icon={Globe2} />
                 <SwitchRow title="Image Generation / 图像生成" description="需要配置本地生图服务。" checked={values.imageGen} onClick={() => onToggle("imageGen")} icon={ImageIcon} />

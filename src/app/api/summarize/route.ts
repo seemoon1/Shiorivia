@@ -1,20 +1,19 @@
 import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getServerLocalProvider } from "../../../lib/localProviderServer";
+import { defaultModelForProvider } from "../../../lib/localProviders";
 
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    const { text, previousLtm, mode} = await req.json();
-    
-    if (!text) return new Response(JSON.stringify({ error: "No text provided" }), { status: 400 });
+    const { text, previousLtm, mode, provider = "openrouter", model } = await req.json();
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    const client = new OpenAI({
-      apiKey: apiKey,
-      baseURL: "https://openrouter.ai/api/v1",
-      defaultHeaders: { "HTTP-Referer": "http://localhost:3000", "X-Title": "Mutsu Memory" },
-    });
+    if (!text) return new Response(JSON.stringify({ error: "No text provided" }), { status: 400 });
+    const selectedProvider = getServerLocalProvider(provider);
+    if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
+    const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
+    if (!routedModel) return new Response(JSON.stringify({ error: "Select a model for summarization" }), { status: 400 });
 
     let systemPrompt = "";
     let userPrompt = "";
@@ -54,17 +53,22 @@ Rules:
         userPrompt = `[Previous LTM]:\n${previousLtm || "None"}\n\n[Recent STM]:\n${text}\n\nGenerate updated LTM:`;
     }
 
-    const response = await client.chat.completions.create({
-      model: "deepseek/deepseek-v3.2", 
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.3, 
-      max_tokens: 500,
-    });
-
-    const summary = response.choices[0]?.message?.content || "";
+    let summary = "";
+    if (selectedProvider.id === "google") {
+      const genAI = new GoogleGenerativeAI(selectedProvider.apiKey);
+      const response = await genAI.getGenerativeModel({ model: routedModel.replace(/^google\//, "") })
+        .generateContent(`${systemPrompt}\n\n${userPrompt}`);
+      summary = response.response.text();
+    } else {
+      const client = new OpenAI({ apiKey: selectedProvider.apiKey, baseURL: selectedProvider.baseURL });
+      const response = await client.chat.completions.create({
+        model: routedModel,
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+        temperature: 0.3,
+        max_tokens: 500,
+      });
+      summary = response.choices[0]?.message?.content || "";
+    }
     return new Response(JSON.stringify({ summary }), { status: 200 });
 
   } catch (error: any) {

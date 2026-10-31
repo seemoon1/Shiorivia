@@ -45,7 +45,7 @@ export const useChatEngine = ({
         setIsLoading(true);
 
         let msgs = overrideMessages ? [...overrideMessages] : [...currentSession.messages];
-        const modelToUse = configOverride?.modelOverride || config.selectedModel || "google/gemini-3-flash-preview";
+        const modelToUse = configOverride?.modelOverride || config.customModelId?.trim() || config.selectedModel || "";
 
         if (!isRegen) {
             let content: any = txt;
@@ -302,7 +302,7 @@ export const useChatEngine = ({
 
                 fetch("/api/summarize", {
                     method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: textToSummarize, mode: summarizeMode })
+                    body: JSON.stringify({ text: textToSummarize, mode: summarizeMode, provider: apiProvider, model: modelToUse })
                 })
                 .then(res => res.json())
                 .then(microData => {
@@ -318,7 +318,7 @@ export const useChatEngine = ({
                                 if (newCount >= 7) {
                                     fetch("/api/summarize", {
                                         method: "POST", headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro' })
+                                        body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro', provider: apiProvider, model: modelToUse })
                                     }).then(r => r.json()).then(macroData => {
                                         if (macroData.summary) {
                                             setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));

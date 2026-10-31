@@ -1,5 +1,7 @@
 # Shiorivia — Local Edition
 
+> **API providers (Local):** DeepSeek, OpenRouter, Google and up to four self-hosted / OpenAI-compatible Custom endpoints. See [provider setup](docs/local-api-providers.md).
+
 ![Shiorivia Star Road](public/branding/shiorivia-banner.svg)
 
 <div align="center">

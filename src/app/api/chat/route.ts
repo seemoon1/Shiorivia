@@ -1,5 +1,7 @@
 import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getServerLocalProvider } from "../../../lib/localProviderServer";
+import { defaultModelForProvider } from "../../../lib/localProviders";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
 import { BGM_LIBRARY } from "../../../data/bgm_library";
@@ -438,12 +440,14 @@ ${COLOR_INSTRUCTION}
       }
     }
 
-    if (provider === 'google') {
-        const apiKey = process.env.GOOGLE_API_KEY;
-        if (!apiKey) throw new Error("Missing GOOGLE_API_KEY");
+    const selectedProvider = getServerLocalProvider(provider);
+    if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
+    const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
+    if (!routedModel) return new Response(JSON.stringify({ error: "Select a model for this provider" }), { status: 400 });
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const cleanModel = model.replace("google/", "") || "gemini-1.5-flash";
+    if (selectedProvider.id === 'google') {
+        const genAI = new GoogleGenerativeAI(selectedProvider.apiKey);
+        const cleanModel = routedModel.replace(/^google\//, "");
 
         const geminiModel = genAI.getGenerativeModel({ 
             model: cleanModel,
@@ -486,16 +490,13 @@ ${COLOR_INSTRUCTION}
     }
 
     else {
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY");
-
         const client = new OpenAI({
-            apiKey: apiKey,
-            baseURL: "https://openrouter.ai/api/v1",
-            defaultHeaders: {
+            apiKey: selectedProvider.apiKey,
+            baseURL: selectedProvider.baseURL,
+            ...(selectedProvider.id === 'openrouter' ? { defaultHeaders: {
                 "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Mutsu Studio Lite",
-            },
+                "X-Title": "Shiorivia Local",
+            }} : {}),
         });
 
         const fullMessages = [
@@ -504,7 +505,7 @@ ${COLOR_INSTRUCTION}
         ];
 
         const stream = await client.chat.completions.create({
-            model: model || "google/gemini-2.0-flash-001", 
+            model: routedModel,
             messages: fullMessages,
             stream: true,
             temperature: temperature,

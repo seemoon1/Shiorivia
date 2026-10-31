@@ -168,6 +168,7 @@ export const NovelInterface = ({
     stopGeneration, setIsGlobalGenerating,
     onImageGenerated, setSessions,
     syncStatus, onManualSync,
+    initialSelectedModel,
 }: any) => {
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
@@ -180,7 +181,8 @@ export const NovelInterface = ({
 
     const [directorInput, setDirectorInput] = useState("");
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>(["sakiko"]);
-    const [selectedModel, setSelectedModel] = useState("google/gemini-3-flash-preview");
+    const [selectedModel, setSelectedModel] = useState(initialSelectedModel || "google/gemini-3-flash-preview");
+    useEffect(() => { if (initialSelectedModel) setSelectedModel(initialSelectedModel); }, [initialSelectedModel]);
     const [scenario, setScenario] = useState("午后的红茶店"); 
     const [action, setAction] = useState("谈心");
     const [style, setStyle] = useState("温馨, 治愈, 心理描写细腻, 2000字");

@@ -9,7 +9,7 @@ import {
     CloudRain, AlertTriangle, Mic,
     Cloud, RefreshCw, Check
 } from "lucide-react";
-import { MODEL_DATA } from "../types";
+import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
 import { SessionItem } from "./Common";
 import { BatchDeleteModal } from "./BatchDeleteModal";
 
@@ -84,7 +84,7 @@ export const SidebarLeft = ({
     triggerEffect,
     useTTS, toggleTTS,
     syncStatus, onManualSync,
-    apiProvider, setApiProvider,
+    apiProvider, setApiProvider, providers = [],
 }: any) => {
     const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +93,19 @@ export const SidebarLeft = ({
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showBatchConfirm, setShowBatchConfirm] = useState(false);
     const [showDebug, setShowDebug] = useState(false);
+    const [modelGroups, setModelGroups] = useState<LocalModelGroup[]>(fallbackModelGroups(apiProvider));
+    const [catalogSource, setCatalogSource] = useState("fallback");
+    useEffect(() => {
+        let active = true;
+        setModelGroups(fallbackModelGroups(apiProvider));
+        setCatalogSource("fallback");
+        if (!apiProvider) return;
+        fetch(`/api/providers?models=${encodeURIComponent(apiProvider)}`)
+            .then(async (res) => { if (!res.ok) throw new Error("Catalog unavailable"); return res.json(); })
+            .then((data) => { if (active && Array.isArray(data.groups)) { setModelGroups(data.groups); setCatalogSource(data.source || "fallback"); } })
+            .catch(() => { /* Offline fallback remains visible. */ });
+        return () => { active = false; };
+    }, [apiProvider]);
 
     const toggleSelect = (id: string) => {
         const newSet = new Set(selectedIds);
@@ -127,31 +140,18 @@ export const SidebarLeft = ({
                         {showModelPanel && (
                             <div className={`p-2 overflow-y-auto scrollbar-thin ${showChatPanel ? 'max-h-[35%]' : 'h-full'}`}>
 
-                                <div className="mb-3 bg-gray-100 p-1 rounded-lg flex text-xs font-bold">
-                                    <button
-                                        onClick={async () => {
-                                            if (await checkEnv('openrouter')) setApiProvider('openrouter');
-                                        }}
-                                        className={`flex-1 py-1.5 rounded transition-all ${apiProvider === 'openrouter' ? 'bg-white shadow text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        OpenRouter
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            if (await checkEnv('google')) setApiProvider('google');
-                                        }}
-                                        className={`flex-1 py-1.5 rounded transition-all ${apiProvider === 'google' ? 'bg-white shadow text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        Google
-                                    </button>
+                                <div className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 text-xs font-bold">
+                                    {(providers as PublicLocalProvider[]).map((p) => (
+                                        <button key={p.id} type="button" onClick={() => setApiProvider(p.id)}
+                                            className={`truncate rounded px-2 py-1.5 transition-all ${apiProvider === p.id ? 'bg-white text-emerald-700 shadow' : 'text-gray-500 hover:text-gray-800'}`} title={p.label}>
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                    {providers.length === 0 && <p className="col-span-2 px-2 py-2 text-[11px] text-amber-600">请先在 .env.local 配置 API 密钥。</p>}
                                 </div>
+                                <p className="mb-2 text-[10px] text-slate-400">{catalogSource === "live" ? "Live models" : "Offline model fallbacks"}</p>
 
-                                {MODEL_DATA.filter((g: any) => {
-                                    if (apiProvider === 'google') {
-                                        return g.groupName.toLowerCase().includes("google");
-                                    }
-                                    return true; 
-                                }).map((g: any) => (
+                                {modelGroups.map((g: any) => (
                                     <div key={g.groupName} className="mb-1">
                                         <button onClick={() => setExpandedGroups((prev: any) => prev.includes(g.groupName) ? prev.filter((x: any) => x !== g.groupName) : [...prev, g.groupName])} className="w-full flex justify-between p-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 rounded">
                                             <span>{g.groupName}</span>

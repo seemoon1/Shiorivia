@@ -21,6 +21,7 @@ import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
 import { ModeHub } from "../components/ModeHub";
 import { SettingsCenter, type SettingKey, type StoryTheme } from "../components/SettingsCenter";
+import { DEFAULT_LOCAL_PROVIDERS, defaultModelForProvider, getVisibleLocalProviders, type PublicLocalProvider } from "../lib/localProviders";
 import { EffectType } from "../components/TransitionEffects";
 
 import { useMusic } from "../context/MusicContext";
@@ -74,12 +75,17 @@ export default function Home() {
         expandedGroups: ["Gemini (Google)"] as string[]
     });
 
+    const [apiProvider, setApiProvider] = useState<string>('openrouter');
     const [settingsHydrated, setSettingsHydrated] = useState(false);
+    const [disabledProviders, setDisabledProviders] = useState<string[]>([]);
+    const [allProviders, setAllProviders] = useState<PublicLocalProvider[]>(DEFAULT_LOCAL_PROVIDERS);
     useEffect(() => {
         try {
             const raw = window.localStorage.getItem("shiorivia_local_preferences_v1");
             const saved = raw ? JSON.parse(raw) : null;
             if (saved && typeof saved === "object") {
+                if (Array.isArray(saved.disabledProviders)) setDisabledProviders(saved.disabledProviders.filter((x: unknown) => typeof x === "string"));
+                if (typeof saved.apiProvider === "string") setApiProvider(saved.apiProvider);
                 setConfig(prev => ({
                     ...prev,
                     webSearch: typeof saved.webSearch === "boolean" ? saved.webSearch : prev.webSearch,
@@ -100,13 +106,38 @@ export default function Home() {
         if (!settingsHydrated) return;
         try {
             const { webSearch, imageGen, tts, musicControl, storyTheme } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, storyTheme }));
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, storyTheme, disabledProviders, apiProvider }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.storyTheme]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.storyTheme, disabledProviders, apiProvider]);
 
-    const [apiProvider, setApiProvider] = useState<'openrouter' | 'google'>('openrouter');
+    const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders, disabledProviders), [allProviders, disabledProviders]);
+    useEffect(() => {
+        let active = true;
+        fetch('/api/providers', { cache: 'no-store' }).then(r => r.json()).then(data => {
+            if (active && Array.isArray(data.providers)) setAllProviders(data.providers);
+        }).catch(() => ui.showToast('无法加载供应商配置，请检查本地服务。'));
+        return () => { active = false; };
+    }, []);
+    useEffect(() => {
+        if (!settingsHydrated || !allProviders.some(p => p.configured)) return;
+        if (!visibleProviders.some(p => p.id === apiProvider)) {
+            const nextId = visibleProviders[0]?.id || '';
+            if (nextId === apiProvider) return;
+            setApiProvider(nextId);
+            setConfig(prev => ({ ...prev, selectedModel: defaultModelForProvider(nextId), customModelId: '' }));
+        }
+    }, [settingsHydrated, visibleProviders, apiProvider, allProviders]);
+    const selectProvider = (id: string) => {
+        if (!visibleProviders.some(p => p.id === id)) return;
+        if (id === apiProvider) return;
+        setApiProvider(id);
+        setConfig(prev => ({ ...prev, selectedModel: defaultModelForProvider(id), customModelId: '' }));
+    };
+    const toggleProviderDisabled = (id: string) => setDisabledProviders(prev =>
+        prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
 
     const toggleSetting = async (key: SettingKey) => {
         if (!config[key]) {
@@ -396,6 +427,9 @@ export default function Home() {
                     storyTheme={config.storyTheme}
                     onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
                     activeProvider={apiProvider}
+                    providers={allProviders}
+                    disabledProviders={disabledProviders}
+                    onToggleProvider={toggleProviderDisabled}
                 />
                 <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
             </>
@@ -406,6 +440,7 @@ export default function Home() {
         return (
             <NovelInterface
                 currentSession={currentSession}
+                initialSelectedModel={config.customModelId || config.selectedModel}
                 handleSend={engine.handleSend}
                 isLoading={engine.isLoading}
                 createNewSession={createNewSession}
@@ -532,7 +567,8 @@ export default function Home() {
                     importInputRef={fileHandler.importInputRef}
 
                     apiProvider={apiProvider}
-                    setApiProvider={setApiProvider}
+                    setApiProvider={selectProvider}
+                    providers={visibleProviders}
                     isMobile={false} 
 
                     useWebSearch={config.webSearch}
@@ -596,7 +632,7 @@ export default function Home() {
                     isGlobalGenerating={isGlobalGenerating}
 
                     apiProvider={apiProvider}
-                    setApiProvider={setApiProvider}
+                    setApiProvider={selectProvider}
 
                     handleSend={engine.handleSend} stopGeneration={engine.stopGeneration}
                     handleRegenerate={engine.handleRegenerate} handleDeleteMessage={engine.handleDeleteMessage}
@@ -702,6 +738,9 @@ export default function Home() {
                 storyTheme={config.storyTheme}
                 onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
                 activeProvider={apiProvider}
+                providers={allProviders}
+                disabledProviders={disabledProviders}
+                onToggleProvider={toggleProviderDisabled}
             />
         </div>
     );
