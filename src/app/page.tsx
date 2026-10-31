@@ -287,7 +287,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'lime' ? "LIME Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
+            title: nextMode === 'lime' ? "Viae Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",

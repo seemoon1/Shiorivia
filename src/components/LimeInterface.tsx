@@ -1,28 +1,63 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Brain, Check, ChevronLeft, CirclePlus, Copy, MessageCircle, Pencil, Plus, RotateCcw, Send, Settings2, Smartphone, Square, Trash2, Users, Volume2, X } from "lucide-react";
+import {
+  ArrowLeft, Brain, Check, ChevronRight, Compass, Copy,
+  GitMerge, MapPin, Pencil, RotateCcw, Route, Search,
+  Send, Settings2, Sparkles, Square, Trash2, Users, Volume2, X,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { LimeConversation, Session } from "../types";
 import type { PublicLocalProvider, LocalModelGroup } from "../lib/localProviders";
 import { MemoryVaultModal } from "./MemoryVaultModal";
 import { useLimeEngine } from "../hooks/useLimeEngine";
 
-const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const normalizeText = (content: unknown): string => typeof content === "string" ? content : String(content ?? "");
-const chatOutput = (content: string): { charId: string; text: string }[] => {
+// Historical Local JSON keeps `limeGroups`, `limeGroupId`, and memoryMode="lime".
+// Viae, Semita, and Compitum are presentation names, not a save-format migration.
+const GOLD = "#bb9b61";
+const makeId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
+  ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const asText = (value: unknown): string => typeof value === "string" ? value : String(value ?? "");
+const parseSpeakers = (content: string): { charId: string; text: string }[] => {
   const match = content.match(/<lime_chat>\s*([\s\S]*?)\s*<\/lime_chat>/i);
   if (!match) return [{ charId: "", text: content }];
   try {
-    const data: unknown = JSON.parse(match[1]);
-    if (!Array.isArray(data)) return [{ charId: "", text: content }];
-    const entries = data.filter(x => x && typeof x === "object" && typeof x.text === "string")
-      .map(x => ({ charId: typeof x.charId === "string" ? x.charId : "", text: x.text }));
-    return entries.length ? entries : [{ charId: "", text: content }];
+    const decoded: unknown = JSON.parse(match[1]);
+    if (!Array.isArray(decoded)) return [{ charId: "", text: content }];
+    const segments = decoded.filter(x => x && typeof x === "object" && typeof x.text === "string")
+      .map(x => ({ charId: typeof x.charId === "string" ? x.charId : "", text: x.text as string }));
+    return segments.length ? segments : [{ charId: "", text: content }];
   } catch { return [{ charId: "", text: content }]; }
 };
+const kindName = (group: LimeConversation) => group.type === "direct" ? "Semita · 小径" : "Compitum · 路口";
+const routeName = (group: LimeConversation) => group.reality === "au" ? "AU · 平行歧路" : `Original · T-${group.timeline || "5-6"}`;
 
-interface LimeInterfaceProps {
+function PathEmblem({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <circle cx="22" cy="22" r="20" stroke={GOLD} strokeWidth="0.8" opacity="0.7"/>
+      <path d="M8 36 C12 29 22 29 23 20 S30 12 36 7" stroke={GOLD} strokeWidth="2" strokeLinecap="round"/>
+      <path d="M12 37 C16 31 27 30 27 20 S30 13 36 7" stroke="#efe4cb" strokeWidth="1" opacity="0.75"/>
+      <circle cx="23" cy="20" r="2" fill={GOLD}/>
+      <path d="M12 10 L13.3 13.7 L17 15 L13.3 16.3 L12 20 L10.7 16.3 L7 15 L10.7 13.7 Z" fill={GOLD}/>
+      <circle cx="32" cy="30" r="1.3" fill={GOLD}/>
+    </svg>
+  );
+}
+
+function RouteIllustration({ compact = false }: { compact?: boolean }) {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 620 128" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
+      <path d="M-10 106 C91 106 93 26 203 61 S344 147 427 77 S542 58 647 -6" stroke="#e0c48c" strokeWidth={compact ? 1 : 1.65} opacity="0.7"/>
+      <path d="M-15 118 C83 118 101 42 197 79 S333 157 439 91 S540 66 641 7" stroke="#d9c391" strokeWidth="0.8" opacity="0.25"/>
+      <path d="M-8 20 Q184 -25 320 31 T640 6" stroke="#b8a37c" strokeWidth="0.8" strokeDasharray="2 8" opacity="0.35"/>
+      <g fill="#e6c991"><circle cx="202" cy="61" r="3"/><circle cx="426" cy="78" r="3"/><circle cx="532" cy="57" r="2"/></g>
+      <path d="M505 19 L507 24 L512 26 L507 28 L505 33 L503 28 L498 26 L503 24 Z" fill="#f0d7a6" opacity="0.85"/>
+    </svg>
+  );
+}
+
+interface ViaeProps {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
   characters: { id: string; name: string; avatar: string; hex: string; sub?: string }[];
@@ -38,7 +73,8 @@ interface LimeInterfaceProps {
   notify: (message: string) => void;
 }
 
-export function LimeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: LimeInterfaceProps) {
+// Keep the existing export while other Local pages still import LimeInterface.
+export function LimeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
   const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useLimeEngine({
     session, updateSession, provider, model: customModel.trim() || model, notify,
   });
@@ -53,15 +89,23 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
   const [openMemory, setOpenMemory] = useState(false);
   const [showModels, setShowModels] = useState(false);
   const [showManage, setShowManage] = useState(false);
+  const [showRouteEditor, setShowRouteEditor] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [search, setSearch] = useState("");
   const [modelGroups, setModelGroups] = useState<LocalModelGroup[]>([]);
   const [copyIndex, setCopyIndex] = useState<number | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [routeDraft, setRouteDraft] = useState({ reality: "canon" as "canon" | "au", timeline: "5-6", auContext: "" });
   const currentAudio = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => () => currentAudio.current?.pause(), []);
+  const bottom = useRef<HTMLDivElement | null>(null);
   const conversations = session.limeGroups || [];
-  const hasConfiguredProvider = providers.some(p => p.id === provider);
+  const providerConfigured = providers.some(p => p.id === provider);
+  const who = (id: string) => characters.find(c => c.id === id);
+  const time = (value?: number) => mounted && value ? new Date(value).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "";
 
+  useEffect(() => { setMounted(true); return () => currentAudio.current?.pause(); }, []);
+  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [activeGroup?.id, activeGroup?.messages.length]);
   useEffect(() => {
     let alive = true;
     if (!provider) { setModelGroups([]); return; }
@@ -71,22 +115,22 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
     return () => { alive = false; };
   }, [provider]);
 
-  const updateGroup = (groupId: string, update: (g: LimeConversation) => LimeConversation) => {
-    updateSession(current => ({ ...current, updatedAt: Date.now(), limeGroups: (current.limeGroups || []).map(g => g.id === groupId ? update(g) : g) }));
+  const updateGroup = (id: string, update: (group: LimeConversation) => LimeConversation) => {
+    updateSession(current => ({ ...current, updatedAt: Date.now(), limeGroups: (current.limeGroups || []).map(g => g.id === id ? update(g) : g) }));
   };
-  const chooseGroup = (groupId: string | null) => {
+  const chooseGroup = (id: string | null) => {
     if (isLoading) { notify("请先完成或停止当前回复"); return; }
-    updateSession(current => ({ ...current, limeGroupId: groupId, updatedAt: Date.now() }));
-    setOpenMemory(false);
-    setShowModels(false);
-    setShowManage(false);
+    updateSession(current => ({ ...current, limeGroupId: id, updatedAt: Date.now() }));
+    setCreating(false); setOpenMemory(false); setShowModels(false); setShowManage(false); setShowRouteEditor(false); setShowDetails(false);
+  };
+  const resetCreate = (nextKind: "direct" | "group") => {
+    setKind(nextKind); setSelected([]); setDraftName(""); setAuContext(""); setReality("canon"); setTimeline("5-6"); setPov("outsider"); setCreating(true);
   };
   const create = () => {
-    const limit = kind === "direct" ? 1 : 2;
-    if (selected.length < limit) { notify(kind === "direct" ? "请选择一位聊天对象" : "群聊至少需要两位角色"); return; }
-    const name = draftName.trim().slice(0, 70) || (kind === "direct" ? `${characters.find(c => c.id === selected[0])?.name || "角色"} · 私聊` : "新的群聊");
+    if (selected.length < (kind === "direct" ? 1 : 2)) { notify(kind === "direct" ? "请选择一位同行的角色" : "路口至少需要两位角色"); return; }
+    const name = draftName.trim().slice(0, 70) || (kind === "direct" ? who(selected[0])?.name || "新小径" : "新的路口");
     const group: LimeConversation = {
-      id: newId(), name, type: kind, members: [...selected], pov: kind === "direct" ? "insider" : pov,
+      id: makeId(), name, type: kind, members: [...selected], pov: kind === "direct" ? "insider" : pov,
       defaultPovChar: selected[0], reality, timeline: reality === "canon" ? timeline.trim() || "5-6" : "AU",
       auContext: reality === "au" ? auContext.trim() : "", messages: [],
       stm: "", ltm: "", turnCount: 0, updatedAt: Date.now(),
@@ -94,128 +138,162 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
     updateSession(current => ({ ...current, limeGroups: [group, ...(current.limeGroups || [])], limeGroupId: group.id, updatedAt: Date.now() }));
     setCreating(false); setSelected([]); setDraftName(""); setAuContext("");
   };
-  const removeGroup = (groupId: string) => {
-    if (isLoading || !window.confirm("删除这个 LIME 对话及其全部消息和记忆？此操作不可撤销。")) return;
-    updateSession(current => ({ ...current, limeGroups: (current.limeGroups || []).filter(g => g.id !== groupId), limeGroupId: current.limeGroupId === groupId ? null : current.limeGroupId, updatedAt: Date.now() }));
+  const removeGroup = (id: string) => {
+    if (isLoading || !window.confirm("删除这条道路及其中的消息和记忆？此操作无法撤销。")) return;
+    updateSession(current => ({ ...current, limeGroups: (current.limeGroups || []).filter(g => g.id !== id), limeGroupId: current.limeGroupId === id ? null : current.limeGroupId, updatedAt: Date.now() }));
   };
-  const renameGroup = (group: LimeConversation) => {
-    const result = window.prompt("修改聊天名称", group.name)?.trim();
-    if (result) updateGroup(group.id, g => ({ ...g, name: result.slice(0, 70), updatedAt: Date.now() }));
+  const rename = (group: LimeConversation) => {
+    const name = window.prompt("为这段道路重新命名", group.name)?.trim();
+    if (name) updateGroup(group.id, g => ({ ...g, name: name.slice(0, 70), updatedAt: Date.now() }));
   };
   const toggleMember = (id: string) => {
     if (kind === "direct") { setSelected([id]); return; }
-    setSelected(prev => prev.includes(id) ? prev.filter(member => member !== id) : [...prev, id]);
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
-  const who = (id: string) => characters.find(c => c.id === id);
-  const playVoice = async (text: string, charId: string) => {
-    if (voiceBusy || !text.trim() || !charId) return;
+  const editRoute = () => {
+    if (!activeGroup) return;
+    setRouteDraft({ reality: activeGroup.reality, timeline: activeGroup.timeline, auContext: activeGroup.auContext || "" });
+    setShowRouteEditor(true); setShowModels(false); setShowManage(false); setShowDetails(false);
+  };
+  const saveRoute = () => {
+    if (!activeGroup || isLoading) return;
+    updateGroup(activeGroup.id, g => ({ ...g, reality: routeDraft.reality, timeline: routeDraft.reality === "canon" ? routeDraft.timeline.trim() || "5-6" : "AU", auContext: routeDraft.reality === "au" ? routeDraft.auContext.trim() : "", updatedAt: Date.now() }));
+    setShowRouteEditor(false); notify("新的路线已保存");
+  };
+  const playVoice = async (text: string, id: string) => {
+    if (voiceBusy || !text.trim() || !id) return;
     setVoiceBusy(true);
+    let url: string | null = null;
     try {
       currentAudio.current?.pause();
-      const response = await fetch("/api/tts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, characterId: charId, variant: "default" }),
-      });
-      if (!response.ok) throw new Error("TTS 未配置或无法连接");
-      const audioURL = URL.createObjectURL(await response.blob());
-      const audio = new Audio(audioURL);
+      const response = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, characterId: id, variant: "default" }) });
+      if (!response.ok) throw new Error("TTS 未配置或暂时无法连接");
+      url = URL.createObjectURL(await response.blob());
+      const audio = new Audio(url);
       currentAudio.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(audioURL); setVoiceBusy(false); };
-      audio.onerror = () => { URL.revokeObjectURL(audioURL); setVoiceBusy(false); notify("语音播放失败"); };
+      const release = () => { if (url) URL.revokeObjectURL(url); setVoiceBusy(false); };
+      audio.onended = release;
+      audio.onerror = () => { release(); notify("语音播放失败"); };
       await audio.play();
     } catch (error) {
+      if (url) URL.revokeObjectURL(url);
       setVoiceBusy(false);
       notify(error instanceof Error ? error.message : "语音生成失败");
     }
   };
-  const availableModels = useMemo(() => modelGroups.flatMap(g => g.models || []), [modelGroups]);
-  const filtered = conversations.filter(g => g.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const availableModels = useMemo(() => modelGroups.flatMap(group => group.models || []), [modelGroups]);
+  const filtered = useMemo(() => conversations.filter(g => g.name.toLowerCase().includes(search.trim().toLowerCase())), [conversations, search]);
+  const memberLabel = activeGroup?.members.map(id => who(id)?.name || id).join("、") || "";
 
   return (
-    <div className="flex h-[100dvh] min-h-0 w-full bg-[#f2f7ed] text-slate-800">
-      <aside className={`flex w-full shrink-0 flex-col border-r border-lime-200 bg-[#e9f2de] sm:w-[340px] ${activeGroup || creating ? "hidden sm:flex" : "flex"}`}>
-        <div className="flex items-center gap-3 border-b border-lime-200 px-4 py-4">
-          <button type="button" onClick={onExit} title="返回五模式导航" className="rounded-xl p-2 text-lime-900 hover:bg-white/70"><ArrowLeft size={19}/></button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-500 text-white"><Smartphone size={23}/></div>
-          <div className="min-w-0 flex-1"><h1 className="font-black tracking-wide">LIME</h1><p className="text-[11px] text-lime-700">私聊 · 群聊 · 独立空间</p></div>
-          <button type="button" title="全局设置" onClick={onSettings} className="rounded-lg p-2 text-lime-800 hover:bg-white/75"><Settings2 size={18}/></button>
+    <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-[#fafaf9] font-sans text-[#1b2e48]">
+      {/* Shared Viae directory — deliberately separate from the Engineering/Story/Chat explorer. */}
+      <aside className={`relative z-20 flex w-full shrink-0 flex-col border-r border-[#e5e8eb] bg-white sm:w-[318px] lg:w-[340px] ${activeGroup || creating ? "hidden sm:flex" : "flex"}`}>
+        <div className="flex items-center gap-3 border-b border-[#e9edf0] px-5 py-5">
+          <button type="button" onClick={onExit} title="返回五模式导航" aria-label="返回五模式导航" className="rounded-xl p-2 text-[#586d81] transition hover:bg-[#f2f5f7]"><ArrowLeft size={18}/></button>
+          <img src="/shiorivia-app-icon.png" alt="Shiorivia" className="h-10 w-10 rounded-xl object-cover"/>
+          <div className="min-w-0 flex-1"><h1 className="font-semibold tracking-[0.18em] text-[#162942]">VIAE</h1><p className="text-[10px] tracking-wide text-[#8994a1]">SHIORIVIA · CHARACTER MESSAGING</p></div>
+          <button type="button" onClick={onSettings} title="全局设置" aria-label="打开全局设置" className="rounded-xl p-2 text-[#718095] hover:bg-[#f3f5f7]"><Settings2 size={18}/></button>
         </div>
-        <div className="space-y-2 p-4">
-          <button type="button" onClick={() => { setCreating(true); setSelected([]); }} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-lime-700"><Plus size={17}/> 新建 LIME 聊天</button>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索私聊与群聊…" className="w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm outline-none focus:border-lime-500"/>
+        <div className="px-5 pb-3 pt-6">
+          <div className="mb-4 flex items-center justify-between"><span className="text-[10px] font-semibold tracking-[0.18em] text-[#8290a0]">YOUR PATHS / 道路</span><span className="text-xs text-[#b49a6c]">{conversations.length.toString().padStart(2, "0")}</span></div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => resetCreate("direct")} className="flex items-center justify-center gap-2 rounded-xl border border-[#e4e8eb] bg-[#f9fafb] px-2 py-3 text-xs font-semibold text-[#253c59] transition hover:border-[#c8b58f] hover:bg-[#fffdf8]"><Route size={16} color={GOLD}/> 小径 <span className="font-normal text-[#8e9aaa]">Semita</span></button>
+            <button type="button" onClick={() => resetCreate("group")} className="flex items-center justify-center gap-2 rounded-xl border border-[#e4e8eb] bg-[#f9fafb] px-2 py-3 text-xs font-semibold text-[#253c59] transition hover:border-[#c8b58f] hover:bg-[#fffdf8]"><GitMerge size={16} color={GOLD}/> 路口 <span className="font-normal text-[#8e9aaa]">Compitum</span></button>
+          </div>
+          <label className="mt-4 flex items-center gap-2 rounded-xl border border-[#e8ebed] bg-[#fbfbfb] px-3 py-2.5 text-[#a2abb6]"><Search size={16}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索道路、角色或群组…" className="w-full bg-transparent text-xs text-[#263a51] outline-none placeholder:text-[#a2abb6]"/></label>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-          {filtered.map(g => <div key={g.id} className={`group mb-1 flex items-center gap-2 rounded-xl p-2 ${g.id === session.limeGroupId ? "bg-white shadow-sm" : "hover:bg-white/60"}`}>
-            <button type="button" onClick={() => chooseGroup(g.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lime-100 text-lime-700">{g.type === "direct" ? (who(g.members[0])?.avatar || "💬") : <Users size={21}/>}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{g.name}</span><span className="block text-[11px] text-slate-500">{g.type === "direct" ? "私聊" : `${g.members.length} 人群聊`} · {g.reality === "au" ? "AU" : `T-${g.timeline}`}</span></span>
-            </button>
-            <button type="button" title="删除聊天" aria-label={`删除 ${g.name}`} onClick={() => removeGroup(g.id)} className="rounded p-1.5 text-slate-400 opacity-60 hover:bg-red-50 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={14}/></button>
-          </div>)}
-          {filtered.length === 0 && <p className="px-4 py-8 text-center text-xs text-lime-700/70">这里还没有聊天，创建一个吧。</p>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5">
+          {filtered.length === 0 && <p className="px-4 py-12 text-center text-xs leading-7 text-[#99a4b0]">这里还没有熟悉的道路。<br/>选择「小径」或「路口」，开启一段新的相遇。</p>}
+          {filtered.map(g => {
+            const last = g.messages?.[g.messages.length - 1];
+            const participant = who(g.members[0]);
+            return <div key={g.id} className={`group mb-1 flex items-center rounded-xl border px-2 py-1.5 transition ${g.id === session.limeGroupId ? "border-[#dce5ef] bg-[#f4f7fa]" : "border-transparent hover:bg-[#f8f9fa]"}`}>
+              <button type="button" onClick={() => chooseGroup(g.id)} className="flex min-w-0 flex-1 items-center gap-3 p-1.5 text-left">
+                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg ${g.type === "direct" ? "bg-[#f4f3ee]" : "bg-[#eaf0f5] text-[#49617c]"}`}>{g.type === "direct" ? participant?.avatar || "✦" : <GitMerge size={21}/>}</span>
+                <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-1"><span className="truncate text-[13px] font-semibold">{g.name}</span><span className="shrink-0 text-[10px] text-[#a6afba]">{time(g.updatedAt)}</span></span><span className="mt-1 block truncate text-[11px] text-[#8995a3]">{last ? (last.role === "user" ? `你：${asText(last.content)}` : (parseSpeakers(asText(last.content))[0]?.text || "新消息")) : kindName(g)}</span></span>
+              </button>
+              <button type="button" title={`删除 ${g.name}`} aria-label={`删除 ${g.name}`} disabled={isLoading} onClick={() => removeGroup(g.id)} className="rounded-lg p-1.5 text-[#a5afba] opacity-60 transition hover:bg-rose-50 hover:text-rose-600 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={14}/></button>
+            </div>;
+          })}
         </div>
-        <p className="border-t border-lime-200 p-3 text-center text-[10px] text-lime-700/70">LIME 对话保存在独立工作区，不会混入 Explorer。</p>
+        <div className="relative overflow-hidden bg-[#152841] px-5 py-5 text-[#e8d3aa]"><RouteIllustration compact/><div className="relative z-10 flex items-center gap-3"><PathEmblem size={35}/><div><p className="font-serif text-sm italic">Where stories find their way.</p><p className="mt-1 text-[9px] tracking-widest text-[#9baabe]">SHIORIVIA / VIAE</p></div></div></div>
       </aside>
 
-      <main className={`flex min-w-0 flex-1 flex-col ${!activeGroup && !creating ? "hidden sm:flex" : "flex"}`}>
+      {/* The center panel keeps the content almost entirely white. */}
+      <main className={`flex min-w-0 flex-1 flex-col bg-[#fcfcfb] ${activeGroup || creating ? "flex" : "hidden sm:flex"}`}>
         {creating ? (
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-8">
-            <div className="mx-auto max-w-2xl space-y-5 rounded-3xl border border-lime-200 bg-white p-5 shadow-sm sm:p-8">
-              <div className="flex items-center gap-3"><button type="button" onClick={() => setCreating(false)} className="rounded-lg p-2 hover:bg-slate-100"><ChevronLeft size={19}/></button><div><h2 className="text-lg font-bold">新建 LIME 对话</h2><p className="text-xs text-slate-500">参考 Tsukinomiya 的私聊／群聊设定</p></div></div>
-              <div className="grid grid-cols-2 gap-2">{([{ value: "direct", label: "私聊", icon: <MessageCircle size={18}/> }, { value: "group", label: "群聊", icon: <Users size={18}/> }] as const).map(item => <button key={item.value} type="button" onClick={() => { setKind(item.value); setSelected([]); }} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${kind === item.value ? "border-lime-500 bg-lime-50 text-lime-800" : "border-slate-200"}`}>{item.icon}{item.label}</button>)}</div>
-              <label className="block space-y-1"><span className="text-xs font-bold text-slate-600">名称（可留空）</span><input maxLength={70} value={draftName} onChange={e=>setDraftName(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-lime-400" placeholder={kind === "direct" ? "例如：和睦的私聊" : "例如：Ave Mujica 练习室"}/></label>
-              <div><p className="mb-2 text-xs font-bold text-slate-600">选择成员 · {kind === "direct" ? "1 位" : "至少 2 位"}</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{characters.map(c => <button key={c.id} type="button" onClick={()=>toggleMember(c.id)} className={`flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left text-xs ${selected.includes(c.id) ? "border-lime-500 bg-lime-50" : "border-slate-200 hover:bg-slate-50"}`}><span className="text-xl">{c.avatar}</span><span className="min-w-0 flex-1 truncate">{c.name}</span>{selected.includes(c.id) && <Check size={14} className="text-lime-700"/>}</button>)}</div></div>
-              {kind === "group" && <label className="block space-y-1"><span className="text-xs font-bold text-slate-600">聊天视角</span><select value={pov} onChange={e => setPov(e.target.value as "insider" | "outsider")} className="w-full rounded-xl border border-slate-200 px-3 py-2"><option value="outsider">旁观者 · 不作为成员发言</option><option value="insider">参与者 · 以所选第一位角色的手机视角</option></select></label>}
-              <div className="grid grid-cols-2 gap-2">{(["canon", "au"] as const).map(value => <button key={value} type="button" onClick={()=>setReality(value)} className={`rounded-xl border p-3 text-sm font-semibold ${reality===value ? "border-lime-500 bg-lime-50 text-lime-800" : "border-slate-200"}`}>{value === "canon" ? "原作时间线" : "AU 平行世界"}</button>)}</div>
-              {reality === "canon" ? <label className="block space-y-1"><span className="text-xs font-bold text-slate-600">时间线标记</span><input value={timeline} onChange={e=>setTimeline(e.target.value)} maxLength={40} className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="5-6"/></label> : <label className="block space-y-1"><span className="text-xs font-bold text-slate-600">AU 世界设定</span><textarea rows={4} value={auContext} onChange={e=>setAuContext(e.target.value)} className="w-full rounded-xl border border-slate-200 p-3" placeholder="描述这段平行世界的背景与角色关系…"/></label>}
-              <button type="button" onClick={create} className="w-full rounded-xl bg-lime-600 px-4 py-3 font-bold text-white hover:bg-lime-700"><CirclePlus size={16} className="mr-2 inline"/>开始聊天</button>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <header className="flex items-center gap-3 border-b border-[#e9edf0] bg-white px-5 py-5"><button onClick={() => setCreating(false)} aria-label="返回道路列表" className="rounded-lg p-2 text-[#64758c] hover:bg-[#f4f6f8]"><ArrowLeft size={18}/></button><PathEmblem size={30}/><div><h2 className="text-base font-semibold">{kind === "direct" ? "开启一条小径" : "创建一个路口"}</h2><p className="text-xs text-[#96a1ad]">{kind === "direct" ? "Semita · 与一位角色同行" : "Compitum · 让不同的道路相遇"}</p></div></header>
+            <div className="mx-auto w-full max-w-2xl space-y-6 px-5 py-8 sm:px-8">
+              <div className="grid grid-cols-2 gap-3">{(["direct", "group"] as const).map(choice => <button key={choice} type="button" onClick={() => { setKind(choice); setSelected([]); }} className={`rounded-2xl border p-4 text-left transition ${kind === choice ? "border-[#bdad91] bg-[#fffdfa]" : "border-[#e4e9ef] bg-white hover:border-[#bdad91]"}`}><span className="mb-3 inline-flex rounded-xl bg-[#edf2f6] p-2 text-[#29415e]">{choice === "direct" ? <Route size={21}/> : <GitMerge size={21}/>}</span><span className="block text-sm font-semibold">{choice === "direct" ? "Semita · 小径" : "Compitum · 路口"}</span><span className="mt-1 block text-xs leading-5 text-[#8e9aaa]">{choice === "direct" ? "两个人，一段安静的同行" : "多条道路在这里交会"}</span></button>)}</div>
+              <label className="block space-y-2"><span className="text-xs font-semibold text-[#52667f]">道路名称（可选）</span><input maxLength={70} value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={kind === "direct" ? "默认使用角色姓名" : "例如：星光研究社"} className="w-full rounded-xl border border-[#e2e7eb] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/></label>
+              <div className="space-y-3"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#52667f]">选择同行者</span><span className="text-xs text-[#9fa9b5]">已选 {selected.length} 位</span></div><div className="grid max-h-[240px] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">{characters.map(c => <button type="button" key={c.id} onClick={() => toggleMember(c.id)} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${selected.includes(c.id) ? "border-[#bba26d] bg-[#fffaf0]" : "border-[#e9edf0] bg-white hover:border-[#cdd7e0]"}`}><span className="text-xl">{c.avatar}</span><span className="min-w-0 flex-1 truncate text-xs font-medium">{c.name}</span>{selected.includes(c.id) && <Check size={14} color={GOLD}/>}</button>)}</div></div>
+              {kind === "group" && <div className="space-y-2"><span className="text-xs font-semibold text-[#52667f]">交流视角</span><div className="flex flex-wrap gap-2">{(["outsider", "insider"] as const).map(value => <button key={value} type="button" onClick={() => setPov(value)} className={`rounded-lg border px-4 py-2 text-xs ${pov === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] text-[#718296]"}`}>{value === "outsider" ? "旁观 · 角色彼此交谈" : "参与 · 角色与我交谈"}</button>)}</div></div>}
+              <div className="space-y-3"><span className="text-xs font-semibold text-[#52667f]">选择道路的世界</span><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button key={value} onClick={() => setReality(value)} type="button" className={`rounded-xl border px-4 py-2 text-xs ${reality === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] bg-white text-[#718296]"}`}>{value === "canon" ? "Original · 原作时间线" : "AU · 平行歧路"}</button>)}</div>{reality === "canon" ? <input value={timeline} onChange={e => setTimeline(e.target.value)} maxLength={40} placeholder="时间线标记，如 5-6" className="w-full rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/> : <textarea rows={4} value={auContext} onChange={e => setAuContext(e.target.value)} placeholder="描述这条平行道路的背景与角色关系…" className="w-full resize-y rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/>}</div>
+              <button type="button" onClick={create} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#182e49] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#294562]"><Sparkles size={16} color="#e8cc97"/> {kind === "direct" ? "踏上小径" : "相会于路口"}</button>
             </div>
           </div>
         ) : activeGroup ? (
           <>
-            <header className="relative flex flex-wrap items-center gap-2 border-b border-lime-200 bg-white/90 px-3 py-3 sm:px-5">
-              <button type="button" onClick={()=>chooseGroup(null)} title="返回聊天列表" className="rounded-lg p-2 text-lime-700 hover:bg-lime-50"><ArrowLeft size={18}/></button>
-              <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-bold">{activeGroup.name}</h2><p className="text-[10px] text-slate-500">{activeGroup.type === "direct" ? "LIME 私聊" : `${activeGroup.members.length} 位成员 · ${activeGroup.pov === "outsider" ? "旁观" : "参与"}`} · {activeGroup.reality === "au" ? "AU" : `T-${activeGroup.timeline}`}</p></div>
-              <button type="button" onClick={()=>{setShowManage(!showManage);setShowModels(false);}} title="管理成员与会话" className="rounded-lg p-2 text-lime-800 hover:bg-lime-50"><Users size={18}/></button>
-              <button type="button" onClick={()=>{setOpenMemory(true);setShowModels(false);}} title="LIME Memory Vault" className="rounded-lg p-2 text-lime-800 hover:bg-lime-50"><Brain size={18}/></button>
-              <button type="button" onClick={()=>{setShowModels(!showModels);setShowManage(false);}} title="模型与供应商" className="rounded-lg p-2 text-lime-800 hover:bg-lime-50"><Settings2 size={18}/></button>
+            <header className="flex min-h-[76px] items-center gap-3 border-b border-[#e9edf0] bg-white px-4 sm:px-6">
+              <button type="button" onClick={() => chooseGroup(null)} aria-label="返回道路列表" title="返回道路列表" className="rounded-lg p-2 text-[#667b91] hover:bg-[#f4f6f8] sm:hidden"><ArrowLeft size={18}/></button>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#edf2f6] text-[#29415e]">{activeGroup.type === "direct" ? who(activeGroup.members[0])?.avatar || <Route size={21}/> : <GitMerge size={21}/>}</span>
+              <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold text-[#1e3048]">{activeGroup.name}</h2><p className="mt-1 flex items-center gap-1.5 truncate text-[11px] text-[#8493a4]"><MapPin size={11} color={GOLD}/>{kindName(activeGroup)} <span className="text-[#c4cad1]">·</span> {routeName(activeGroup)}</p></div>
+              <button type="button" onClick={() => setShowDetails(v => !v)} title="道路详情" aria-label="道路详情" className="rounded-xl p-2 text-[#5f7085] hover:bg-[#f4f6f8] xl:hidden"><Compass size={19}/></button>
+              <button type="button" onClick={() => { setShowModels(v => !v); setShowManage(false); setShowRouteEditor(false); }} title="模型与供应商" aria-label="模型与供应商" className="rounded-xl p-2 text-[#61738a] hover:bg-[#f4f6f8]"><Settings2 size={19}/></button>
             </header>
-            {showManage && <div className="space-y-3 border-b border-lime-200 bg-white p-4 text-sm shadow-sm"><div className="flex items-center justify-between"><strong>聊天管理</strong><button onClick={()=>setShowManage(false)}><X size={16}/></button></div><button type="button" onClick={()=>renameGroup(activeGroup)} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs"><Pencil size={14}/> 重命名</button><p className="text-xs text-slate-600">成员：{activeGroup.members.map(id=>who(id)?.name || id).join("、")}</p>{activeGroup.type === "group" && <div className="flex flex-wrap gap-2">{characters.map(c => <button key={c.id} type="button" disabled={isLoading} onClick={() => { const includes=activeGroup.members.includes(c.id); if(includes && activeGroup.members.length<=2){notify("群聊至少保留两位角色");return;} updateGroup(activeGroup.id,g=>({...g,members:includes?g.members.filter(id=>id!==c.id):[...g.members,c.id],updatedAt:Date.now()})); }} className={`rounded-full border px-3 py-1 text-xs ${activeGroup.members.includes(c.id)?"border-lime-500 bg-lime-50 text-lime-700":"border-slate-200 text-slate-500"}`}>{c.avatar} {c.name}</button>)}</div>}{activeGroup.reality === "au" && <label className="block space-y-1"><span className="text-xs font-semibold">平行世界设定</span><textarea value={activeGroup.auContext || ""} onChange={e=>updateGroup(activeGroup.id,g=>({...g,auContext:e.target.value}))} rows={3} className="w-full rounded-lg border p-2"/></label>}</div>}
-            {showModels && <div className="space-y-2 border-b border-lime-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between text-xs font-bold"><span>模型设置 · LIME</span><button onClick={()=>setShowModels(false)}><X size={16}/></button></div><div className="grid grid-cols-2 gap-2"><label className="text-xs text-slate-500">Provider<select value={provider} onChange={e=>onProviderChange(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-xs">{providers.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></label><label className="text-xs text-slate-500">Model<select value={availableModels.some(m=>m.id===model)?model:""} onChange={e=>onModelChange(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-xs"><option value="">手动输入模型 ID</option>{availableModels.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label></div><input value={customModel} onChange={e=>onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className="w-full rounded-lg border border-slate-200 p-2 text-xs"/><p className="text-[11px] text-slate-500">与其他模式共享 API 供应商配置，密钥仍保留在服务端。</p></div>}
-            <section className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-6" aria-label="LIME 对话消息">
-              {!activeGroup.messages.length && <div className="mx-auto max-w-lg space-y-3 py-12 text-center"><Smartphone className="mx-auto text-lime-500" size={42}/><h3 className="font-bold">{activeGroup.name}</h3><p className="text-sm leading-7 text-slate-500">{activeGroup.type === "direct" ? `和${who(activeGroup.members[0])?.name || "角色"}开始聊天吧。` : "发送消息，让群里的成员各自回复。"} 每段对话的记忆相互独立。</p></div>}
-              {activeGroup.messages.map((message,index)=>{
+            {showModels && <div className="z-10 space-y-3 border-b border-[#e7eaee] bg-white px-5 py-4 shadow-sm"><div className="flex items-center justify-between text-xs font-semibold"><span>模型与供应商</span><button type="button" onClick={() => setShowModels(false)} title="关闭模型设置"><X size={16}/></button></div><div className="grid grid-cols-2 gap-3"><label className="text-[11px] text-[#8492a2]">Provider<select value={provider} onChange={e => onProviderChange(e.target.value)} className="mt-1 block w-full rounded-lg border border-[#e0e6eb] bg-white p-2 text-xs">{providers.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label><label className="text-[11px] text-[#8492a2]">Model<select value={availableModels.some(m => m.id === model) ? model : ""} onChange={e => onModelChange(e.target.value)} className="mt-1 block w-full rounded-lg border border-[#e0e6eb] bg-white p-2 text-xs"><option value="">手动输入模型 ID</option>{availableModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label></div><input value={customModel} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className="w-full rounded-lg border border-[#e0e6eb] px-3 py-2 text-xs outline-none focus:border-[#bba26d]"/><p className="text-[11px] text-[#8391a2]">与 Shiorivia 其他模式共享服务端供应商配置。</p></div>}
+            <div className="relative mx-4 mt-4 overflow-hidden rounded-2xl bg-[#172b46] px-5 py-4 text-white sm:mx-6"><RouteIllustration/><div className="relative flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><PathEmblem size={34}/><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-[#f0dcb7]">{activeGroup.reality === "canon" ? "Original Timeline" : "Alternate Route"}</p><p className="mt-1 truncate text-[11px] text-[#aab8cb]">{activeGroup.reality === "au" ? activeGroup.auContext || "沿着另一条可能的道路…" : `T-${activeGroup.timeline} · 那些熟悉的日常`}</p></div></div><button type="button" onClick={editRoute} className="shrink-0 rounded-xl border border-[#bca778]/70 bg-[#172b46]/70 px-3 py-2 text-[11px] text-[#f3dbaa] transition hover:bg-white/10"><Route size={14} className="mr-1 inline"/> 路线</button></div></div>
+            {showRouteEditor && <div className="z-10 mx-4 mt-2 space-y-3 rounded-2xl border border-[#e7dfce] bg-[#fffdf8] p-4 sm:mx-6"><div className="flex items-center justify-between text-xs font-semibold"><span>编辑这条道路</span><button type="button" onClick={() => setShowRouteEditor(false)} title="关闭路线编辑"><X size={16}/></button></div><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button type="button" key={value} onClick={() => setRouteDraft(d => ({ ...d, reality: value }))} className={`rounded-lg border px-3 py-1.5 text-xs ${routeDraft.reality === value ? "border-[#bea776] bg-white text-[#7d663e]" : "border-[#e4e6e8] text-[#8390a0]"}`}>{value === "canon" ? "原作" : "AU"}</button>)}</div>{routeDraft.reality === "canon" ? <input value={routeDraft.timeline} onChange={e => setRouteDraft(d => ({ ...d, timeline: e.target.value }))} maxLength={40} className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/> : <textarea value={routeDraft.auContext} onChange={e => setRouteDraft(d => ({ ...d, auContext: e.target.value }))} rows={3} placeholder="这条歧路的世界背景…" className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/>}<button type="button" disabled={isLoading} onClick={saveRoute} className="rounded-lg bg-[#1a314c] px-4 py-2 text-xs text-white disabled:opacity-50">保存路线</button></div>}
+            {showManage && <div className="z-10 mx-4 mt-2 space-y-3 rounded-xl border border-[#e5e9ed] bg-white p-4 shadow-sm sm:mx-6"><div className="flex items-center justify-between text-xs font-semibold"><span>道路与同行者</span><button type="button" onClick={() => setShowManage(false)} title="关闭管理"><X size={16}/></button></div><button onClick={() => rename(activeGroup)} type="button" className="flex items-center gap-2 rounded-lg border border-[#e0e4e8] px-3 py-2 text-xs"><Pencil size={14}/> 重新命名</button><p className="text-xs text-[#718195]">{memberLabel}</p>{activeGroup.type === "group" && <div className="flex flex-wrap gap-2">{characters.map(c => <button key={c.id} type="button" disabled={isLoading} onClick={() => { const included = activeGroup.members.includes(c.id); if (included && activeGroup.members.length <= 2) { notify("路口至少需要两位角色"); return; } updateGroup(activeGroup.id, g => ({ ...g, members: included ? g.members.filter(id => id !== c.id) : [...g.members, c.id], updatedAt: Date.now() })); }} className={`rounded-full border px-3 py-1 text-xs disabled:opacity-50 ${activeGroup.members.includes(c.id) ? "border-[#baa573] bg-[#fffaf0] text-[#695836]" : "border-[#e4e9ee] text-[#748395]"}`}>{c.avatar} {c.name}</button>)}</div>}</div>}
+            <section className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-6 sm:px-8" aria-label="Viae 对话消息">
+              <div className="flex items-center gap-3 text-[10px] text-[#9eabb7]"><div className="h-px flex-1 bg-[#e6e9eb]"/><Sparkles size={13} color={GOLD}/> WAYPOINT · 此刻 <div className="h-px flex-1 bg-[#e6e9eb]"/></div>
+              {activeGroup.messages.length === 0 && <div className="mx-auto max-w-md py-16 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f1f4f6]"><PathEmblem size={42}/></div><h3 className="font-serif text-lg text-[#2a3d58]">{activeGroup.name}</h3><p className="mt-3 text-xs leading-7 text-[#8996a5]">{activeGroup.type === "direct" ? `在这条小径上，和${who(activeGroup.members[0])?.name || "角色"}聊聊吧。` : "在这个路口，让不同的声音自然交会。"}<br/>每条道路都有自己独立的回忆。</p></div>}
+              {activeGroup.messages.map((message, index) => {
                 const isUser = message.role === "user";
-                const incomplete = !isUser && isLoading && index === activeGroup.messages.length - 1 && !/<\/lime_chat>/i.test(normalizeText(message.content));
-                const segments = isUser ? [{ charId: "", text: normalizeText(message.content) }] : incomplete ? [{ charId: "", text: "角色正在回复…" }] : chatOutput(normalizeText(message.content));
+                const text = asText(message.content);
+                const partial = !isUser && isLoading && index === activeGroup.messages.length - 1 && !/<\/lime_chat>/i.test(text);
+                const segments = isUser ? [{ charId: "", text }] : partial ? [{ charId: "", text: "角色正在回复…" }] : parseSpeakers(text);
                 return <div key={message.id || index} className={`group flex flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}>
-                  {segments.map((part,i)=>{
+                  {segments.map((part, i) => {
                     const char = who(part.charId);
-                    const content = part.text.replace(/<lime_chat>|<\/lime_chat>/gi, "");
-                    return <div key={i} className={`flex max-w-[92%] items-end gap-2 sm:max-w-[78%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-                      {!isUser && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm" style={{border:`1px solid ${char?.hex || "#a4bc85"}`}}>{char?.avatar || "💬"}</div>}
-                      <div className="min-w-0"><div className="mb-1 text-[10px] text-slate-500">{isUser ? "你" : (char?.name || (incomplete ? "正在回复" : "LIME"))}</div><div className={`prose prose-sm max-w-none break-words rounded-2xl px-4 py-3 text-sm leading-7 shadow-sm ${isUser ? "bg-lime-600 text-white prose-invert" : "bg-white text-slate-800"}`}>{isUser ? content : <ReactMarkdown>{content || (incomplete ? "正在回复…" : "")}</ReactMarkdown>}</div></div>
+                    const content = part.text.replace(/<\/?lime_chat>/gi, "");
+                    return <div key={i} className={`flex max-w-[94%] items-end gap-2 sm:max-w-[80%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+                      {!isUser && <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e1e7ea] bg-white text-lg">{char?.avatar || "✦"}</span>}
+                      <div className="min-w-0"><div className={`mb-1 flex items-center gap-2 text-[10px] text-[#93a0ac] ${isUser ? "justify-end" : ""}`}><span>{isUser ? "你" : char?.name || (partial ? "正在回复" : "Viae")}</span><span>{time(message.createdAt)}</span></div><div className={`prose prose-sm max-w-none break-words rounded-2xl border px-4 py-3 text-[13px] leading-6 shadow-[0_3px_12px_rgba(24,42,63,0.03)] ${isUser ? "prose-invert border-[#1b324f] bg-[#1a314f] text-white" : "border-[#e8ecef] bg-white text-[#2b4058]"}`}>{isUser ? content : <ReactMarkdown>{content || (partial ? "角色正在回复…" : "")}</ReactMarkdown>}</div></div>
                     </div>;
                   })}
-                  <div className={`flex gap-2 opacity-60 group-hover:opacity-100 ${isUser ? "pr-1" : "pl-11"}`}>
-                    {!isUser && chatOutput(message.content).some(p=>p.charId) && <button type="button" disabled={voiceBusy} onClick={()=>{const p=chatOutput(message.content).find(p=>p.charId);if(p)void playVoice(p.text,p.charId);}} title="生成语音"><Volume2 size={14}/></button>}
-                    {!isUser && !isLoading && index === activeGroup.messages.length - 1 && <button type="button" onClick={()=>void send(true)} title="重新生成"><RotateCcw size={14}/></button>}
-                    <button type="button" onClick={()=>{void navigator.clipboard.writeText(message.content);setCopyIndex(index);}} title="复制消息">{copyIndex===index?<Check size={14}/>:<Copy size={14}/>}</button>
-                    {!isLoading && <button type="button" onClick={()=>{if(window.confirm("删除这条消息？"))deleteMessage(index);}} title="删除消息"><Trash2 size={14}/></button>}
+                  <div className={`flex items-center gap-3 text-[#9ca7b5] opacity-70 transition group-hover:opacity-100 ${isUser ? "pr-1" : "pl-11"}`}>
+                    {!isUser && !partial && parseSpeakers(text).some(p => p.charId) && <button type="button" disabled={voiceBusy} onClick={() => { const part = parseSpeakers(text).find(p => p.charId); if (part) void playVoice(part.text, part.charId); }} title="语音播放" aria-label="语音播放"><Volume2 size={14}/></button>}
+                    {!isUser && !isLoading && index === activeGroup.messages.length - 1 && <button type="button" onClick={() => void send(true)} title="重新生成" aria-label="重新生成"><RotateCcw size={14}/></button>}
+                    <button type="button" onClick={() => { void navigator.clipboard.writeText(text); setCopyIndex(index); }} title="复制消息" aria-label="复制消息">{copyIndex === index ? <Check size={14}/> : <Copy size={14}/>}</button>
+                    {!isLoading && <button type="button" onClick={() => { if (window.confirm("删除这条消息？")) deleteMessage(index); }} title="删除消息" aria-label="删除消息"><Trash2 size={14}/></button>}
                   </div>
                 </div>;
               })}
+              <div ref={bottom}/>
             </section>
-            <form className="border-t border-lime-200 bg-white/85 p-3 sm:p-4" onSubmit={e=>{e.preventDefault();void send();}}>
-              <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-lime-200 bg-white px-3 py-2 focus-within:border-lime-500"><textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}}} rows={2} placeholder="发送一条 LIME 消息…" className="min-h-12 max-h-36 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-sm outline-none"/><button type={isLoading?"button":"submit"} disabled={!isLoading && (!input.trim() || !hasConfiguredProvider || !(customModel.trim() || model))} onClick={isLoading?stop:undefined} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-40 ${isLoading?"bg-rose-500":"bg-lime-600 hover:bg-lime-700"}`}>{isLoading?<Square size={17}/>:<Send size={17}/>}</button></div>
-              <p className="mx-auto mt-2 max-w-3xl text-[10px] text-slate-500">{hasConfiguredProvider ? `${providers.find(p=>p.id===provider)?.label || provider} · ${customModel.trim()||model}` : "请先在设置中配置 API 供应商"} · Enter 发送 / Shift+Enter 换行</p>
-            </form>
-            <MemoryVaultModal open={openMemory} onClose={()=>setOpenMemory(false)} sessionId={`${session.id}:${activeGroup.id}`} stm={activeGroup.stm} ltm={activeGroup.ltm} tone="story" onSave={({stm,ltm})=>{updateGroup(activeGroup.id,g=>({...g,stm,ltm,turnCount:stm.split(/\n/).filter(Boolean).length,updatedAt:Date.now()}));notify("LIME Memory Vault 已保存");}}/>
+            <form onSubmit={e => { e.preventDefault(); void send(); }} className="border-t border-[#e9ecef] bg-white px-4 py-4 sm:px-7"><div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-[#e1e7eb] bg-[#fdfdfc] px-3 py-2 transition focus-within:border-[#bba573] focus-within:shadow-[0_0_0_3px_rgba(187,165,115,0.09)]"><textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} rows={2} placeholder={activeGroup.type === "direct" ? "在小径上说点什么…" : "在路口留下你的消息…"} className="min-h-11 max-h-36 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-[#243850] outline-none placeholder:text-[#a1adb7]"/><button type={isLoading ? "button" : "submit"} disabled={!isLoading && (!input.trim() || !providerConfigured || !(customModel.trim() || model))} onClick={isLoading ? stop : undefined} aria-label={isLoading ? "停止生成" : "发送消息"} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-40 ${isLoading ? "bg-rose-500" : "bg-[#172d49] hover:bg-[#274461]"}`}>{isLoading ? <Square size={17}/> : <Send size={17}/>}</button></div><p className="mx-auto mt-2 max-w-3xl truncate text-[10px] text-[#9aa6b1]">{providerConfigured ? `${providers.find(p => p.id === provider)?.label || provider} · ${customModel.trim() || model}` : "请先在设置中配置 API 供应商"} · Enter 发送 / Shift+Enter 换行</p></form>
+            <MemoryVaultModal open={openMemory} onClose={() => setOpenMemory(false)} sessionId={`${session.id}:${activeGroup.id}`} stm={activeGroup.stm} ltm={activeGroup.ltm} tone="story" onSave={({ stm, ltm }) => { updateGroup(activeGroup.id, g => ({ ...g, stm, ltm, turnCount: stm.split(/\n/).filter(Boolean).length, updatedAt: Date.now() })); notify("Viae Memory Vault 已保存"); }}/>
           </>
         ) : (
-          <div className="hidden flex-1 flex-col items-center justify-center gap-3 text-lime-700 sm:flex"><Smartphone size={50}/><p className="text-sm">选择左侧的私聊或群聊，或者创建新对话。</p></div>
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-[#8b9ba9]"><PathEmblem size={70}/><h2 className="font-serif text-xl text-[#344d67]">Every path leads to a story.</h2><p className="text-xs">从左侧选择一条小径或路口，继续你的旅程。</p></div>
         )}
       </main>
+
+      {/* Route information is a quiet contextual panel on desktop and a toggle on mobile. */}
+      {activeGroup && <>
+        {showDetails && <button type="button" onClick={() => setShowDetails(false)} title="关闭详情" aria-label="关闭详情" className="fixed inset-0 z-30 bg-[#152840]/30 xl:hidden"/>}
+        <aside className={`z-40 min-h-0 w-[300px] shrink-0 flex-col overflow-y-auto border-l border-[#ebedef] bg-white px-5 py-6 xl:flex ${showDetails ? "fixed inset-y-0 right-0 flex w-[min(320px,90vw)] shadow-xl xl:static xl:shadow-none" : "hidden"}`}>
+          <div className="flex items-center justify-between text-[10px] font-semibold tracking-[0.16em] text-[#8592a1]"><span>PATH DETAILS / 道路详情</span><button type="button" onClick={() => setShowDetails(false)} title="关闭详情" aria-label="关闭详情" className="xl:hidden"><X size={17}/></button></div>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6e9eb]"><div className="relative h-20 bg-[#192e4b]"><RouteIllustration/></div><div className="p-4"><div className="flex items-center justify-between gap-2"><h3 className="truncate text-sm font-semibold">{activeGroup.name}</h3><button type="button" onClick={() => rename(activeGroup)} aria-label="重命名" title="重命名" className="text-[#8291a1] hover:text-[#2b4666]"><Pencil size={15}/></button></div><p className="mt-1 text-[11px] text-[#8695a5]">{kindName(activeGroup)} · {activeGroup.members.length} 位同行者</p><div className="mt-3 flex flex-wrap gap-1">{activeGroup.members.map(id => <span key={id} title={who(id)?.name || id} className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e8eb] bg-[#f8f8f6] text-base">{who(id)?.avatar || "✦"}</span>)}</div></div></div>
+          <div className="mt-7"><p className="mb-3 text-[10px] font-semibold tracking-[0.15em] text-[#8592a1]">ROUTE / TIMELINE</p><button type="button" onClick={editRoute} className="flex w-full items-center gap-3 rounded-xl border border-[#e4e8eb] bg-[#fcfcfb] p-3 text-left transition hover:border-[#cbb58d]"><span className="rounded-lg bg-[#e9eef3] p-2 text-[#3b5371]"><Compass size={19}/></span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{activeGroup.reality === "canon" ? "Original Timeline" : "Alternate Route"}</span><span className="mt-0.5 block truncate text-[10px] text-[#8593a2]">{routeName(activeGroup)}</span></span><ChevronRight size={15} className="text-[#99a4af]"/></button></div>
+          <div className="mt-7"><p className="mb-3 text-[10px] font-semibold tracking-[0.15em] text-[#8592a1]">TOOLS / 工具</p><div className="space-y-2"><button type="button" onClick={() => setOpenMemory(true)} className="flex w-full items-center gap-3 rounded-xl border border-[#e4e8eb] bg-white px-3 py-3 text-left transition hover:bg-[#f7f9fa]"><Brain size={18} className="text-[#49617c]"/><span className="flex-1 text-xs font-semibold">Memory Vault <span className="mt-0.5 block text-[10px] font-normal text-[#93a0ad]">这条道路的专属记忆</span></span><ChevronRight size={15} className="text-[#a6b0b9]"/></button><button type="button" onClick={() => { setShowManage(true); setShowDetails(false); }} className="flex w-full items-center gap-3 rounded-xl border border-[#e4e8eb] bg-white px-3 py-3 text-left transition hover:bg-[#f7f9fa]"><Users size={18} className="text-[#49617c]"/><span className="flex-1 text-xs font-semibold">同行者管理</span><ChevronRight size={15} className="text-[#a6b0b9]"/></button><button type="button" onClick={() => { setShowModels(true); setShowDetails(false); }} className="flex w-full items-center gap-3 rounded-xl border border-[#e4e8eb] bg-white px-3 py-3 text-left transition hover:bg-[#f7f9fa]"><Settings2 size={18} className="text-[#49617c]"/><span className="flex-1 text-xs font-semibold">模型与供应商</span><ChevronRight size={15} className="text-[#a6b0b9]"/></button></div></div>
+          <div className="mt-7"><p className="mb-3 text-[10px] font-semibold tracking-[0.15em] text-[#8592a1]">TRAVELERS / 同行者</p><div className="space-y-3">{activeGroup.members.map(id => { const c = who(id); return <div key={id} className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f3f4f5] text-lg">{c?.avatar || "✦"}</span><span className="min-w-0"><span className="block truncate text-xs font-semibold">{c?.name || id}</span><span className="block truncate text-[10px] text-[#95a0aa]">{c?.sub || "Shiorivia"}</span></span></div>; })}</div></div>
+          <div className="mt-auto pt-8 text-center"><div className="mx-auto mb-2 h-px w-16 bg-[#d8c59f]"/><p className="font-serif text-xs italic text-[#a18a63]">Where paths meet.</p></div>
+        </aside>
+      </>}
     </div>
   );
 }

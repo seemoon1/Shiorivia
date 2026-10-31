@@ -2,7 +2,7 @@
 
 import {
   ArrowRight, BookOpen, Guitar, House, MessageCircle, Settings2,
-  Smartphone, Sparkles, Terminal,
+  Route, Sparkles, Terminal,
 } from "lucide-react";
 
 type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
@@ -40,9 +40,9 @@ const modes = [
     ready: true,
   },
   {
-    id: "lime", title: "LIME", subtitle: "群聊模式",
-    description: "独立私聊、群聊与角色多方互动。",
-    icon: Smartphone, color: "text-lime-700", background: "bg-lime-50", border: "hover:border-lime-300",
+    id: "lime", title: "VIAE", subtitle: "道路通讯",
+    description: "Semita 小径 · Compitum 路口。每一次相遇都是新的故事。",
+    icon: Route, color: "text-[#9e8050]", background: "bg-[#f7f3e9]", border: "hover:border-[#c3ad85]",
     ready: true,
   },
 ] as const;

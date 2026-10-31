@@ -6,7 +6,7 @@ import { formatLocalMemoryEntries, LOCAL_STM_SLOTS, parseLocalMemoryEntries } fr
 
 const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-/** LIME messages live *inside* the LIME workspace; they never enter normal chat history. */
+/** Viae messages live *inside* the Viae workspace; they never enter normal chat history. */
 export function useLimeEngine({ session, updateSession, provider, model, notify }: {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
@@ -76,9 +76,9 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
       });
       if (!response.ok) {
         const err = await response.json().catch(() => null);
-        throw new Error(err?.error || `LIME API HTTP ${response.status}`);
+        throw new Error(err?.error || `Viae API HTTP ${response.status}`);
       }
-      if (!response.body) throw new Error("LIME API response has no stream");
+      if (!response.body) throw new Error("Viae API response has no stream");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       while (true) {
@@ -103,9 +103,9 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
       if (!regenerate) try {
         const memo = await fetch("/api/summarize", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: `User: ${text || '(regenerated reply)'}\nLIME: ${fullText}`, mode: "micro", provider, model }),
+          body: JSON.stringify({ text: `User: ${text || '(regenerated reply)'}\nViae: ${fullText}`, mode: "micro", provider, model }),
         });
-        if (!memo.ok) throw new Error("LIME micro-memory unavailable");
+        if (!memo.ok) throw new Error("Viae micro-memory unavailable");
         const data = await memo.json();
         const summary = typeof data.summary === "string" ? data.summary.trim() : "";
         if (summary) {
@@ -132,13 +132,13 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
               : { ...group, stm: formatLocalMemoryEntries(stmEntries), turnCount: stmEntries.length };
           });
         }
-      } catch (error) { console.warn("LIME memory summary skipped", error); }
+      } catch (error) { console.warn("Viae memory summary skipped", error); }
     } catch (error) {
       if (controller.signal.aborted) {
         if (!fullText.trim()) patchGroup(groupId, group => ({ ...group, messages: group.messages.filter(msg => msg.id !== requestId) }));
         notify?.("已停止生成");
       } else {
-        const message = error instanceof Error ? error.message : "LIME 请求失败";
+        const message = error instanceof Error ? error.message : "Viae 请求失败";
         notify?.(message);
         // Keep the user's text but drop an empty assistant placeholder.
         if (!fullText.trim()) patchGroup(groupId, group => ({ ...group, messages: group.messages.filter(msg => msg.id !== requestId) }));
