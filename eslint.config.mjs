@@ -1,22 +1,9 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
-  typescript: {
-    ignoreBuildErrors: true,
-  },
- 
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**', 
-      },
-    ],
-  },
-};
-
-export default nextConfig;
+export default defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+]);
