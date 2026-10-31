@@ -17,16 +17,15 @@ npm run dev
 Open `http://localhost:3000`. On Windows, `start_shiorivia.bat` is an alternative startup launcher.
 Both repositories now track `package-lock.json`, so use `npm ci` for repeatable installs; use `npm install` only when intentionally updating dependencies.
 
-Create an untracked `.env.local` in the repository root if you use provider APIs or access-code-protected actions:
+If you need provider API keys or access-code-protected actions, make an untracked local copy of the **placeholder-only** template:
 
-```dotenv
-GOOGLE_API_KEY=replace_with_your_own_key
-# OPENROUTER_API_KEY=replace_with_your_own_key
-# TAVILY_API_KEY=replace_with_your_own_key
-ACCESS_CODE=choose_a_private_access_code
+```powershell
+Copy-Item .env.example .env.local
 ```
 
-**No default `ACCESS_CODE` is provided.** Without it, access-code validation returns HTTP 503. Do not commit real credentials or paste them into bug reports.
+Edit `.env.local` and fill in only the values you use. Empty values in the example are intentional; do not put real secrets in `.env.example`.
+
+**No default `ACCESS_CODE` is provided.** Without it, access-code validation returns HTTP 503. Do not commit real credentials or paste them into bug reports. `.gitignore` helps prevent accidents but does not protect secrets that were already committed; rotate any exposed key.
 
 ## Optional asset scanners / 可选素材扫描
 
