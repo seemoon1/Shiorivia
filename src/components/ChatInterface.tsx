@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Send, Paperclip, Menu, BookOpen, Users, StickyNote,
+    Send, Paperclip, Menu, House, BookOpen, Users, StickyNote,
     RotateCcw, Check, Square, Pencil, Trash2, RefreshCw, Copy, Cpu, FileText,
     Volume2, Loader2, Sparkles, Moon,
     Save, Terminal, ClipboardList, Guitar, Image as ImageIcon, Shirt,
@@ -269,6 +269,7 @@ export const ChatInterface = ({
     currentOutfitId,
     setManualOutfitId,
     createNewSession,
+    onOpenHub, onOpenSettings,
     effectiveConfig,
     charName, outfits,
 }: any) => {
@@ -434,10 +435,13 @@ export const ChatInterface = ({
 
                 <div className="flex items-center gap-1 md:gap-2">
 
+                    <button type="button" onClick={onOpenHub} className="rounded-full p-2 text-slate-500 transition-colors hover:bg-gray-100" title="模式导航 / Home" aria-label="打开模式导航"><House size={19} /></button>
+
                     <div className="relative">
                         <button
-                            onClick={() => setShowSettings(!showSettings)}
-                            className={`p-2 rounded-full transition-colors ${showSettings ? 'bg-gray-100 text-gray-800' : 'text-gray-400 hover:bg-gray-50'}`}
+                            onClick={onOpenSettings}
+                            className="p-2 rounded-full text-gray-500 transition-colors hover:bg-gray-100"
+                            title="设置中心 / Settings"
                         >
                             <Settings size={20} />
                         </button>
@@ -459,18 +463,6 @@ export const ChatInterface = ({
                                             <span>Debug Console</span>
                                             {consoleVisible ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-300" />}
                                         </button>
-                                    </div>
-
-                                    <div className="hidden md:block">
-                                        <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">System</div>
-                                        <div className="px-3 py-2 text-xs text-gray-500 flex justify-between">
-                                            <span>Ver.</span>
-                                            <span className="font-mono">Shiorivia</span>
-                                        </div>
-                                        <div className="px-3 py-2 text-xs text-gray-500 flex justify-between">
-                                            <span>Engine</span>
-                                            <span className="font-mono">Next.js 15</span>
-                                        </div>
                                     </div>
 
                                     <div className="border-t border-gray-100 mt-1 pt-1 px-3 py-2">

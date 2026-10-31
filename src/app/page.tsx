@@ -19,6 +19,8 @@ import { SaveLoadModal } from "../components/SaveLoadModal";
 import { CodeRepositoryModal } from "../components/CodeRepositoryPanel";
 import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
+import { ModeHub } from "../components/ModeHub";
+import { SettingsCenter, type SettingKey, type StoryTheme } from "../components/SettingsCenter";
 import { EffectType } from "../components/TransitionEffects";
 
 import { useMusic } from "../context/MusicContext";
@@ -44,6 +46,8 @@ export default function Home() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     const ui = useUI();
+    const [showModeHub, setShowModeHub] = useState(true);
+    const [showSettingsCenter, setShowSettingsCenter] = useState(false);
 
     useEffect(() => {
         console.log("🔍 [Page Debug] Current Char:", activeCharacterId);
@@ -64,12 +68,69 @@ export default function Home() {
         imageGen: false,
         tts: false,
         musicControl: false,
+        storyTheme: "sky" as StoryTheme,
         selectedModel: "google/gemini-3-flash-preview",
         customModelId: "",
         expandedGroups: ["Gemini (Google)"] as string[]
     });
 
+    const [settingsHydrated, setSettingsHydrated] = useState(false);
+    useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem("shiorivia_local_preferences_v1");
+            const saved = raw ? JSON.parse(raw) : null;
+            if (saved && typeof saved === "object") {
+                setConfig(prev => ({
+                    ...prev,
+                    webSearch: typeof saved.webSearch === "boolean" ? saved.webSearch : prev.webSearch,
+                    imageGen: typeof saved.imageGen === "boolean" ? saved.imageGen : prev.imageGen,
+                    tts: typeof saved.tts === "boolean" ? saved.tts : prev.tts,
+                    musicControl: typeof saved.musicControl === "boolean" ? saved.musicControl : prev.musicControl,
+                    storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
+                }));
+            }
+        } catch {
+            // Invalid or unavailable browser storage should not block Local.
+        } finally {
+            setSettingsHydrated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!settingsHydrated) return;
+        try {
+            const { webSearch, imageGen, tts, musicControl, storyTheme } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, storyTheme }));
+        } catch {
+            // Local settings are best-effort; chat saves use their own storage.
+        }
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.storyTheme]);
+
     const [apiProvider, setApiProvider] = useState<'openrouter' | 'google'>('openrouter');
+
+    const toggleSetting = async (key: SettingKey) => {
+        if (!config[key]) {
+            try {
+                const res = await fetch("/api/check_env");
+                if (!res.ok) throw new Error("Environment check failed");
+                const env = await res.json();
+                const available: Record<SettingKey, boolean> = {
+                    webSearch: Boolean(env.hasTavily),
+                    imageGen: Boolean(env.hasSdUrl),
+                    tts: Boolean(env.hasTtsUrl),
+                    musicControl: Boolean(env.hasMusic),
+                };
+                if (!available[key]) {
+                    ui.showToast("请先配置对应的本地服务或 API 密钥。");
+                    return;
+                }
+            } catch {
+                ui.showToast("无法验证本地服务配置。");
+                return;
+            }
+        }
+        setConfig(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
     const currentSession = cloud.sessions.find(s => s.id === currentSessionId);
 
@@ -205,6 +266,17 @@ export default function Home() {
         }
     };
 
+    const enterMode = (mode: 'infinite' | 'sliding' | 'novel') => {
+        const existing = cloud.sessions.find(session => session.memoryMode === mode);
+        if (existing) {
+            setCurrentSessionId(existing.id);
+            setActiveCharacterId(existing.characterId || "mutsu");
+        } else {
+            createNewSession(activeCharacterId, mode);
+        }
+        setShowModeHub(false);
+    };
+
     const deleteSession = (e: any, id: string) => {
         e.stopPropagation();
         if (!confirm("⚠️ Delete this timeline?")) return;
@@ -303,6 +375,33 @@ export default function Home() {
         (effectiveConfig.outfits && Object.keys(effectiveConfig.outfits).length > 0)
     );
 
+    if (cloud.initLoaded && showModeHub) {
+        return (
+            <>
+                <ModeHub
+                    onEnter={enterMode}
+                    onResume={() => setShowModeHub(false)}
+                    onOpenSettings={() => setShowSettingsCenter(true)}
+                    hasSession={Boolean(currentSession)}
+                />
+                <SettingsCenter
+                    open={showSettingsCenter}
+                    onClose={() => setShowSettingsCenter(false)}
+                    values={config}
+                    onToggle={toggleSetting}
+                    debugMode={ui.debugMode}
+                    onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    onTestEffect={ui.setEffect}
+                    isStory={false}
+                    storyTheme={config.storyTheme}
+                    onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
+                    activeProvider={apiProvider}
+                />
+                <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+            </>
+        );
+    }
+
     if (currentSession?.memoryMode === 'novel') {
         return (
             <NovelInterface
@@ -330,18 +429,7 @@ export default function Home() {
                 syncStatus={cloud.status}
 
                 setSessions={cloud.setSessions}
-                onExit={() => {
-                    const lastReality = cloud.sessions.find(s => s.id !== currentSessionId && s.memoryMode !== 'novel');
-
-                    if (lastReality) {
-                        setCurrentSessionId(lastReality.id);
-                        if (lastReality.characterId) setActiveCharacterId(lastReality.characterId);
-                        ui.showToast("Return to Reality...");
-                    } else {
-                        createNewSession(undefined, 'sliding'); 
-                        ui.showToast("Waking up...");
-                    }
-                }}
+                onExit={() => setShowModeHub(true)}
                 updateSessionTitle={(id: string, t: string) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, title: t } : s))}
                 deleteMessage={engine.handleDeleteMessage}
                 updateSessionInfo={(id: string, up: any) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, ...up } : s))}
@@ -364,7 +452,9 @@ export default function Home() {
             onDrop={fileHandler.handleBgDrop}
             onDragOver={(e) => e.preventDefault()}
         >
-            <Background hex={currentSession?.memoryMode === 'sliding' ? "#e0f2fe" : dynamicCharacter.hex} bgImage={cloud.bgImage} bgName={currentSession?.currentBackground} />
+            <Background hex={currentSession?.memoryMode === 'sliding'
+                ? ({ sky: "#e0f2fe", sage: "#b7d3b0", rose: "#f4c6d2" }[config.storyTheme])
+                : dynamicCharacter.hex} bgImage={cloud.bgImage} bgName={currentSession?.currentBackground} />
 
             {stageDbChar && (
                 showLive2D ? (
@@ -484,6 +574,8 @@ export default function Home() {
                 />
 
                 <ChatInterface
+                    onOpenHub={() => setShowModeHub(true)}
+                    onOpenSettings={() => setShowSettingsCenter(true)}
                     leftSidebarOpen={ui.leftSidebarOpen} setLeftSidebarOpen={ui.setLeftSidebarOpen}
                     rightSidebarOpen={ui.rightSidebarOpen} setRightSidebarOpen={ui.setRightSidebarOpen}
                     setShowLocalWorld={ui.setShowLocalWorld} setShowGlobalWorld={ui.setShowGlobalWorld}
@@ -596,6 +688,20 @@ export default function Home() {
                     setCurrentSessionId(sess.id);
                     ui.showToast(`Loaded: ${sess.title}`);
                 }}
+            />
+
+            <SettingsCenter
+                open={showSettingsCenter}
+                onClose={() => setShowSettingsCenter(false)}
+                values={config}
+                onToggle={toggleSetting}
+                debugMode={ui.debugMode}
+                onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                onTestEffect={ui.setEffect}
+                isStory={currentSession?.memoryMode === 'sliding'}
+                storyTheme={config.storyTheme}
+                onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
+                activeProvider={apiProvider}
             />
         </div>
     );
