@@ -19,23 +19,23 @@ import { cleanDrawTag } from "../lib/parseDraw";
 import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
 
 const THEMES = {
-    dark: {
-        bg: "bg-[#0a0a0c]",
-        sidebar: "bg-[#111116]",
-        accent: "text-[#8b5cf6]",
-        border: "border-white/10",
-        text: "text-slate-300",
-        title: "text-white",
-        inputBg: "bg-[#1a1a20]/90",
-        placeholder: "placeholder-white/20",
-        hover: "hover:bg-white/5",
-        prose: "prose-invert",
-        button: "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-purple-900/30",
-        subButton: "bg-white/5 text-white/20 hover:text-white",
-        selectBorder: "border-purple-500",
-        selectBg: "bg-purple-500/20",
-        selectDot: "bg-purple-400",
-        focus: "focus:border-purple-500"
+    sage: {
+        bg: "bg-[#edf2ea]",
+        sidebar: "bg-[#e3eae0]",
+        accent: "text-[#527966]",
+        border: "border-[#bfcec1]",
+        text: "text-[#40584c]",
+        title: "text-[#294c3b]",
+        inputBg: "bg-[#fafcf8]/90",
+        placeholder: "placeholder-[#758d7b]/55",
+        hover: "hover:bg-[#d8e5da]",
+        prose: "",
+        button: "bg-[#527966] hover:bg-[#406650] text-white shadow-[#527966]/20",
+        subButton: "bg-[#537c61]/10 text-[#527966]/70 hover:text-[#294c3b]",
+        selectBorder: "border-[#719a82]",
+        selectBg: "bg-[#bdd6c4]/40",
+        selectDot: "bg-[#719a82]",
+        focus: "focus:border-[#719a82]"
     },
     paper: {
         bg: "bg-[#fdf6e3]",
@@ -162,7 +162,7 @@ export const NovelInterface = ({
     const [rightOpen, setRightOpen] = useState(true);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [themeMode, setThemeMode] = useState<'dark' | 'paper'>('dark');
+    const [themeMode, setThemeMode] = useState<'sage' | 'paper'>('sage');
     const theme = THEMES[themeMode];
 
     const [showFullPlayer, setShowFullPlayer] = useState(false);
@@ -195,7 +195,7 @@ export const NovelInterface = ({
         setAction(draft?.action || "谈心");
         setStyle(draft?.style || "温馨, 治愈, 心理描写细腻, 2000字");
         setOutline(currentSession?.localWorldInfo || draft?.outline || "");
-        setThemeMode(draft?.themeMode === "paper" ? "paper" : "dark");
+        setThemeMode(draft?.themeMode === "paper" ? "paper" : "sage");
     }, [currentSession?.id]);
     const { currentTrack } = useMusic();
     const lastDrawPromptRef = useRef("");
@@ -307,14 +307,14 @@ export const NovelInterface = ({
     };
 
     useEffect(() => {
-        const color = themeMode === 'paper' ? '#fdf6e3' : '#0a0a0c';
+        const color = themeMode === 'paper' ? '#fdf6e3' : '#edf2ea';
 
         document.body.style.backgroundColor = color;
         document.documentElement.style.backgroundColor = color;
 
         return () => {
-            document.body.style.backgroundColor = '#0a0a0c';
-            document.documentElement.style.backgroundColor = '#0a0a0c';
+            document.body.style.backgroundColor = '';
+            document.documentElement.style.backgroundColor = '';
         };
     }, [themeMode]);
 
@@ -399,7 +399,7 @@ export const NovelInterface = ({
     return (
         <div
             className={`fixed inset-0 z-[500] ${theme.bg} ${theme.text} flex overflow-hidden font-serif transition-colors duration-500 h-[100dvh] w-screen overscroll-none`}
-            style={{ backgroundColor: themeMode === 'paper' ? '#fdf6e3' : '#0a0a0c' }}
+            style={{ backgroundColor: themeMode === 'paper' ? '#fdf6e3' : '#edf2ea' }}
         >
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <AnimatePresence>
@@ -415,7 +415,7 @@ export const NovelInterface = ({
                         />
                     )}
                 </AnimatePresence>
-                <div className={`absolute inset-0 ${themeMode === 'dark' ? 'bg-black/60' : 'bg-white/60'}`}></div>
+                <div className={`absolute inset-0 ${themeMode === 'sage' ? 'bg-[#edf2ea]/75' : 'bg-white/60'}`}></div>
             </div>
             <AnimatePresence>
                 {leftOpen && (
@@ -471,12 +471,16 @@ export const NovelInterface = ({
                     <button onClick={() => setLeftOpen(!leftOpen)} className={`p-2 transition-colors opacity-60 hover:opacity-100 ${theme.text}`}><AlignLeft size={20} /></button>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 opacity-50"><Sparkles size={16} className={theme.accent} /><span className="text-xs font-mono tracking-[0.2em] hidden md:inline">DREAM WEAVER</span></div>
-                        <button onClick={() => setThemeMode(themeMode === 'dark' ? 'paper' : 'dark')} className={`p-2 rounded-full ${theme.hover} transition-all ${theme.accent}`} title="Theme">{themeMode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+                        <button onClick={() => {
+                            const next = themeMode === 'sage' ? 'paper' : 'sage';
+                            setThemeMode(next);
+                            updateSessionInfo?.(currentSession.id, { novelDraft: { selectedCharIds, scenario, action, style, outline, themeMode: next } });
+                        }} className={`flex items-center gap-2 rounded-full px-3 py-2 ${theme.hover} transition-all ${theme.accent}`} title="切换鼠尾草／羊皮纸主题" aria-label="切换小说主题">{themeMode === 'sage' ? <Sun size={18} /> : <Moon size={18} />}<span className="text-[11px] font-semibold">{themeMode === 'sage' ? '鼠尾草' : '羊皮纸'}</span></button>
                     </div>
                     <button onClick={() => setRightOpen(!rightOpen)} className={`p-2 transition-colors opacity-60 hover:opacity-100 ${theme.text}`}><Settings2 size={20} /></button>
                 </div>
 
-                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode} /></div>
+                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} /></div>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth pb-32">
                     <div className="max-w-3xl mx-auto space-y-16">
@@ -498,7 +502,7 @@ export const NovelInterface = ({
                     </div>
                 </div>
 
-                <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[${themeMode === 'dark' ? '#0a0a0c' : '#fdf6e3'}] via-[${themeMode === 'dark' ? '#0a0a0c' : '#fdf6e3'}] to-transparent p-4 pb-6 z-20`}>
+                <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${themeMode === 'sage' ? 'from-[#edf2ea] via-[#edf2ea]' : 'from-[#fdf6e3] via-[#fdf6e3]'} to-transparent p-4 pb-6 z-20`}>
                     <div className="max-w-2xl mx-auto flex items-end gap-2">
                         <button onClick={() => { if (!confirm("确定要重写本章吗？")) return; const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
 
@@ -553,7 +557,7 @@ export const NovelInterface = ({
                                 <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>Weaver Control</div><h2 className={`text-xl font-serif ${theme.title}`}>设定面板</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
-                                <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone="novel" />
+                                <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone={themeMode === "sage" ? "novel-sage" : "novel-paper"} />
                                 <NovelArchiveActions
                                     session={currentSession}
                                     draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
@@ -567,7 +571,7 @@ export const NovelInterface = ({
                                     <textarea
                                         value={outline}
                                         onChange={e => handleOutlineChange(e.target.value)}
-                                        placeholder="绝对准则..."
+                                        placeholder="全局设定..."
                                         className={`w-full h-32 ${theme.inputBg} border ${theme.border} rounded p-3 text-xs ${theme.text} ${theme.focus} outline-none resize-none font-mono ${theme.placeholder}`}
                                     />
                                 </div>
@@ -681,7 +685,7 @@ export const NovelInterface = ({
                 sessionId={currentSession.id}
                 stm={currentSession.stm}
                 ltm={currentSession.ltm}
-                tone="novel"
+                tone={themeMode === "sage" ? "novel-sage" : "novel-paper"}
                 onSave={({ stm, ltm }) => updateSessionInfo(currentSession.id, {
                     stm, ltm, turnCount: stm.split(/\n/).filter(Boolean).length, updatedAt: Date.now(),
                 })}

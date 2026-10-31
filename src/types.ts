@@ -93,7 +93,8 @@ export type NovelDraft = {
   action: string;
   style: string;
   outline: string;
-  themeMode: "dark" | "paper";
+  /** `dark` is accepted only for compatibility with previous Novel JSON exports. */
+  themeMode: "sage" | "paper" | "dark";
 };
 
 export type Session = {

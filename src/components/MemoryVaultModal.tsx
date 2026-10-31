@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Archive, Brain, Check, LockKeyhole, Plus, Save, Trash2, X } from "lucide-react";
 import { formatLocalMemoryEntries, latestLocalMemoryEntry, LOCAL_STM_SLOTS, parseLocalMemoryEntries } from "../lib/localMemory";
 
-export type MemoryTone = "engineering" | "story" | "novel";
+export type MemoryTone = "engineering" | "story" | "novel" | "novel-sage" | "novel-paper";
 
 type MemoryDraft = { stm: string; ltm: string };
 
@@ -30,7 +30,7 @@ export function MemoryPreviewButton({ stm, ltm, onOpen, tone = "story" }: {
   onOpen: () => void;
   tone?: MemoryTone;
 }) {
-  const style = tones[tone];
+  const style = tones[tone === "novel-sage" ? "story" : tone === "novel-paper" ? "novel" : tone];
   const stmCount = parseLocalMemoryEntries(stm).length;
   const ltmCount = parseLocalMemoryEntries(ltm).length;
   const latestStm = latestLocalMemoryEntry(stm);
@@ -51,7 +51,7 @@ export function MemoryPreviewButton({ stm, ltm, onOpen, tone = "story" }: {
 }
 
 export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "", onSave, tone = "engineering" }: MemoryVaultProps) {
-  const style = tones[tone];
+  const style = tones[tone === "novel-sage" ? "story" : tone === "novel-paper" ? "novel" : tone];
   const [stmSlots, setStmSlots] = useState<string[]>([]);
   const [ltmSlots, setLtmSlots] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -92,8 +92,8 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/50 p-2 backdrop-blur-sm sm:p-5" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-label="Memory Vault 记忆档案" className={`flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border ${style.border} bg-[#fbfcfb] text-slate-700 shadow-2xl sm:max-h-[calc(100dvh-3rem)]`}>
-        <header className={`flex shrink-0 items-start justify-between gap-3 border-b ${style.border} bg-white px-4 py-4 sm:px-6`}>
+      <div role="dialog" aria-modal="true" aria-label="Memory Vault 记忆档案" className={`flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border ${style.border} ${tone === "novel-paper" ? "bg-[#fdf6e3]" : tone === "novel-sage" ? "bg-[#edf2ea]" : "bg-[#fbfcfb]"} text-slate-700 shadow-2xl sm:max-h-[calc(100dvh-3rem)]`}>
+        <header className={`flex shrink-0 items-start justify-between gap-3 border-b ${style.border} ${tone === "novel-paper" ? "bg-[#f8efd9]" : tone === "novel-sage" ? "bg-[#e4eee3]" : "bg-white"} px-4 py-4 sm:px-6`}>
           <div>
             <p className={`mb-1 text-[10px] font-bold uppercase tracking-[0.2em] ${style.accent}`}>Shiorivia · Local Memory</p>
             <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl"><Brain size={21} className={style.accent} /> Memory Vault / 记忆档案</h2>
@@ -131,7 +131,7 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
                     <textarea id={`shiorivia-stm-${index}`} rows={3} value={stmSlots[index] || ""}
                       onChange={(e) => setStmSlots((prev) => Array.from({ length: Math.max(index + 1, prev.length) }, (_, i) => i === index ? e.target.value : prev[i] || ""))}
                       placeholder="当前剧情、人物关系、近期任务……"
-                      className="w-full resize-y rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-xs leading-6 outline-none focus:border-[#7ba18e]" />
+                      className={`w-full resize-y rounded-lg border border-slate-100 bg-white/70 p-2 text-xs leading-6 outline-none ${tone === "novel-paper" ? "focus:border-[#967e54]" : "focus:border-[#7ba18e]"}`} />
                   </div>
                 ))}
               </div>
@@ -152,7 +152,7 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
                     <textarea id={`shiorivia-ltm-${index}`} rows={3} value={entry}
                       onChange={(e) => setLtmSlots((prev) => prev.map((item, i) => i === index ? e.target.value : item))}
                       placeholder="长期设定、人物关系、重要事件……"
-                      className="w-full resize-y rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-xs leading-6 outline-none focus:border-[#7ba18e]" />
+                      className={`w-full resize-y rounded-lg border border-slate-100 bg-white/70 p-2 text-xs leading-6 outline-none ${tone === "novel-paper" ? "focus:border-[#967e54]" : "focus:border-[#7ba18e]"}`} />
                   </div>
                 ))}
               </div>
@@ -160,7 +160,7 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
           </div>
         </div>
 
-        <footer className={`flex shrink-0 flex-col gap-3 border-t ${style.border} bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6`}>
+        <footer className={`flex shrink-0 flex-col gap-3 border-t ${style.border} ${tone === "novel-paper" ? "bg-[#f8efd9]" : tone === "novel-sage" ? "bg-[#e4eee3]" : "bg-white"} px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6`}>
           <div className="flex items-start gap-2 text-[11px] leading-5 text-slate-500"><LockKeyhole size={15} className="mt-0.5 shrink-0" /> 保存回原有 STM/LTM 字段，不会改变旧存档格式。自动摘要流程保持原有行为。</div>
           <div className="flex shrink-0 items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">取消</button>
