@@ -14,6 +14,7 @@ import { useMusic } from "../context/MusicContext";
 import { smartColorize } from "../lib/textFormatter";
 import { parseDrawTag } from "../lib/parseDraw"; 
 import { cleanDrawTag } from "../lib/parseDraw"; 
+import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
 
 const THEMES = {
     dark: {
@@ -59,24 +60,6 @@ const PRESETS = [
         { name: "重逢 (Drama)", scenario: "雨中的天桥", action: "互相倾诉 & 和解", style: "感动, 细腻, 氛围感强" },
         { name: "梦境 (Fantasy)", scenario: "漂浮在空中的花园", action: "探险 & 寻找出口", style: "奇幻, 唯美, 意识流" },
     ];
-
-const MemoryCard = ({ title, value, onSave, theme }: any) => {
-    const [isEd, setIsEd] = useState(false);
-    const [localVal, setLocalVal] = useState(value || "");
-    useEffect(() => { if (!isEd) setLocalVal(value || ""); }, [value, isEd]);
-    return (
-        <div className={`${theme.inputBg} border ${theme.border} p-3 rounded-xl space-y-2`}>
-            <div className="flex justify-between items-center">
-                <span className={`text-[10px] font-bold ${theme.text} opacity-70 uppercase tracking-wider`}>{title}</span>
-                <div className="flex gap-2">
-                    {isEd && <button onClick={() => { setLocalVal(value || ""); setIsEd(false) }} className="text-red-400 hover:text-red-300"><X size={12} /></button>}
-                    <button onClick={() => { if (isEd) { if (confirm(`确定要更新 [${title}] 吗？`)) { onSave(localVal); setIsEd(false); } } else { setIsEd(true); } }} className={isEd ? "text-emerald-400 animate-pulse" : `${theme.text} hover:${theme.accent}`}>{isEd ? <Check size={12} /> : <Edit2 size={12} />}</button>
-                </div>
-            </div>
-            <textarea disabled={!isEd} value={localVal} onChange={e => setLocalVal(e.target.value)} className={`w-full bg-transparent text-xs font-mono leading-relaxed outline-none resize-none ${theme.text} ${isEd ? 'opacity-100' : 'opacity-60'}`} rows={4} />
-        </div>
-    );
-};
 
 const NovelContent = ({ content, onOptionClick, theme }: any) => {
     let clean = cleanDrawTag(content) 
@@ -172,6 +155,7 @@ export const NovelInterface = ({
 }: any) => {
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
+    const [showMemoryVault, setShowMemoryVault] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [themeMode, setThemeMode] = useState<'dark' | 'paper'>('dark');
     const theme = THEMES[themeMode];
@@ -544,10 +528,7 @@ export const NovelInterface = ({
                                 <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>Weaver Control</div><h2 className={`text-xl font-serif ${theme.title}`}>设定面板</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
-                                <div className="space-y-3">
-                                    <MemoryCard title="STM (Short Term)" value={currentSession.stm} onSave={(v: string) => updateSessionInfo(currentSession.id, { stm: v })} theme={theme} />
-                                    <MemoryCard title="LTM (Long Term)" value={currentSession.ltm} onSave={(v: string) => updateSessionInfo(currentSession.id, { ltm: v })} theme={theme} />
-                                </div>
+                                <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone="novel" />
 
                                 <div>
                                     <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> DREAM OUTLINE</label>
@@ -663,6 +644,17 @@ export const NovelInterface = ({
                     onClick={() => { setLeftOpen(false); setRightOpen(false) }}
                 />
             )}
+            <MemoryVaultModal
+                open={showMemoryVault}
+                onClose={() => setShowMemoryVault(false)}
+                sessionId={currentSession.id}
+                stm={currentSession.stm}
+                ltm={currentSession.ltm}
+                tone="novel"
+                onSave={({ stm, ltm }) => updateSessionInfo(currentSession.id, {
+                    stm, ltm, turnCount: stm.split(/\n/).filter(Boolean).length, updatedAt: Date.now(),
+                })}
+            />
             <div className="z-[200]">
                 <MusicPlayerModal isOpen={showFullPlayer} onClose={() => setShowFullPlayer(false)} />
             </div>

@@ -5,65 +5,14 @@ import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, 
 import { CHAR_DATA } from "../data/char_config";
 import { SuggestionModal } from "./Modals";
 import { TimelinePanel } from "./TimelinePanel";
-
-const MemoryCard = ({ title, value, onSave, icon: Icon, colorClass }: any) => {
-    const [isEd, setIsEd] = useState(false);
-    const [localVal, setLocalVal] = useState(value || "");
-
-    useEffect(() => {
-        if (!isEd) setLocalVal(value || "");
-    }, [value, isEd]);
-
-    const handleSave = () => {
-        if (confirm(`⚠️ 确定要修改 [${title}] 吗？`)) {
-            onSave(localVal);
-            setIsEd(false);
-        }
-    };
-
-    const handleCancel = () => {
-        setLocalVal(value || ""); 
-        setIsEd(false);           
-    };
-
-    return (
-        <div className={`p-2 rounded border transition-all ${isEd ? 'bg-white border-blue-400 ring-2 ring-blue-100 shadow-md' : 'bg-gray-50/50 border-gray-200'}`}>
-            <div className="flex justify-between items-center mb-1.5">
-                <div className={`text-[10px] font-bold flex items-center gap-1 ${colorClass}`}>
-                    <Icon size={10} /> {title}
-                </div>
-                <div className="flex gap-1">
-                    {isEd && (
-                        <button onClick={handleCancel} className="text-gray-400 hover:text-red-500 p-0.5" title="Cancel & Re-lock">
-                            <X size={10} strokeWidth={3} />
-                        </button>
-                    )}
-                    <button
-                        onClick={() => isEd ? handleSave() : setIsEd(true)}
-                        className={isEd ? "text-blue-600 animate-pulse p-0.5" : "text-gray-400 hover:text-blue-500 p-0.5"}
-                        title={isEd ? "Confirm Save" : "Unlock"}
-                    >
-                        {isEd ? <Check size={10} strokeWidth={3} /> : <Lock size={10} />}
-                    </button>
-                </div>
-            </div>
-            <textarea
-                disabled={!isEd}
-                value={localVal}
-                onChange={(e) => setLocalVal(e.target.value)}
-                className={`w-full text-xs bg-transparent outline-none resize-none font-mono leading-relaxed ${isEd ? 'text-gray-800' : 'text-gray-500'}`}
-                rows={isEd ? 6 : 3}
-                placeholder="Empty..."
-            />
-        </div>
-    );
-};
+import { MemoryPreviewButton } from "./MemoryVaultModal";
 
 const SidebarRightComponent = ({
     isOpen, onClose,
     activeCharacterId, setActiveCharacterId,
     createNewSession,
     currentSession,
+    onOpenMemory,
     handleSend,
     setSessions,
     currentSessionId,
@@ -184,16 +133,7 @@ const SidebarRightComponent = ({
                                     <TimelinePanel timelineData={currentSession?.timeline} onUpdate={handleTimelineUpdate} />
                                 )}
 
-                                <div className="space-y-2">
-                                    <MemoryCard
-                                        title="STM (Short-Term)" value={currentSession?.stm} icon={Activity} colorClass="text-emerald-600"
-                                        onSave={(val: string) => { if (setSessions && currentSessionId) setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? { ...s, stm: val } : s)); }}
-                                    />
-                                    <MemoryCard
-                                        title="LTM (Long-Term)" value={currentSession?.ltm} icon={Brain} colorClass="text-blue-600"
-                                        onSave={(val: string) => { if (setSessions && currentSessionId) setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? { ...s, ltm: val } : s)); }}
-                                    />
-                                </div>
+                                <MemoryPreviewButton stm={currentSession?.stm} ltm={currentSession?.ltm} onOpen={onOpenMemory} tone="story" />
 
                                 {prota && (
                                     <div className="rounded-lg border shadow-sm relative overflow-hidden" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>

@@ -19,6 +19,7 @@ import { SaveLoadModal } from "../components/SaveLoadModal";
 import { CodeRepositoryModal } from "../components/CodeRepositoryPanel";
 import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
+import { MemoryVaultModal } from "../components/MemoryVaultModal";
 import { ModeHub } from "../components/ModeHub";
 import { SettingsCenter, type SettingKey, type StoryTheme } from "../components/SettingsCenter";
 import { DEFAULT_LOCAL_PROVIDERS, defaultModelForProvider, getVisibleLocalProviders, type PublicLocalProvider } from "../lib/localProviders";
@@ -49,6 +50,7 @@ export default function Home() {
     const ui = useUI();
     const [showModeHub, setShowModeHub] = useState(true);
     const [showSettingsCenter, setShowSettingsCenter] = useState(false);
+    const [showMemoryVault, setShowMemoryVault] = useState(false);
 
     useEffect(() => {
         console.log("🔍 [Page Debug] Current Char:", activeCharacterId);
@@ -612,6 +614,7 @@ export default function Home() {
                 <ChatInterface
                     onOpenHub={() => setShowModeHub(true)}
                     onOpenSettings={() => setShowSettingsCenter(true)}
+                    onOpenMemory={() => setShowMemoryVault(true)}
                     leftSidebarOpen={ui.leftSidebarOpen} setLeftSidebarOpen={ui.setLeftSidebarOpen}
                     rightSidebarOpen={ui.rightSidebarOpen} setRightSidebarOpen={ui.setRightSidebarOpen}
                     setShowLocalWorld={ui.setShowLocalWorld} setShowGlobalWorld={ui.setShowGlobalWorld}
@@ -679,6 +682,7 @@ export default function Home() {
                 <SidebarRight
                     isOpen={ui.rightSidebarOpen} onClose={() => ui.setRightSidebarOpen(false)}
                     currentCharacter={dynamicCharacter} currentSession={currentSession}
+                    onOpenMemory={() => setShowMemoryVault(true)}
                     activeCharacterId={activeCharacterId} setActiveCharacterId={setActiveCharacterId}
                     createNewSession={createNewSession} handleSend={engine.handleSend} setSessions={cloud.setSessions} currentSessionId={currentSessionId}
                     handleToggleVariant={() => {
@@ -741,6 +745,21 @@ export default function Home() {
                 providers={allProviders}
                 disabledProviders={disabledProviders}
                 onToggleProvider={toggleProviderDisabled}
+            />
+            <MemoryVaultModal
+                open={showMemoryVault}
+                onClose={() => setShowMemoryVault(false)}
+                sessionId={currentSession?.id || ""}
+                stm={currentSession?.stm}
+                ltm={currentSession?.ltm}
+                tone={currentSession?.memoryMode === "sliding" ? "story" : "engineering"}
+                onSave={({ stm, ltm }) => {
+                    if (!currentSession) return;
+                    cloud.setSessions(prev => prev.map(s => s.id === currentSession.id
+                        ? { ...s, stm, ltm, turnCount: stm.split(/\n/).filter(Boolean).length, updatedAt: Date.now() }
+                        : s));
+                    ui.showToast("Memory Vault saved");
+                }}
             />
         </div>
     );
