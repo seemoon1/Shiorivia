@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fallbackModelGroups, type LocalModel } from "../../../lib/localProviders";
 import { getServerLocalProvider, publicLocalProviders } from "../../../lib/localProviderServer";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers: { "Cache-Control": "no-store" } });
