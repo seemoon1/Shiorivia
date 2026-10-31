@@ -63,7 +63,7 @@ OPENROUTER_API_KEY=your_openrouter_key_here
 # Optional: Tavily (For Web Search)
 TAVILY_API_KEY=your_tavily_key_here
 
-# Optional: Password for Batch Delete (Default: 123456)
+# Access code for protected actions (no default is provided)
 ACCESS_CODE=your_password
 
 > ### Note on Network: 
@@ -112,8 +112,8 @@ OPENROUTER_API_KEY=这里填你的key
 # [可选] Tavily (如果你开启了联网搜索功能)
 TAVILY_API_KEY=这里填你的key
 
-# [可选] 批量删除时的保护密码 (默认: 123456)
-ACCESS_CODE=123456
+# 使用受访问码保护的操作时需自行配置（无默认值）
+ACCESS_CODE=请设置自己的访问码
 
 > ### ⚠️ 关于网络环境:
 > 本项目运行在您的本地电脑上，直接请求 AI 服务商的接口。

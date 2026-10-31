@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { code } = await req.json();
-    const correctCode = process.env.ACCESS_CODE || "123456"; 
+    const correctCode = process.env.ACCESS_CODE;
+    if (!correctCode) {
+      return NextResponse.json({ error: "Access code is not configured" }, { status: 503 });
+    }
 
     if (code === correctCode) {
       return NextResponse.json({ success: true });
