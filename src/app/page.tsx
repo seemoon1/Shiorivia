@@ -13,7 +13,6 @@ import { SidebarLeft } from "../components/SidebarLeft";
 import { SidebarRight } from "../components/SidebarRight";
 import { DanmakuOverlay } from "../components/DanmakuOverlay";
 import { ChatInterface } from "../components/ChatInterface";
-import { PureChatInterface } from "../components/PureChatInterface";
 import { Background } from "../components/Background";
 import { TransitionEffects } from "../components/TransitionEffects";
 import { SaveLoadModal } from "../components/SaveLoadModal";
@@ -168,6 +167,11 @@ export default function Home() {
 
     const currentSession = cloud.sessions.find(s => s.id === currentSessionId);
 
+    // Switching sessions must also restore the character on the Live2D stage.
+    useEffect(() => {
+        if (currentSession?.characterId) setActiveCharacterId(currentSession.characterId);
+    }, [currentSession?.id, currentSession?.characterId]);
+
     const engine = useChatEngine({
         currentSession, currentSessionId, setSessions: cloud.setSessions,
         activeCharacterId, voiceVariant,
@@ -269,6 +273,7 @@ export default function Home() {
 
         let initContent = "";
         if (nextMode === 'infinite') initContent = `我是${charName}。欢迎来到 Shiorivia。请下达指令。`;
+        if (nextMode === 'chat') initContent = `我是${charName || '你的聊天伙伴'}。今天想聊些什么？`;
 
         const initialMessages: any[] = [];
         if (initContent) {
@@ -317,7 +322,11 @@ export default function Home() {
 
         const remainingSessions = cloud.sessions.filter(s => s.id !== id);
 
-        const realitySessions = remainingSessions.filter(s => s.memoryMode !== 'novel' && s.memoryMode !== 'chat');
+        const sameModeSessions = remainingSessions.filter(s => s.memoryMode === currentSession?.memoryMode);
+        const realitySessions = [
+            ...sameModeSessions,
+            ...remainingSessions.filter(s => s.memoryMode !== 'novel' && s.memoryMode !== 'chat' && !sameModeSessions.includes(s))
+        ];
 
         let finalSessions = remainingSessions;
         let nextSessionId = currentSessionId; 
@@ -372,7 +381,7 @@ export default function Home() {
         cloud.setSessions(finalSessions);
     };
 
-    const stageCharId = currentSession?.memoryMode === 'infinite'
+    const stageCharId = currentSession?.memoryMode === 'infinite' || currentSession?.memoryMode === 'chat'
         ? activeCharacterId
         : (currentSession?.live2dCharId || activeCharacterId); 
 
@@ -398,8 +407,10 @@ export default function Home() {
         return null;
     }, [stageCharId]);
 
-    const stageMotion = currentSession?.currentEmotion || "idle";
-    const stageOutfit = currentSession?.currentOutfitId || manualOutfitId || "default";
+    const stageMotion = currentSession?.memoryMode === 'chat' ? "idle" : (currentSession?.currentEmotion || "idle");
+    const stageOutfit = currentSession?.memoryMode === 'chat'
+        ? (manualOutfitId || "default")
+        : (currentSession?.currentOutfitId || manualOutfitId || "default");
     const stageDbChar = useMemo(() =>
         CHAR_DATA.find(c => c.id === stageCharId),
         [stageCharId]);
@@ -435,66 +446,6 @@ export default function Home() {
                     onToggleProvider={toggleProviderDisabled}
                 />
                 <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
-            </>
-        );
-    }
-
-    if (currentSession?.memoryMode === 'chat') {
-        return (
-            <>
-                <PureChatInterface
-                    sessions={cloud.sessions}
-                    currentSession={currentSession}
-                    onSelectSession={setCurrentSessionId}
-                    onCreateSession={() => { if (!engine.isLoading) createNewSession(activeCharacterId, 'chat'); }}
-                    onDeleteSession={(id) => {
-                        if (engine.isLoading || !window.confirm('确定删除这段 Chat 对话吗？')) return;
-                        const remaining = cloud.sessions.filter(s => s.id !== id);
-                        cloud.setSessions(remaining);
-                        if (id === currentSessionId) {
-                            const nextChat = remaining.find(s => s.memoryMode === 'chat');
-                            setCurrentSessionId(nextChat?.id || remaining[0]?.id || '');
-                            if (!nextChat) setShowModeHub(true);
-                        }
-                    }}
-                    onRenameSession={(id, title) => cloud.setSessions(prev => prev.map(s =>
-                        s.id === id ? { ...s, title, updatedAt: Date.now() } : s))}
-                    onHome={() => setShowModeHub(true)}
-                    onOpenSettings={() => setShowSettingsCenter(true)}
-                    input={engine.input}
-                    onInputChange={engine.setInput}
-                    onSend={() => engine.handleSend()}
-                    onStop={engine.stopGeneration}
-                    onRegenerate={engine.handleRegenerate}
-                    isLoading={engine.isLoading}
-                    selectedFile={engine.selectedFile}
-                    onClearFile={() => engine.setSelectedFile(null)}
-                    fileInputRef={fileHandler.fileInputRef}
-                    onFileSelect={fileHandler.handleFileSelect}
-                    providers={visibleProviders}
-                    apiProvider={apiProvider}
-                    onProviderChange={selectProvider}
-                    selectedModel={config.selectedModel}
-                    customModelId={config.customModelId}
-                    onSelectModel={(id) => setConfig(prev => ({ ...prev, selectedModel: id, customModelId: '' }))}
-                    onCustomModelChange={(id) => setConfig(prev => ({ ...prev, customModelId: id }))}
-                />
-                <SettingsCenter
-                    open={showSettingsCenter}
-                    onClose={() => setShowSettingsCenter(false)}
-                    values={config}
-                    onToggle={toggleSetting}
-                    debugMode={ui.debugMode}
-                    onToggleDebug={() => ui.setDebugMode(prev => !prev)}
-                    onTestEffect={ui.setEffect}
-                    isStory={false}
-                    storyTheme={config.storyTheme}
-                    onStoryThemeChange={(value) => setConfig(prev => ({ ...prev, storyTheme: value }))}
-                    activeProvider={apiProvider}
-                    providers={allProviders}
-                    disabledProviders={disabledProviders}
-                    onToggleProvider={toggleProviderDisabled}
-                />
             </>
         );
     }
@@ -593,6 +544,7 @@ export default function Home() {
                 </AnimatePresence>
 
                 <SidebarLeft
+                    activeMode={currentSession?.memoryMode}
                     isOpen={ui.leftSidebarOpen} onClose={() => ui.setLeftSidebarOpen(false)}
                     showModelPanel={ui.showModelPanel} setShowModelPanel={ui.setShowModelPanel}
                     showChatPanel={ui.showChatPanel} setShowChatPanel={ui.setShowChatPanel}

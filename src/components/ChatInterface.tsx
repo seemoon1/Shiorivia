@@ -365,6 +365,26 @@ export const ChatInterface = ({
                 </>
             )}
 
+            {currentSession?.memoryMode === 'chat' && (
+                <>
+                    {!isMobile && (
+                        <div className="relative">
+                            <button onClick={() => setShowWardrobe(v => !v)} title="角色服装"
+                                className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-700">
+                                <Shirt size={15} /> Outfit
+                            </button>
+                            <WardrobeModal
+                                isOpen={showWardrobe} onClose={() => setShowWardrobe(false)}
+                                charName={currentCharacter.name} outfits={outfits}
+                                currentOutfit={currentOutfitId} onSelect={(id: string) => setManualOutfitId(id)}
+                            />
+                        </div>
+                    )}
+                    <button onClick={() => setShowLocalWorld(true)} title="会话世界书" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100"><StickyNote size={16} /> <span className={isMobile ? 'inline' : 'hidden lg:inline'}>Session World</span></button>
+                    <button onClick={() => setShowGlobalWorld(true)} title="全局设定" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100"><BookOpen size={16} /> <span className={isMobile ? 'inline' : 'hidden lg:inline'}>Global</span></button>
+                </>
+            )}
+
             {currentSession?.memoryMode === 'infinite' && (
                 <>
                     <button onClick={toggleCodeRepo} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border bg-slate-800 text-blue-400 hover:bg-slate-700 shadow-sm ${isMobile ? 'w-full justify-center' : ''}`}><Terminal size={16} /> <span className={isMobile ? "inline" : "hidden md:inline"}>IDE</span></button>
@@ -418,6 +438,12 @@ export const ChatInterface = ({
                                 <span className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#e11e54] to-[#ff477e] flex items-center gap-2">
                                     <span className="text-xl">🎸</span>
                                     <span>BanG Dream!</span>
+                                </span>
+                            ) : currentSession?.memoryMode === 'chat' ? (
+                                <span className="flex items-center gap-2 truncate" style={{ color: currentCharacter.hex }}>
+                                    <span className="text-lg">💬</span>
+                                    <span>{currentCharacter.name}</span>
+                                    <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold text-sky-600">Chat</span>
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-2 truncate" style={{ color: currentCharacter.hex }}>
@@ -521,13 +547,15 @@ export const ChatInterface = ({
                         </button>
                     </div>
 
-                    <button
-                        onClick={() => createNewSession(currentCharacter.id, 'novel')}
-                        className="p-2 hover:bg-rose-50 rounded text-rose-400 hover:text-rose-600 transition-colors"
-                        title="Enter Novel Mode"
-                    >
-                        <Moon size={18} />
-                    </button>
+                    {currentSession?.memoryMode !== 'chat' && (
+                        <button
+                            onClick={() => createNewSession(currentCharacter.id, 'novel')}
+                            className="p-2 hover:bg-rose-50 rounded text-rose-400 hover:text-rose-600 transition-colors"
+                            title="Enter Novel Mode"
+                        >
+                            <Moon size={18} />
+                        </button>
+                    )}
 
                     <div className="hidden md:flex items-center gap-1">
                         <ToolButtons isMobile={false} />
@@ -718,7 +746,7 @@ export const ChatInterface = ({
                         boxShadow: isLoading ? `0 0 10px ${currentCharacter.hex}20` : 'none'
                     }}
                 >
-                    <textarea value={input} style={{ caretColor: currentCharacter.hex }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} placeholder={currentSession?.memoryMode === 'sliding' ? "Start your dream..." : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm" />
+                    <textarea value={input} style={{ caretColor: currentCharacter.hex }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} placeholder={currentSession?.memoryMode === 'sliding' ? "Start your dream..." : currentSession?.memoryMode === 'chat' ? `和${currentCharacter.name}聊聊天...` : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm" />
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,text/plain,.txt" />
                     <div className="absolute bottom-2 right-2 flex gap-1">
                         {isMultimodal && <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-400 hover:text-emerald-500"><Paperclip size={18} /></button>}

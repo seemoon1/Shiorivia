@@ -29,7 +29,7 @@ const modes = [
   },
   {
     id: "chat", title: "Chat", subtitle: "聊天模式",
-    description: "专注交流的纯聊天空间。",
+    description: "角色陪伴、Live2D 与记忆相伴的日常对话。",
     icon: MessageCircle, color: "text-violet-700", background: "bg-violet-50", border: "hover:border-violet-300",
     ready: true,
   },

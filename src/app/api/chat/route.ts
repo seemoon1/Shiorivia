@@ -1,5 +1,6 @@
 import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { LORE_LIBRARY } from "../../../data/lore_library";
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
@@ -310,16 +311,22 @@ ${COLOR_INSTRUCTION}
         finalMessages = messages.slice(-MAX_HISTORY);
       }
     } else if (memoryMode === "chat") {
-      console.log("💬 Mode: Pure Chat");
-      // Neutral chat intentionally does not inherit characters, story state,
-      // engineering file tags, game instructions, or automatic music cues.
+      console.log("💬 Mode: Character Chat");
+      // Character Chat shares the stage with Engineering, not its code/task protocol.
+      const activeChar = allChars.find((c: any) => c.id === characterId) || allChars[0];
+      const charName = activeChar?.name || "聊天伙伴";
+      const charLore = String(LORE_LIBRARY[activeChar?.id] || activeChar?.lore || "").slice(0, 10000);
       finalSystemPrompt = [
-        "You are Shiorivia, a helpful conversational AI assistant.",
-        "Respond naturally and directly in the user's language.",
-        "Do not assume a fictional character, roleplay scenario, or software-engineer persona unless explicitly requested.",
-        "Never emit Shiorivia internal tags such as <game_state>, <draw>, <audio>, <file>, or <thinking>.",
-        "Use clear Markdown when it improves readability.",
-      ].join("\n");
+        `[IDENTITY / 角色身份] 你正在扮演 ${charName}（${activeChar?.sub || "Shiorivia"}）。这是用户与角色的一对一聊天，不是通用 AI 客服。`,
+        "始终以当前角色的身份和第一人称自然说话。保持角色的性格、语气、人际关系与已知经历；可以帮助用户讨论现实问题，但不要突然切换成工程师或旁白。",
+        "聊天应像即时消息交流：关注用户当下说的话，按需追问、回应情绪，保持对话连续性。不要强制生成小说章节、剧情选项、心理数值或长篇第三人称叙述。",
+        "不要虚构不在人物设定里的确定事实；当世界书或历史对话补充了设定，以其为当前会话的约定。不要输出内部控制标签 <game_state>、<draw>、<audio>、<file>、<thinking>。",
+        charLore ? `[CHARACTER LORE / 角色资料]\n${charLore}` : "角色详细资料暂缺；根据已知身份自然对话，不擅自编造背景。",
+        globalWorldInfo?.trim() ? `[GLOBAL WORLD / 共同设定]\n${String(globalWorldInfo).slice(0, 6000)}` : "",
+        localWorldInfo?.trim() ? `[SESSION WORLD / 本次对话设定]\n${String(localWorldInfo).slice(0, 6000)}` : "",
+        ltm?.trim() ? `[LTM / 长期记忆]\n${String(ltm).slice(0, 9000)}` : "",
+        stm?.trim() ? `[STM / 最近记忆]\n${String(stm).slice(0, 5000)}` : "",
+      ].filter(Boolean).join("\n\n");
       if (useWebSearch) finalSystemPrompt = await injectWebSearch(finalSystemPrompt, messages);
       finalMessages = messages.slice(-24);
     } else if (memoryMode === "infinite") {

@@ -204,7 +204,7 @@ const SidebarRightComponent = ({
                         ) : (
                             <div className="p-2 space-y-4">
                                 <div className="space-y-2">
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Engineer Persona</div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">{currentSession?.memoryMode === 'chat' ? 'Chat Characters' : 'Engineer Persona'}</div>
                                     {(dbChars.length > 0 ? dbChars : CHAR_DATA).map((char: any, index: number) => (
                                         <div
                                             key={char.id || index}

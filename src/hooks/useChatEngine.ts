@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { CHARACTERS, Session } from "../types";
+import { formatLocalMemoryEntries, parseLocalMemoryEntries, LOCAL_STM_SLOTS } from "../lib/localMemory";
 import { calculateNewStats } from "../lib/emotionalEngine";
 import { uploadImageToCloud } from "../lib/cloudUtils";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
@@ -121,12 +122,64 @@ export const useChatEngine = ({
 
             
             if (currentSession.memoryMode === "chat") {
-                // Pure Chat is deliberately not parsed as a story/game/IDE response.
+                // Character Chat sends plain text without story/game/IDE commands.
                 setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
                     ...s,
-                    messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse }],
+                    messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse, characterId: activeCharacterId }],
                     updatedAt: Date.now(),
                 } : s));
+
+                // The active provider summarizes Chat memories without changing Local JSON format.
+                // Run this after the visible response so memory work does not block the conversation.
+                if (fullText.trim()) {
+                    void (async () => {
+                        try {
+                            const r = await fetch("/api/summarize", {
+                                method: "POST", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    text: `User: ${txt}\n${CHARACTERS.find(c => c.id === activeCharacterId)?.name || 'Character'}: ${fullText}`,
+                                    mode: "micro", provider: apiProvider, model: modelToUse,
+                                }),
+                            });
+                            if (!r.ok) return;
+                            const result = await r.json();
+                            if (typeof result?.summary !== "string" || !result.summary.trim()) return;
+                            const summaryLine = `• ${result.summary.trim()}`;
+                            const originalStm = String(currentSession.stm || "");
+                            const originalLtm = String(currentSession.ltm || "");
+                            const batch = [...parseLocalMemoryEntries(originalStm), summaryLine];
+                            let archive = "";
+                            if (batch.length >= LOCAL_STM_SLOTS) {
+                                const merged = await fetch("/api/summarize", {
+                                    method: "POST", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        text: formatLocalMemoryEntries(batch), previousLtm: originalLtm,
+                                        mode: "macro", provider: apiProvider, model: modelToUse,
+                                    }),
+                                });
+                                if (merged.ok) {
+                                    const mergedData = await merged.json();
+                                    archive = typeof mergedData?.summary === "string" ? mergedData.summary.trim() : "";
+                                }
+                            }
+                            setSessions((prev: any) => prev.map((session: any) => {
+                                if (session.id !== currentSessionId || session.memoryMode !== 'chat') return session;
+                                // Never overwrite STM that was edited or updated while summarizing.
+                                if (String(session.stm || "") !== originalStm || String(session.ltm || "") !== originalLtm) {
+                                    const entries = [...parseLocalMemoryEntries(session.stm), summaryLine];
+                                    return { ...session, stm: formatLocalMemoryEntries(entries), turnCount: entries.length, updatedAt: Date.now() };
+                                }
+                                if (archive) {
+                                    // The macro endpoint already returns the merged LTM, not a delta.
+                                    return { ...session, stm: "", ltm: archive, turnCount: 0, updatedAt: Date.now() };
+                                }
+                                return { ...session, stm: formatLocalMemoryEntries(batch), turnCount: batch.length, updatedAt: Date.now() };
+                            }));
+                        } catch (error) {
+                            console.warn("Chat memory summary skipped:", error);
+                        }
+                    })();
+                }
                 return;
             }
 
