@@ -332,7 +332,7 @@ export const NovelInterface = ({
 
             const metaRegex = /<meta title="(.*?)" chapter="(.*?)" \/>/;
             const match = lastMsg.content.match(metaRegex);
-            if (match && updateSessionTitle && (currentSession.title === "New Dream" || currentSession.title === "未命名作品")) {
+            if (match && updateSessionTitle && (["New Novel", "New Dream", "未命名作品"].includes(currentSession.title))) {
                 updateSessionTitle(currentSession.id, match[1]);
             }
 

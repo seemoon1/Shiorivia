@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  ArrowRight, BookOpen, House, MessageCircle, Settings2,
-  Route, Sparkles, Terminal,
+  ArrowRight, BookOpen, Hammer, House, TreeDeciduous, Settings2,
+  Route, Sparkles,
 } from "lucide-react";
 
 type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
@@ -16,9 +16,9 @@ type ModeHubProps = {
 
 const modes = [
   {
-    id: "infinite", title: "Engineering", subtitle: "工程模式",
-    description: "代码、推理与日常任务的工作空间。",
-    icon: Terminal, color: "text-sky-700", background: "bg-sky-50", border: "hover:border-sky-300",
+    id: "infinite", title: "Officina", subtitle: "工坊 · 工程模式",
+    description: "让构想在工坊中成形，编写、推理、创造与调试。",
+    icon: Hammer, color: "text-sky-800", background: "bg-slate-50", border: "hover:border-sky-300",
     ready: true,
   },
   {
@@ -28,9 +28,9 @@ const modes = [
     ready: true,
   },
   {
-    id: "chat", title: "Chat", subtitle: "聊天模式",
-    description: "角色陪伴、Live2D 与记忆相伴的日常对话。",
-    icon: MessageCircle, color: "text-violet-700", background: "bg-violet-50", border: "hover:border-violet-300",
+    id: "chat", title: "Umbra", subtitle: "树荫 · 角色聊天",
+    description: "在路旁的树荫下停留片刻，与角色自在地交谈。",
+    icon: TreeDeciduous, color: "text-[#4f7a63]", background: "bg-[#eef5ed]", border: "hover:border-[#9abda2]",
     ready: true,
   },
   {

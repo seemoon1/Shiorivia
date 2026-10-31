@@ -103,10 +103,10 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
             {activeTab === "general" && (
               <section>
                 <h2 className="mb-2 text-xl font-bold">通用设置</h2>
-                <p className="mb-8 text-sm text-slate-400">设置直接作用于当前 Local 实例，在工程和故事模式间共享。</p>
+                <p className="mb-8 text-sm text-slate-400">设置作用于当前 Shiorivia Local 实例，在 Officina、Via Lata、Umbra、Tela 与 VIAE 间共享。</p>
                 {isStory ? (
                   <>
-                    <SectionTitle>故事模式主题</SectionTitle>
+                    <SectionTitle>Via Lata · 故事主题</SectionTitle>
                     <p className="mb-3 text-xs text-slate-500">仅更改故事舞台背景色，不修改角色或会话数据。</p>
                     <div className="mb-8 flex flex-wrap gap-3">
                       {([
@@ -121,7 +121,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                     </div>
                   </>
                 ) : (
-                  <div className="mb-7 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">故事模式的独立主题色设置，会在进入 Story 后显示在这里。</div>
+                  <div className="mb-7 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">Via Lata 的独立主题色选项将在进入大路模式后显示。</div>
                 )}
                 <SectionTitle>空间与数据</SectionTitle>
                 <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">

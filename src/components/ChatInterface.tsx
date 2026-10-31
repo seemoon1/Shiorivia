@@ -7,7 +7,7 @@ import {
     RotateCcw, Check, Square, Pencil, Trash2, RefreshCw, Copy, Cpu, FileText,
     Volume2, Loader2, Sparkles, Moon, Brain,
     Save, Terminal, ClipboardList, Guitar, Image as ImageIcon, Shirt,
-    Disc, ChevronUp, MoreHorizontal, Settings, Route,
+    Disc, ChevronUp, MoreHorizontal, Settings, Route, Hammer, TreeDeciduous,
     ToggleLeft, ToggleRight, Skull, Binary, CloudRain, AlertTriangle
 } from "lucide-react";
 import { ThinkingBlock } from "./Common";
@@ -440,15 +440,16 @@ export const ChatInterface = ({
                                     <span>Via Lata</span>
                                 </span>
                             ) : currentSession?.memoryMode === 'chat' ? (
-                                <span className="flex items-center gap-2 truncate" style={{ color: currentCharacter.hex }}>
-                                    <span className="text-lg">💬</span>
-                                    <span>{currentCharacter.name}</span>
-                                    <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold text-sky-600">Chat</span>
+                                <span className="flex items-center gap-2 truncate text-[#527762]">
+                                    <TreeDeciduous size={19} className="shrink-0 text-[#729481]" aria-hidden="true" />
+                                    <span className="font-semibold tracking-wide">Umbra</span>
+                                    <span className="truncate text-[11px] text-slate-500">· {currentCharacter.name}</span>
                                 </span>
                             ) : (
-                                <span className="flex items-center gap-2 truncate" style={{ color: currentCharacter.hex }}>
-                                    <span className="text-lg">{currentCharacter.avatar}</span>
-                                    <span>{currentCharacter.name}</span>
+                                <span className="flex items-center gap-2 truncate text-[#365b75]">
+                                    <Hammer size={18} className="shrink-0 text-[#6487a1]" aria-hidden="true" />
+                                    <span className="font-semibold tracking-wide">Officina</span>
+                                    <span className="truncate text-[11px] text-slate-500">· {currentCharacter.name}</span>
                                 </span>
                             )}
                         </span>

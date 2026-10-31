@@ -115,7 +115,7 @@ const SidebarRightComponent = ({
                     className="h-full bg-white flex flex-col shadow-xl z-30 border-l-0 overflow-hidden"
                 >
                     <div className="p-3 flex justify-between items-center font-bold text-xs text-gray-500 border-b bg-gray-50/50  pt-[calc(0.75rem+env(safe-area-inset-top))]">
-                        <span>{isStoryMode ? "VIA LATA · STORY" : "CAST LIST"}</span>
+                        <span>{isStoryMode ? "VIA LATA · STORY" : currentSession?.memoryMode === "chat" ? "UMBRA · CHARACTERS" : "OFFICINA · CAST"}</span>
                         <button onClick={onClose}><ChevronRight size={16} /></button>
                     </div>
 
@@ -204,7 +204,7 @@ const SidebarRightComponent = ({
                         ) : (
                             <div className="p-2 space-y-4">
                                 <div className="space-y-2">
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">{currentSession?.memoryMode === 'chat' ? 'Chat Characters' : 'Engineer Persona'}</div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">{currentSession?.memoryMode === 'chat' ? 'Umbra · Characters' : 'Officina · Persona'}</div>
                                     {(dbChars.length > 0 ? dbChars : CHAR_DATA).map((char: any, index: number) => (
                                         <div
                                             key={char.id || index}

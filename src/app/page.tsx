@@ -200,7 +200,7 @@ export default function Home() {
             const newId = Date.now().toString();
             const genesisSession: Session = {
                 id: newId,
-                title: "Shiorivia",
+                title: "New Project",
                 folderId: null,
                 characterId: "mutsu", 
                 voiceVariant: "default",
@@ -287,7 +287,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'lime' ? "VIAE Workspace" : nextMode === 'novel' ? "未命名作品" : nextMode === 'chat' ? "新对话" : "New Chat",
+            title: nextMode === 'infinite' ? "New Project" : nextMode === 'sliding' ? "New Story" : nextMode === 'chat' ? "New Chat" : nextMode === 'novel' ? "New Novel" : "VIAE Workspace",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -352,7 +352,7 @@ export default function Home() {
             const genesisId = Date.now().toString();
             const genesisSession: Session = {
                 id: genesisId,
-                title: "Shiorivia",
+                title: "New Project",
                 folderId: null,
                 characterId: "mutsu",
                 voiceVariant: "default",
@@ -510,7 +510,7 @@ export default function Home() {
                     const importedId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-novel`;
                     const imported: Session = {
                         ...source, id: importedId, folderId: null,
-                        title: source.title || "Imported Dream", memoryMode: "novel",
+                        title: source.title || "Imported Novel", memoryMode: "novel",
                         updatedAt: Date.now(), ...(draft ? { novelDraft: draft } : {}),
                     };
                     cloud.setSessions(prev => [imported, ...prev]);
