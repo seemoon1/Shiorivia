@@ -4,6 +4,8 @@ import {
   ArrowRight, BookOpen, Hammer, House, TreeDeciduous, Settings2,
   Route, Sparkles,
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
+import type { TranslationKey } from "../lib/i18n";
 
 type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
 
@@ -14,40 +16,42 @@ type ModeHubProps = {
   hasSession: boolean;
 };
 
-const modes = [
+const buildModes = (t: (key: TranslationKey) => string) => [
   {
-    id: "infinite", title: "Officina", subtitle: "工坊 · 工程模式",
-    description: "让构想在工坊中成形，编写、推理、创造与调试。",
+    id: "infinite", title: "Officina", subtitle: t("mode.officina.subtitle"),
+    description: t("mode.officina.description"),
     icon: Hammer, color: "text-sky-800", background: "bg-slate-50", border: "hover:border-sky-300",
     ready: true,
   },
   {
-    id: "sliding", title: "Via Lata", subtitle: "大路 · 故事模式",
-    description: "每段人生的道路在此交织，写下可以延续的故事。",
+    id: "sliding", title: "Via Lata", subtitle: t("mode.vialata.subtitle"),
+    description: t("mode.vialata.description"),
     icon: Route, color: "text-[#486e60]", background: "bg-[#eaf2eb]", border: "hover:border-[#92b29d]",
     ready: true,
   },
   {
-    id: "chat", title: "Umbra", subtitle: "树荫 · 角色聊天",
-    description: "在路旁的树荫下停留片刻，与角色自在地交谈。",
+    id: "chat", title: "Umbra", subtitle: t("mode.umbra.subtitle"),
+    description: t("mode.umbra.description"),
     icon: TreeDeciduous, color: "text-[#4f7a63]", background: "bg-[#eef5ed]", border: "hover:border-[#9abda2]",
     ready: true,
   },
   {
-    id: "novel", title: "Tela", subtitle: "织机 · 小说模式",
-    description: "从创作到续写，把故事一章章编织成篇。",
+    id: "novel", title: "Tela", subtitle: t("mode.tela.subtitle"),
+    description: t("mode.tela.description"),
     icon: BookOpen, color: "text-emerald-700", background: "bg-emerald-50", border: "hover:border-emerald-300",
     ready: true,
   },
   {
-    id: "lime", title: "VIAE", subtitle: "道路通讯",
-    description: "Semita 小径 · Compitum 路口。每一次相遇都是新的故事。",
+    id: "lime", title: "VIAE", subtitle: t("mode.viae.subtitle"),
+    description: t("mode.viae.description"),
     icon: Route, color: "text-[#9e8050]", background: "bg-[#f7f3e9]", border: "hover:border-[#c3ad85]",
     ready: true,
   },
 ] as const;
 
 export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeHubProps) {
+  const { t } = useLanguage();
+  const modes = buildModes(t);
   return (
     <main className="relative isolate min-h-[100dvh] overflow-y-auto bg-[#f6f8f7] text-slate-800">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_15%_15%,#dceae4_0%,transparent_50%),radial-gradient(ellipse_at_90%_85%,#e7e8f5_0%,transparent_48%)]" />
@@ -60,23 +64,23 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeH
               <p className="text-[11px] text-slate-500">Local Edition</p>
             </div>
           </div>
-          <button type="button" onClick={onOpenSettings} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white" aria-label="打开设置中心">
-            <Settings2 size={16} /> 设置
+          <button type="button" onClick={onOpenSettings} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white" aria-label={t("settings.title")}>
+            <Settings2 size={16} /> {t("home.settings")}
           </button>
         </header>
 
         <div className="mx-auto w-full max-w-3xl pb-8 pt-12 text-center sm:pt-16">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/75 px-4 py-1.5 text-[11px] font-semibold tracking-wider text-emerald-700"><House size={13} /> WHERE STORIES FIND THEIR WAY</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-[#243b33] sm:text-5xl">从这里，开启你的故事。</h1>
-          <p className="mt-4 text-sm leading-7 text-slate-500">选择一个空间。你的本地对话与故事会继续留在原来的存档中。</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-[#243b33] sm:text-5xl">{t("home.heading")}</h1>
+          <p className="mt-4 text-sm leading-7 text-slate-500">{t("home.description")}</p>
           {hasSession && (
             <button type="button" onClick={onResume} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#355d50] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#284c41]">
-              继续上次的会话 <ArrowRight size={16} />
+              {t("home.resume")} <ArrowRight size={16} />
             </button>
           )}
         </div>
 
-        <section aria-label="模式导航" className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section aria-label={t("home.navigation")} className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {modes.map((mode) => {
             const Icon = mode.icon;
             return (
@@ -90,7 +94,7 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeH
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${mode.background} ${mode.color}`}><Icon size={22} /></div>
                 <div className="mt-4 flex w-full items-baseline justify-between gap-2">
                   <h2 className="text-lg font-bold text-slate-800">{mode.title} <span className="text-xs font-normal text-slate-500">{mode.subtitle}</span></h2>
-                  {!mode.ready && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">开发中</span>}
+                  {!mode.ready && <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">{t("home.developing")}</span>}
                   {mode.ready && <ArrowRight size={16} className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600" />}
                 </div>
                 <p className="mt-2 text-xs leading-6 text-slate-500">{mode.description}</p>

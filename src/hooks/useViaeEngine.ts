@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ViaeConversation, ViaeMessage, Session } from "../types";
 import { formatLocalMemoryEntries, LOCAL_STM_SLOTS, parseLocalMemoryEntries } from "../lib/localMemory";
+import { useLanguage } from "../context/LanguageContext";
 
 const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -14,6 +15,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify 
   model: string;
   notify?: (message: string) => void;
 }) {
+  const { locale } = useLanguage();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -65,7 +67,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify 
         signal: controller.signal,
         body: JSON.stringify({
           // Legacy wire mode remains "lime" for compatibility with saved sessions.
-          memoryMode: "lime", provider, model,
+          memoryMode: "lime", provider, model, uiLanguage: locale,
           messages: context.map(msg => ({ role: msg.role, content: msg.content, kind: msg.kind })),
           stm: activeGroup.stm || "", ltm: activeGroup.ltm || "",
           viaeGroup: {
@@ -109,7 +111,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify 
       if (!regenerate) try {
         const memo = await fetch("/api/summarize", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: `${activeGroup.pov === "outsider" ? "Scene direction" : "User"}: ${text || '(regenerated reply)'}\nViae: ${fullText}`, mode: "micro", provider, model }),
+          body: JSON.stringify({ text: `${activeGroup.pov === "outsider" ? "Scene direction" : "User"}: ${text || '(regenerated reply)'}\nViae: ${fullText}`, mode: "micro", provider, model, uiLanguage: locale }),
         });
         if (!memo.ok) throw new Error("Viae micro-memory unavailable");
         const data = await memo.json();
@@ -120,7 +122,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify 
           if (stmEntries.length >= LOCAL_STM_SLOTS) {
             const macro = await fetch("/api/summarize", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: formatLocalMemoryEntries(stmEntries), previousLtm: activeGroup.ltm || "", mode: "macro", provider, model }),
+              body: JSON.stringify({ text: formatLocalMemoryEntries(stmEntries), previousLtm: activeGroup.ltm || "", mode: "macro", provider, model, uiLanguage: locale }),
             });
             if (macro.ok) {
               const value = await macro.json();

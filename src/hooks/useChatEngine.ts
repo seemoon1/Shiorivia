@@ -4,6 +4,7 @@ import { formatLocalMemoryEntries, parseLocalMemoryEntries, LOCAL_STM_SLOTS } fr
 import { calculateNewStats } from "../lib/emotionalEngine";
 import { uploadImageToCloud } from "../lib/cloudUtils";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
+import { useLanguage } from "../context/LanguageContext";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -15,6 +16,7 @@ export const useChatEngine = ({
     apiProvider 
 }: any) => {
     
+    const { locale } = useLanguage();
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<{ url: string, type: 'image' | 'video' | 'text', name: string } | null>(null);
@@ -94,6 +96,7 @@ export const useChatEngine = ({
                     charStatus: currentSession.charStatus,
                     codeRepository: currentSession.codeRepository,
                     provider: apiProvider, 
+                    uiLanguage: locale,
                 }),
                 signal: abortControllerRef.current.signal
             });
@@ -138,7 +141,7 @@ export const useChatEngine = ({
                                 method: "POST", headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                     text: `User: ${txt}\n${CHARACTERS.find(c => c.id === activeCharacterId)?.name || 'Character'}: ${fullText}`,
-                                    mode: "micro", provider: apiProvider, model: modelToUse,
+                                    mode: "micro", provider: apiProvider, model: modelToUse, uiLanguage: locale,
                                 }),
                             });
                             if (!r.ok) return;
@@ -154,7 +157,7 @@ export const useChatEngine = ({
                                     method: "POST", headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
                                         text: formatLocalMemoryEntries(batch), previousLtm: originalLtm,
-                                        mode: "macro", provider: apiProvider, model: modelToUse,
+                                        mode: "macro", provider: apiProvider, model: modelToUse, uiLanguage: locale,
                                     }),
                                 });
                                 if (merged.ok) {
@@ -365,7 +368,7 @@ export const useChatEngine = ({
 
                 fetch("/api/summarize", {
                     method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: textToSummarize, mode: summarizeMode, provider: apiProvider, model: modelToUse })
+                    body: JSON.stringify({ text: textToSummarize, mode: summarizeMode, provider: apiProvider, model: modelToUse, uiLanguage: locale })
                 })
                 .then(res => res.json())
                 .then(microData => {
@@ -381,7 +384,7 @@ export const useChatEngine = ({
                                 if (newCount >= 7) {
                                     fetch("/api/summarize", {
                                         method: "POST", headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro', provider: apiProvider, model: modelToUse })
+                                        body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro', provider: apiProvider, model: modelToUse, uiLanguage: locale })
                                     }).then(r => r.json()).then(macroData => {
                                         if (macroData.summary) {
                                             setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));

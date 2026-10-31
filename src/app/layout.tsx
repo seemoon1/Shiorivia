@@ -3,6 +3,7 @@ import { Inter, Noto_Serif_SC, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script"; 
 import { MusicProvider } from "../context/MusicContext";
+import { LanguageProvider } from "../context/LanguageContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const serif = Noto_Serif_SC({ 
@@ -76,7 +77,7 @@ export default function RootLayout({
           `}
         </Script>
         <MusicProvider>
-        {children}
+          <LanguageProvider>{children}</LanguageProvider>
         </MusicProvider>
       </body>
     </html>
