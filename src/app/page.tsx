@@ -19,6 +19,7 @@ import { SaveLoadModal } from "../components/SaveLoadModal";
 import { CodeRepositoryModal } from "../components/CodeRepositoryPanel";
 import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
+import { LimeInterface } from "../components/LimeInterface";
 import { MemoryVaultModal } from "../components/MemoryVaultModal";
 import { ModeHub } from "../components/ModeHub";
 import { SettingsCenter, type SettingKey, type StoryTheme } from "../components/SettingsCenter";
@@ -264,7 +265,7 @@ export default function Home() {
         return finalChar;
     }, [activeCharacterId, voiceVariant]);
 
-    const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel' | 'chat') => {
+    const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel' | 'chat' | 'lime') => {
         const newId = Date.now().toString();
         const currentMode = currentSession?.memoryMode || 'sliding';
         const nextMode = targetMode || currentMode; 
@@ -286,13 +287,14 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
+            title: nextMode === 'lime' ? "LIME Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
             messages: initialMessages,
             updatedAt: Date.now(),
-            memoryMode: nextMode as any
+            memoryMode: nextMode,
+            ...(nextMode === 'lime' ? { limeGroups: [], limeGroupId: null } : {})
         };
 
         cloud.setSessions(prev => [newSession, ...prev]);
@@ -305,7 +307,7 @@ export default function Home() {
         }
     };
 
-    const enterMode = (mode: 'infinite' | 'sliding' | 'novel' | 'chat') => {
+    const enterMode = (mode: 'infinite' | 'sliding' | 'novel' | 'chat' | 'lime') => {
         const existing = cloud.sessions.find(session => session.memoryMode === mode);
         if (existing) {
             setCurrentSessionId(existing.id);
@@ -325,7 +327,7 @@ export default function Home() {
         const sameModeSessions = remainingSessions.filter(s => s.memoryMode === currentSession?.memoryMode);
         const realitySessions = [
             ...sameModeSessions,
-            ...remainingSessions.filter(s => s.memoryMode !== 'novel' && s.memoryMode !== 'chat' && !sameModeSessions.includes(s))
+            ...remainingSessions.filter(s => s.memoryMode !== 'lime' && !sameModeSessions.includes(s))
         ];
 
         let finalSessions = remainingSessions;
@@ -450,6 +452,45 @@ export default function Home() {
         );
     }
 
+    if (currentSession?.memoryMode === 'lime') {
+        return (
+            <>
+                <LimeInterface
+                    session={currentSession}
+                    updateSession={(updater) => cloud.setSessions(prev => prev.map(s => s.id === currentSession.id ? updater(s) : s))}
+                    characters={CHAR_DATA}
+                    onExit={() => setShowModeHub(true)}
+                    onSettings={() => setShowSettingsCenter(true)}
+                    providers={visibleProviders}
+                    provider={apiProvider}
+                    onProviderChange={selectProvider}
+                    model={config.selectedModel}
+                    customModel={config.customModelId}
+                    onModelChange={id => setConfig(prev => ({ ...prev, selectedModel: id, customModelId: '' }))}
+                    onCustomModelChange={id => setConfig(prev => ({ ...prev, customModelId: id }))}
+                    notify={ui.showToast}
+                />
+                <SettingsCenter
+                    open={showSettingsCenter}
+                    onClose={() => setShowSettingsCenter(false)}
+                    values={config}
+                    onToggle={toggleSetting}
+                    debugMode={ui.debugMode}
+                    onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    onTestEffect={ui.setEffect}
+                    isStory={false}
+                    storyTheme={config.storyTheme}
+                    onStoryThemeChange={value => setConfig(prev => ({ ...prev, storyTheme: value }))}
+                    activeProvider={apiProvider}
+                    providers={allProviders}
+                    disabledProviders={disabledProviders}
+                    onToggleProvider={toggleProviderDisabled}
+                />
+                {ui.toast && <div role="status" className="fixed bottom-5 left-1/2 z-[300] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm text-white shadow-lg">{ui.toast}</div>}
+            </>
+        );
+    }
+
     if (currentSession?.memoryMode === 'novel') {
         return (
             <NovelInterface
@@ -544,7 +585,6 @@ export default function Home() {
                 </AnimatePresence>
 
                 <SidebarLeft
-                    activeMode={currentSession?.memoryMode}
                     isOpen={ui.leftSidebarOpen} onClose={() => ui.setLeftSidebarOpen(false)}
                     showModelPanel={ui.showModelPanel} setShowModelPanel={ui.setShowModelPanel}
                     showChatPanel={ui.showChatPanel} setShowChatPanel={ui.setShowChatPanel}

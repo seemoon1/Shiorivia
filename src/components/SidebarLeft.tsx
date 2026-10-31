@@ -60,7 +60,6 @@ const checkEnv = async (feature: 'openrouter' | 'google' | 'tavily' | 'sd' | 'tt
 };
 
 export const SidebarLeft = ({
-    activeMode,
     isOpen, onClose,
     showModelPanel, setShowModelPanel,
     showChatPanel, setShowChatPanel,
@@ -90,9 +89,7 @@ export const SidebarLeft = ({
     const importInputRef = useRef<HTMLInputElement>(null);
 
     const [showNewChatMenu, setShowNewChatMenu] = useState(false);
-    const showSession = (session: any) => activeMode === 'chat'
-        ? session.memoryMode === 'chat'
-        : session.memoryMode !== 'chat';
+    const showSession = (session: any) => session.memoryMode !== 'lime';
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showBatchConfirm, setShowBatchConfirm] = useState(false);
@@ -180,7 +177,7 @@ export const SidebarLeft = ({
                         {showChatPanel && (
                             <div className="flex-1 flex flex-col min-h-0 p-2">
                                 <div className="flex justify-between items-center mb-2 px-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">{activeMode === 'chat' ? 'Character Chat' : 'Explorer'}</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Explorer · 所有会话</span>
                                     <div className="flex gap-1">
                                         <button onClick={createFolder} className="p-1 hover:bg-gray-50 rounded text-gray-400" title="New Folder"><FolderPlus size={14} /></button>
                                         <button onClick={() => { setIsBatchMode(!isBatchMode); setSelectedIds(new Set()); }} className={`p-1 rounded transition-colors ${isBatchMode ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`} title="Batch Manage"><ListChecks size={14} /></button>
@@ -189,15 +186,10 @@ export const SidebarLeft = ({
                                             <AnimatePresence>
                                                 {showNewChatMenu && (
                                                     <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
-                                                        {activeMode === 'chat' ? (
-                                                            <button onClick={() => { createNewSession(undefined, 'chat'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-violet-50 text-violet-700 flex items-center gap-2"><Sparkles size={12} /> Chat</button>
-                                                        ) : (
-                                                            <>
-                                                                <button onClick={() => { createNewSession(undefined, 'sliding'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 text-emerald-700 flex items-center gap-2"><Sparkles size={12} /> Story</button>
-                                                                <button onClick={() => { createNewSession(undefined, 'infinite'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-blue-700 flex items-center gap-2"><Terminal size={12} /> Infinite</button>
-                                                                <button onClick={() => { createNewSession(undefined, 'chat'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-violet-50 text-violet-700 flex items-center gap-2"><Sparkles size={12} /> Chat</button>
-                                                            </>
-                                                        )}
+                                                        <button onClick={() => { createNewSession(undefined, 'sliding'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 text-emerald-700 flex items-center gap-2"><Sparkles size={12} /> Story</button>
+                                                        <button onClick={() => { createNewSession(undefined, 'infinite'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-blue-700 flex items-center gap-2"><Terminal size={12} /> Engineering</button>
+                                                        <button onClick={() => { createNewSession(undefined, 'chat'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-violet-50 text-violet-700 flex items-center gap-2"><Sparkles size={12} /> Chat</button>
+                                                        <button onClick={() => { createNewSession(undefined, 'novel'); setShowNewChatMenu(false) }} className="w-full text-left px-3 py-2 text-xs hover:bg-lime-50 text-lime-700 flex items-center gap-2"><Sparkles size={12} /> Novel</button>
                                                     </motion.div>
                                                 )}
                                             </AnimatePresence>

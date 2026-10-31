@@ -310,6 +310,39 @@ ${COLOR_INSTRUCTION}
       if (messages.length > MAX_HISTORY) {
         finalMessages = messages.slice(-MAX_HISTORY);
       }
+    } else if (memoryMode === "lime") {
+      console.log("📱 Mode: LIME");
+      const group = body.limeGroup || {};
+      const requestedMembers = Array.isArray(group.members) ? group.members : [];
+      const members = requestedMembers
+        .filter((id: unknown): id is string => typeof id === "string" && allChars.some((c: any) => c.id === id))
+        .slice(0, 10);
+      if (!members.length) return new Response(JSON.stringify({ error: "LIME requires at least one valid member" }), { status: 400 });
+      const cast = members.map((id: string) => {
+        const char = allChars.find((c: any) => c.id === id);
+        const lore = String(LORE_LIBRARY[id] || "").slice(0, 2200);
+        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore}`;
+      }).join("\n\n");
+      const isDirect = group.type === "direct";
+      const inside = group.pov === "insider";
+      const ownerId = members.includes(group.defaultPovChar) ? group.defaultPovChar : members[0];
+      const responders = !isDirect && inside && members.length > 1 ? members.filter((id: string) => id !== ownerId) : members;
+      const responseIds = responders.length ? responders : members;
+      finalSystemPrompt = [
+        "[LIME / 角色即时聊天] 这是一个模拟私聊或群聊的角色对话空间，不是工程助手或小说生成器。",
+        `聊天名称：${String(group.name || "LIME").slice(0, 100)}。类型：${isDirect ? "一对一私聊" : "多人群聊"}。`,
+        `视角：${inside ? `参与者（${ownerId} 的手机视角）` : "旁观者／场外导演"}。`,
+        `设定：${group.reality === "au" ? `AU 平行世界：${String(group.auContext || "").slice(0, 5000)}` : `原作时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
+        `可以回复的角色 ID：${responseIds.join(", ")}。只允许这些角色发言。`,
+        "请根据各角色设定、性格、说话方式和历史上下文写出自然的即时消息，不要变成统一的 AI 助手口吻。",
+        "群聊可让不同成员轮流发言和回应彼此，通常回复 2-5 条短消息；私聊通常 1-3 条。不要机械地让所有人每轮都发言。",
+        `严格输出一个有效的 <lime_chat> JSON 数组，每个元素只包含 charId 和 text。例如：<lime_chat>[{"charId":"mutsu","text":"嗯，我在。"}]</lime_chat>。`,
+        "charId 必须来自允许列表，text 必须是自然语言，不要附加 Markdown 代码围栏、游戏状态、文件、音频、画图或记忆控制标签。",
+        `[角色档案]\n${cast}`,
+        ltm?.trim() ? `[本群 LTM]\n${String(ltm).slice(0, 7000)}` : "",
+        stm?.trim() ? `[本群 STM]\n${String(stm).slice(0, 4000)}` : "",
+      ].filter(Boolean).join("\n\n");
+      finalMessages = messages.slice(-18);
     } else if (memoryMode === "chat") {
       console.log("💬 Mode: Character Chat");
       // Character Chat shares the stage with Engineering, not its code/task protocol.

@@ -60,6 +60,31 @@ export type SaveData = {
   sessionSnapshot: Session; 
 };
 
+export type LimeMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: number;
+  modelName?: string;
+};
+
+export type LimeConversation = {
+  id: string;
+  name: string;
+  type: "direct" | "group";
+  members: string[];
+  pov: "outsider" | "insider";
+  defaultPovChar?: string;
+  reality: "canon" | "au";
+  timeline: string;
+  auContext?: string;
+  messages: LimeMessage[];
+  stm?: string;
+  ltm?: string;
+  turnCount?: number;
+  updatedAt: number;
+};
+
 export type Session = {
   id: string; 
   title: string; 
@@ -70,7 +95,10 @@ export type Session = {
   updatedAt: number;
   localWorldInfo?: string;
   
-  memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat';
+  memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat' | 'lime';
+  // A single LIME session holds its own private/group conversations.
+  limeGroups?: LimeConversation[];
+  limeGroupId?: string | null;
   stm?: string;
   stmBackup?: string; 
   ltm?: string;

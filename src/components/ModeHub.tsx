@@ -5,7 +5,7 @@ import {
   Smartphone, Sparkles, Terminal,
 } from "lucide-react";
 
-type ReadyMode = "infinite" | "sliding" | "novel" | "chat";
+type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
 
 type ModeHubProps = {
   onEnter: (mode: ReadyMode) => void;
@@ -41,9 +41,9 @@ const modes = [
   },
   {
     id: "lime", title: "LIME", subtitle: "群聊模式",
-    description: "群组、私聊与多角色互动。",
-    icon: Smartphone, color: "text-lime-700", background: "bg-lime-50", border: "border-slate-200",
-    ready: false,
+    description: "独立私聊、群聊与角色多方互动。",
+    icon: Smartphone, color: "text-lime-700", background: "bg-lime-50", border: "hover:border-lime-300",
+    ready: true,
   },
 ] as const;
 
