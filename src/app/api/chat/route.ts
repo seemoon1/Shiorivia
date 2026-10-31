@@ -311,38 +311,49 @@ ${COLOR_INSTRUCTION}
         finalMessages = messages.slice(-MAX_HISTORY);
       }
     } else if (memoryMode === "lime") {
-      console.log("📱 Mode: LIME");
+      console.log("🛤️ Mode: Viae / Semita / Compitum");
       const group = body.limeGroup || {};
       const requestedMembers = Array.isArray(group.members) ? group.members : [];
-      const members = requestedMembers
-        .filter((id: unknown): id is string => typeof id === "string" && allChars.some((c: any) => c.id === id))
-        .slice(0, 10);
-      if (!members.length) return new Response(JSON.stringify({ error: "LIME requires at least one valid member" }), { status: 400 });
+      const members: string[] = [...new Set(requestedMembers
+        .filter((id: unknown): id is string => typeof id === "string" && allChars.some((c: any) => c.id === id)))].slice(0, 10);
+      const isDirect = group.type === "direct";
+      const observing = group.pov === "outsider";
+      if (isDirect ? members.length !== (observing ? 2 : 1) : members.length < 2) {
+        return new Response(JSON.stringify({ error: observing && isDirect ? "旁观小径需要恰好两位角色" : isDirect ? "参与小径需要一位角色" : "路口至少需要两位角色" }), { status: 400 });
+      }
+      const ownerId: string = members.includes(group.defaultPovChar) ? group.defaultPovChar : members[0];
+      const responseIds: string[] = observing ? members : isDirect ? members : members.filter(id => id !== ownerId);
       const cast = members.map((id: string) => {
         const char = allChars.find((c: any) => c.id === id);
-        const lore = String(LORE_LIBRARY[id] || "").slice(0, 2200);
+        const lore = String(LORE_LIBRARY[id] || "").slice(0, 2500);
         return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore}`;
       }).join("\n\n");
-      const isDirect = group.type === "direct";
-      const inside = group.pov === "insider";
-      const ownerId = members.includes(group.defaultPovChar) ? group.defaultPovChar : members[0];
-      const responders = !isDirect && inside && members.length > 1 ? members.filter((id: string) => id !== ownerId) : members;
-      const responseIds = responders.length ? responders : members;
+      const directorTag = "[SCENE_DIRECTION / 场外剧情提示 — NOT SPOKEN IN CHAT]";
       finalSystemPrompt = [
-        "[LIME / 角色即时聊天] 这是一个模拟私聊或群聊的角色对话空间，不是工程助手或小说生成器。",
-        `聊天名称：${String(group.name || "LIME").slice(0, 100)}。类型：${isDirect ? "一对一私聊" : "多人群聊"}。`,
-        `视角：${inside ? `参与者（${ownerId} 的手机视角）` : "旁观者／场外导演"}。`,
-        `设定：${group.reality === "au" ? `AU 平行世界：${String(group.auContext || "").slice(0, 5000)}` : `原作时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
-        `可以回复的角色 ID：${responseIds.join(", ")}。只允许这些角色发言。`,
-        "请根据各角色设定、性格、说话方式和历史上下文写出自然的即时消息，不要变成统一的 AI 助手口吻。",
-        "群聊可让不同成员轮流发言和回应彼此，通常回复 2-5 条短消息；私聊通常 1-3 条。不要机械地让所有人每轮都发言。",
-        `严格输出一个有效的 <lime_chat> JSON 数组，每个元素只包含 charId 和 text。例如：<lime_chat>[{"charId":"mutsu","text":"嗯，我在。"}]</lime_chat>。`,
-        "charId 必须来自允许列表，text 必须是自然语言，不要附加 Markdown 代码围栏、游戏状态、文件、音频、画图或记忆控制标签。",
-        `[角色档案]\n${cast}`,
-        ltm?.trim() ? `[本群 LTM]\n${String(ltm).slice(0, 7000)}` : "",
-        stm?.trim() ? `[本群 STM]\n${String(stm).slice(0, 4000)}` : "",
+        "[VIAE · 角色即时通讯] 模拟真实角色之间的私聊/群聊；你不是通用 AI 助手，也不是正在与用户闲聊的旁白。",
+        `聊天名称：${String(group.name || "Viae").slice(0, 100)}；类型：${isDirect ? "Semita 小径" : "Compitum 路口"}。`,
+        `世界设定：${group.reality === "au" ? `AU 平行歧路：${String(group.auContext || "").slice(0, 5000)}` : `原作时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
+        `当前手机视角角色：${ownerId}。视角仅决定用户观看哪位角色的手机，不会把场外用户变成聊天参与者。`,
+        observing
+          ? "[旁观模式 / DIRECTOR ONLY] 用户不是聊天成员！每条 SCENE_DIRECTION 都是场外导演写的剧情提示、情景条件或推进建议。消息不会出现在角色手机上，也不会以聊天气泡形式发送。角色不知道有导演存在；绝对不要对用户、导演或剧情提示直接答话、解释指令或感谢。你必须生成角色相互之间的真实即时消息。"
+          : `【参与模式】${isDirect ? "用户直接与唯一角色聊天" : `用户从 ${ownerId} 的手机发送聊天消息；其他角色回应这位角色`}。把用户消息视为会话内发言，允许角色直接回复。`,
+        `允许发言的角色 ID：${responseIds.join(", ")}。绝不可创造其他 charId。`,
+        observing
+          ? `本轮必须由至少两位不同角色真实交谈、相互回应，输出 3-6 条简短消息；${isDirect ? "小径中的两位角色都必须至少说一句，构成自然来回，而不是分别对导演说话。" : "路口至少两个角色发言，并且后一位角色应回应前一位的话；不要求所有成员发言。"}`
+          : "参与小径由唯一角色回复 1-3 条；参与路口由其他成员自然接话 2-5 条，允许角色彼此回应。",
+        "你的最终输出只能是一个 <lime_chat>...</lime_chat>，内容必须是 JSON 数组，元素严格为 {\"charId\":\"角色ID\",\"text\":\"聊天文字\"}，每个元素代表一条真实发给其他角色的聊天消息。",
+        `格式示例（示例仅展示结构，实际必须替换为允许角色）：<lime_chat>[{\"charId\":\"${responseIds[0]}\",\"text\":\"今晚的星星真好看。\"},{\"charId\":\"${responseIds[1] || responseIds[0]}\",\"text\":\"嗯，和昨天很不一样。\"}]</lime_chat>`,
+        "禁止输出 Markdown 代码围栏、对用户的解释、旁白、额外说明、game_state、file、draw、audio、thinking 等控制标签。",
+        `[人物设定与说话风格]\n${cast}`,
+        ltm?.trim() ? `[这条道路的 LTM]\n${String(ltm).slice(0, 7000)}` : "",
+        stm?.trim() ? `[这条道路的 STM]\n${String(stm).slice(0, 4000)}` : "",
       ].filter(Boolean).join("\n\n");
-      finalMessages = messages.slice(-18);
+      // Preserve the visible transcript, but mark out-of-character director messages
+      // before either Gemini or OpenAI-compatible providers see the conversation.
+      finalMessages = messages.slice(-18).map((m: any) => {
+        if (m.role !== "user" || (m.kind !== "director" && !(observing && m.kind !== "chat"))) return m;
+        return { role: "user", content: `${directorTag}\n${typeof m.content === "string" ? m.content : JSON.stringify(m.content)}\n[END_SCENE_DIRECTION]` };
+      });
     } else if (memoryMode === "chat") {
       console.log("💬 Mode: Character Chat");
       // Character Chat shares the stage with Engineering, not its code/task protocol.
@@ -498,6 +509,9 @@ ${COLOR_INSTRUCTION}
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
     if (!routedModel) return new Response(JSON.stringify({ error: "Select a model for this provider" }), { status: 400 });
 
+    // Other modes keep their existing history behavior; Viae uses tagged director
+    // messages and the deliberate 18-turn context prepared above.
+    const routedMessages = memoryMode === "lime" ? finalMessages : messages;
     if (selectedProvider.id === 'google') {
         const genAI = new GoogleGenerativeAI(selectedProvider.apiKey);
         const cleanModel = routedModel.replace(/^google\//, "");
@@ -508,7 +522,7 @@ ${COLOR_INSTRUCTION}
             systemInstruction: finalSystemPrompt
         });
 
-        let history = messages
+        let history = routedMessages
             .filter((m: any) => m.role !== 'system') 
             .slice(0, -1) 
             .map((m: any) => ({
@@ -523,7 +537,7 @@ ${COLOR_INSTRUCTION}
             });
         }
 
-        const lastMsg = messages[messages.length - 1].content;
+        const lastMsg = routedMessages[routedMessages.length - 1].content;
 
         const chat = geminiModel.startChat({ history });
         const result = await chat.sendMessageStream(lastMsg);
@@ -554,7 +568,7 @@ ${COLOR_INSTRUCTION}
 
         const fullMessages = [
             { role: "system", content: finalSystemPrompt },
-            ...messages
+            ...routedMessages.map((m: any) => ({ role: m.role, content: m.content }))
         ];
 
         const stream = await client.chat.completions.create({

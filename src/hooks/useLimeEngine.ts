@@ -33,6 +33,11 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
 
   const send = async (regenerate = false) => {
     if (busyRef.current || !activeGroup || !provider || !model) return;
+    if (activeGroup.type === "direct" && activeGroup.members.length !== (activeGroup.pov === "outsider" ? 2 : 1)) {
+      notify?.(activeGroup.pov === "outsider" ? "旁观小径需要两位角色" : "参与小径需要一位角色");
+      return;
+    }
+    if (activeGroup.type === "group" && activeGroup.members.length < 2) { notify?.("路口至少需要两位角色"); return; }
     const text = input.trim();
     const previous = activeGroup.messages || [];
     const isReplace = regenerate && previous[previous.length - 1]?.role === "assistant";
@@ -41,7 +46,7 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
     if (regenerate && !preceding.some(msg => msg.role === "user")) return;
 
     const requestId = newId();
-    const userMessage: LimeMessage | null = regenerate ? null : { id: newId(), role: "user", content: text, createdAt: Date.now() };
+    const userMessage: LimeMessage | null = regenerate ? null : { id: newId(), role: "user", kind: activeGroup.pov === "outsider" ? "director" : "chat", content: text, createdAt: Date.now() };
     const context = userMessage ? [...preceding, userMessage] : preceding;
     const assistant: LimeMessage = { id: requestId, role: "assistant", content: "", createdAt: Date.now(), modelName: model };
     const groupId = activeGroup.id;
@@ -60,7 +65,7 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
         signal: controller.signal,
         body: JSON.stringify({
           memoryMode: "lime", provider, model,
-          messages: context.map(msg => ({ role: msg.role, content: msg.content })),
+          messages: context.map(msg => ({ role: msg.role, content: msg.content, kind: msg.kind })),
           stm: activeGroup.stm || "", ltm: activeGroup.ltm || "",
           limeGroup: {
             name: activeGroup.name,
@@ -103,7 +108,7 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
       if (!regenerate) try {
         const memo = await fetch("/api/summarize", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: `User: ${text || '(regenerated reply)'}\nViae: ${fullText}`, mode: "micro", provider, model }),
+          body: JSON.stringify({ text: `${activeGroup.pov === "outsider" ? "Scene direction" : "User"}: ${text || '(regenerated reply)'}\nViae: ${fullText}`, mode: "micro", provider, model }),
         });
         if (!memo.ok) throw new Error("Viae micro-memory unavailable");
         const data = await memo.json();

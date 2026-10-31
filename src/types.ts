@@ -63,6 +63,8 @@ export type SaveData = {
 export type LimeMessage = {
   id: string;
   role: "user" | "assistant";
+  /** Mark out-of-character director notes separately from participant speech. */
+  kind?: "director" | "chat";
   content: string;
   createdAt: number;
   modelName?: string;
