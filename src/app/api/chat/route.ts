@@ -310,9 +310,9 @@ ${COLOR_INSTRUCTION}
       if (messages.length > MAX_HISTORY) {
         finalMessages = messages.slice(-MAX_HISTORY);
       }
-    } else if (memoryMode === "lime") {
+    } else if (memoryMode === "lime") { // Persisted VIAE mode ID, kept for older saves.
       console.log("🛤️ Mode: Viae / Semita / Compitum");
-      const group = body.limeGroup || {};
+      const group = body.viaeGroup || body.limeGroup || {}; // Accept older clients.
       const requestedMembers = Array.isArray(group.members) ? group.members : [];
       const members: string[] = [...new Set(requestedMembers
         .filter((id: unknown): id is string => typeof id === "string" && allChars.some((c: any) => c.id === id)))].slice(0, 10);
@@ -348,6 +348,8 @@ ${COLOR_INSTRUCTION}
         ltm?.trim() ? `[这条道路的 LTM]\n${String(ltm).slice(0, 7000)}` : "",
         stm?.trim() ? `[这条道路的 STM]\n${String(stm).slice(0, 4000)}` : "",
       ].filter(Boolean).join("\n\n");
+      // New model output uses the VIAE tag; historical <lime_chat> records remain readable.
+      finalSystemPrompt = finalSystemPrompt.replace(/lime_chat/g, "viae_chat");
       // Preserve the visible transcript, but mark out-of-character director messages
       // before either Gemini or OpenAI-compatible providers see the conversation.
       finalMessages = messages.slice(-18).map((m: any) => {

@@ -60,7 +60,7 @@ export type SaveData = {
   sessionSnapshot: Session; 
 };
 
-export type LimeMessage = {
+export type ViaeMessage = {
   id: string;
   role: "user" | "assistant";
   /** Mark out-of-character director notes separately from participant speech. */
@@ -70,7 +70,7 @@ export type LimeMessage = {
   modelName?: string;
 };
 
-export type LimeConversation = {
+export type ViaeConversation = {
   id: string;
   name: string;
   type: "direct" | "group";
@@ -80,11 +80,20 @@ export type LimeConversation = {
   reality: "canon" | "au";
   timeline: string;
   auContext?: string;
-  messages: LimeMessage[];
+  messages: ViaeMessage[];
   stm?: string;
   ltm?: string;
   turnCount?: number;
   updatedAt: number;
+};
+
+export type NovelDraft = {
+  selectedCharIds: string[];
+  scenario: string;
+  action: string;
+  style: string;
+  outline: string;
+  themeMode: "dark" | "paper";
 };
 
 export type Session = {
@@ -99,11 +108,13 @@ export type Session = {
   
   memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat' | 'lime';
   // A single LIME session holds its own private/group conversations.
-  limeGroups?: LimeConversation[];
+  /** Legacy persisted key; retained for all VIAE local backups. */
+  limeGroups?: ViaeConversation[];
   limeGroupId?: string | null;
   stm?: string;
   stmBackup?: string; 
   ltm?: string;
+  novelDraft?: NovelDraft;
   turnCount?: number;
 
   protagonist?: ProtagonistState;

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Loader2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { CHARACTERS, Session } from "../types";
+import { CHARACTERS, Session, type NovelDraft } from "../types";
 import { CHAR_DATA } from "../data/char_config";
 import LOCAL_LIVE2D_CONFIG from "../data/live2d_config.json";
 import { WorldInfoModal, EditModal } from "../components/Modals";
@@ -19,7 +19,7 @@ import { SaveLoadModal } from "../components/SaveLoadModal";
 import { CodeRepositoryModal } from "../components/CodeRepositoryPanel";
 import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
-import { LimeInterface } from "../components/LimeInterface";
+import { ViaeInterface } from "../components/ViaeInterface";
 import { MemoryVaultModal } from "../components/MemoryVaultModal";
 import { ModeHub } from "../components/ModeHub";
 import { SettingsCenter, type SettingKey, type StoryTheme } from "../components/SettingsCenter";
@@ -287,7 +287,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'lime' ? "Viae Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
+            title: nextMode === 'lime' ? "VIAE Workspace" : nextMode === 'novel' ? "New Dream" : nextMode === 'chat' ? "新对话" : "New Chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -452,10 +452,11 @@ export default function Home() {
         );
     }
 
+    // Legacy persisted ID "lime" remains the VIAE workspace discriminator.
     if (currentSession?.memoryMode === 'lime') {
         return (
             <>
-                <LimeInterface
+                <ViaeInterface
                     session={currentSession}
                     updateSession={(updater) => cloud.setSessions(prev => prev.map(s => s.id === currentSession.id ? updater(s) : s))}
                     characters={CHAR_DATA}
@@ -496,6 +497,26 @@ export default function Home() {
             <NovelInterface
                 currentSession={currentSession}
                 initialSelectedModel={config.customModelId || config.selectedModel}
+                provider={apiProvider}
+                providers={visibleProviders}
+                onProviderChange={selectProvider}
+                selectedModel={config.selectedModel}
+                customModelId={config.customModelId}
+                onModelChange={(id: string) => setConfig(prev => ({ ...prev, selectedModel: id, customModelId: "" }))}
+                onCustomModelChange={(id: string) => setConfig(prev => ({ ...prev, customModelId: id }))}
+                onImportNovelSession={(source: Session, draft?: NovelDraft) => {
+                    // Always create a distinct session; imported JSON must not overwrite existing saves.
+                    const importedId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-novel`;
+                    const imported: Session = {
+                        ...source, id: importedId, folderId: null,
+                        title: source.title || "Imported Dream", memoryMode: "novel",
+                        updatedAt: Date.now(), ...(draft ? { novelDraft: draft } : {}),
+                    };
+                    cloud.setSessions(prev => [imported, ...prev]);
+                    setCurrentSessionId(importedId);
+                    setActiveCharacterId(imported.characterId || "mutsu");
+                    ui.showToast("📖 小说已作为新会话导入");
+                }}
                 handleSend={engine.handleSend}
                 isLoading={engine.isLoading}
                 createNewSession={createNewSession}

@@ -7,10 +7,11 @@ import {
   Send, Settings2, Sparkles, Square, Trash2, Users, Volume2, X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { LimeConversation, Session } from "../types";
+import type { ViaeConversation, Session } from "../types";
 import type { PublicLocalProvider, LocalModelGroup } from "../lib/localProviders";
 import { MemoryVaultModal } from "./MemoryVaultModal";
-import { useLimeEngine } from "../hooks/useLimeEngine";
+import { useViaeEngine } from "../hooks/useViaeEngine";
+import { ViaeTimelineSelect } from "./ViaeTimelineSelect";
 
 // Historical Local JSON keeps `limeGroups`, `limeGroupId`, and memoryMode="lime".
 // Viae, Semita, and Compitum are presentation names, not a save-format migration.
@@ -19,7 +20,7 @@ const makeId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const asText = (value: unknown): string => typeof value === "string" ? value : String(value ?? "");
 const parseSpeakers = (content: string): { charId: string; text: string }[] => {
-  const match = content.match(/<lime_chat>\s*([\s\S]*?)\s*<\/lime_chat>/i);
+  const match = content.match(/<(?:viae_chat|lime_chat)>\s*([\s\S]*?)\s*<\/(?:viae_chat|lime_chat)>/i);
   if (!match) return [{ charId: "", text: content }];
   try {
     const decoded: unknown = JSON.parse(match[1]);
@@ -29,8 +30,8 @@ const parseSpeakers = (content: string): { charId: string; text: string }[] => {
     return segments.length ? segments : [{ charId: "", text: content }];
   } catch { return [{ charId: "", text: content }]; }
 };
-const kindName = (group: LimeConversation) => group.type === "direct" ? "Semita · 小径" : "Compitum · 路口";
-const routeName = (group: LimeConversation) => group.reality === "au" ? "AU · 平行歧路" : `Original · T-${group.timeline || "5-6"}`;
+const kindName = (group: ViaeConversation) => group.type === "direct" ? "Semita · 小径" : "Compitum · 路口";
+const routeName = (group: ViaeConversation) => group.reality === "au" ? "AU · 平行歧路" : `Original · T-${group.timeline || "5-6"}`;
 
 function PathEmblem({ size = 24 }: { size?: number }) {
   return (
@@ -73,9 +74,8 @@ interface ViaeProps {
   notify: (message: string) => void;
 }
 
-// Keep the existing export while other Local pages still import LimeInterface.
-export function LimeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
-  const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useLimeEngine({
+export function ViaeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
+  const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useViaeEngine({
     session, updateSession, provider, model: customModel.trim() || model, notify,
   });
   const [creating, setCreating] = useState(false);
@@ -115,7 +115,7 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
     return () => { alive = false; };
   }, [provider]);
 
-  const updateGroup = (id: string, update: (group: LimeConversation) => LimeConversation) => {
+  const updateGroup = (id: string, update: (group: ViaeConversation) => ViaeConversation) => {
     updateSession(current => ({ ...current, updatedAt: Date.now(), limeGroups: (current.limeGroups || []).map(g => g.id === id ? update(g) : g) }));
   };
   const chooseGroup = (id: string | null) => {
@@ -135,7 +135,7 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
     const name = draftName.trim().slice(0, 70) || (kind === "direct"
       ? (pov === "outsider" ? selected.map(id => who(id)?.name || id).join(" · ") : who(selected[0])?.name || "新小径")
       : "新的路口");
-    const group: LimeConversation = {
+    const group: ViaeConversation = {
       id: makeId(), name, type: kind, members: [...selected], pov,
       defaultPovChar: selected[0], reality, timeline: reality === "canon" ? timeline.trim() || "5-6" : "AU",
       auContext: reality === "au" ? auContext.trim() : "", messages: [],
@@ -148,7 +148,7 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
     if (isLoading || !window.confirm("删除这条道路及其中的消息和记忆？此操作无法撤销。")) return;
     updateSession(current => ({ ...current, limeGroups: (current.limeGroups || []).filter(g => g.id !== id), limeGroupId: current.limeGroupId === id ? null : current.limeGroupId, updatedAt: Date.now() }));
   };
-  const rename = (group: LimeConversation) => {
+  const rename = (group: ViaeConversation) => {
     const name = window.prompt("为这段道路重新命名", group.name)?.trim();
     if (name) updateGroup(group.id, g => ({ ...g, name: name.slice(0, 70), updatedAt: Date.now() }));
   };
@@ -263,7 +263,7 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
               <div className="space-y-3"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#52667f]">选择同行者</span><span className="text-xs text-[#9fa9b5]">已选 {selected.length} 位{kind === "direct" ? ` / ${pov === "outsider" ? 2 : 1}` : ""}</span></div><div className="grid max-h-[240px] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">{characters.map(c => <button type="button" key={c.id} onClick={() => toggleMember(c.id)} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${selected.includes(c.id) ? "border-[#bba26d] bg-[#fffaf0]" : "border-[#e9edf0] bg-white hover:border-[#cdd7e0]"}`}><span className="text-xl">{c.avatar}</span><span className="min-w-0 flex-1 truncate text-xs font-medium">{c.name}</span>{selected.includes(c.id) && <Check size={14} color={GOLD}/>}</button>)}</div></div>
               <div className="space-y-2"><span className="text-xs font-semibold text-[#52667f]">交流方式</span><div className="flex flex-wrap gap-2">{(["outsider", "insider"] as const).map(value => <button key={value} type="button" onClick={() => changeDraftPov(value)} className={`rounded-lg border px-4 py-2 text-xs ${pov === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] text-[#718296]"}`}>{value === "outsider" ? "旁观 · 剧情提示" : "参与 · 发送消息"}</button>)}</div><p className="text-[11px] leading-5 text-[#8a98a8]">{pov === "outsider" ? (kind === "direct" ? "选择恰好两位角色，观看她们彼此聊天。你的输入是场外剧情提示。" : "选择至少两位角色。你可以切换成员手机视角，输入只作为场外剧情提示。") : (kind === "direct" ? "选择一位角色，由你直接与她交谈。" : "你以所选角色的手机视角参与，其他成员回复你的消息。")}</p></div>
               {pov === "outsider" && selected.length > 0 && <label className="block space-y-2"><span className="text-xs font-semibold text-[#52667f]">初始手机视角 / Viewpoint</span><p className="text-[11px] text-[#8a98a8]">创建后可随时在聊天顶部切换。</p><span className="block rounded-xl border border-[#e2e7eb] bg-white px-3"><select value={selected[0]} onChange={e => setSelected(prev => [e.target.value, ...prev.filter(id => id !== e.target.value)])} className="w-full bg-transparent py-3 text-sm text-[#263a51] outline-none">{selected.map(id => <option key={id} value={id}>{who(id)?.name || id}</option>)}</select></span></label>}
-              <div className="space-y-3"><span className="text-xs font-semibold text-[#52667f]">选择道路的世界</span><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button key={value} onClick={() => setReality(value)} type="button" className={`rounded-xl border px-4 py-2 text-xs ${reality === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] bg-white text-[#718296]"}`}>{value === "canon" ? "Original · 原作时间线" : "AU · 平行歧路"}</button>)}</div>{reality === "canon" ? <input value={timeline} onChange={e => setTimeline(e.target.value)} maxLength={40} placeholder="时间线标记，如 5-6" className="w-full rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/> : <textarea rows={4} value={auContext} onChange={e => setAuContext(e.target.value)} placeholder="描述这条平行道路的背景与角色关系…" className="w-full resize-y rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/>}</div>
+              <div className="space-y-3"><span className="text-xs font-semibold text-[#52667f]">选择道路的世界</span><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button key={value} onClick={() => setReality(value)} type="button" className={`rounded-xl border px-4 py-2 text-xs ${reality === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] bg-white text-[#718296]"}`}>{value === "canon" ? "Original · 原作时间线" : "AU · 平行歧路"}</button>)}</div>{reality === "canon" ? <ViaeTimelineSelect value={timeline} onChange={setTimeline} className="w-full rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/> : <textarea rows={4} value={auContext} onChange={e => setAuContext(e.target.value)} placeholder="描述这条平行道路的背景与角色关系…" className="w-full resize-y rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/>}</div>
               <button type="button" onClick={create} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#182e49] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#294562]"><Sparkles size={16} color="#e8cc97"/> {kind === "direct" ? "踏上小径" : "相会于路口"}</button>
             </div>
           </div>
@@ -278,8 +278,8 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
               <button type="button" onClick={() => { setShowModels(v => !v); setShowManage(false); setShowRouteEditor(false); }} title="模型与供应商" aria-label="模型与供应商" className="rounded-xl p-2 text-[#61738a] hover:bg-[#f4f6f8]"><Settings2 size={19}/></button>
             </header>
             {showModels && <div className="z-10 space-y-3 border-b border-[#e7eaee] bg-white px-5 py-4 shadow-sm"><div className="flex items-center justify-between text-xs font-semibold"><span>模型与供应商</span><button type="button" onClick={() => setShowModels(false)} title="关闭模型设置"><X size={16}/></button></div><div className="grid grid-cols-2 gap-3"><label className="text-[11px] text-[#8492a2]">Provider<select value={provider} onChange={e => onProviderChange(e.target.value)} className="mt-1 block w-full rounded-lg border border-[#e0e6eb] bg-white p-2 text-xs">{providers.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label><label className="text-[11px] text-[#8492a2]">Model<select value={availableModels.some(m => m.id === model) ? model : ""} onChange={e => onModelChange(e.target.value)} className="mt-1 block w-full rounded-lg border border-[#e0e6eb] bg-white p-2 text-xs"><option value="">手动输入模型 ID</option>{availableModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label></div><input value={customModel} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className="w-full rounded-lg border border-[#e0e6eb] px-3 py-2 text-xs outline-none focus:border-[#bba26d]"/><p className="text-[11px] text-[#8391a2]">与 Shiorivia 其他模式共享服务端供应商配置。</p></div>}
-            <div className="relative mx-4 mt-4 overflow-hidden rounded-2xl bg-[#172b46] px-5 py-4 text-white sm:mx-6"><RouteIllustration/><div className="relative flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><PathEmblem size={34}/><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-[#f0dcb7]">{activeGroup.reality === "canon" ? "Original Timeline" : "Alternate Route"}</p><p className="mt-1 truncate text-[11px] text-[#aab8cb]">{activeGroup.reality === "au" ? activeGroup.auContext || "沿着另一条可能的道路…" : `T-${activeGroup.timeline} · 那些熟悉的日常`}</p></div></div><button type="button" onClick={editRoute} className="shrink-0 rounded-xl border border-[#bca778]/70 bg-[#172b46]/70 px-3 py-2 text-[11px] text-[#f3dbaa] transition hover:bg-white/10"><Route size={14} className="mr-1 inline"/> 路线</button></div></div>
-            {showRouteEditor && <div className="z-10 mx-4 mt-2 space-y-3 rounded-2xl border border-[#e7dfce] bg-[#fffdf8] p-4 sm:mx-6"><div className="flex items-center justify-between text-xs font-semibold"><span>编辑这条道路</span><button type="button" onClick={() => setShowRouteEditor(false)} title="关闭路线编辑"><X size={16}/></button></div><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button type="button" key={value} onClick={() => setRouteDraft(d => ({ ...d, reality: value }))} className={`rounded-lg border px-3 py-1.5 text-xs ${routeDraft.reality === value ? "border-[#bea776] bg-white text-[#7d663e]" : "border-[#e4e6e8] text-[#8390a0]"}`}>{value === "canon" ? "原作" : "AU"}</button>)}</div>{routeDraft.reality === "canon" ? <input value={routeDraft.timeline} onChange={e => setRouteDraft(d => ({ ...d, timeline: e.target.value }))} maxLength={40} className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/> : <textarea value={routeDraft.auContext} onChange={e => setRouteDraft(d => ({ ...d, auContext: e.target.value }))} rows={3} placeholder="这条歧路的世界背景…" className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/>}<button type="button" disabled={isLoading} onClick={saveRoute} className="rounded-lg bg-[#1a314c] px-4 py-2 text-xs text-white disabled:opacity-50">保存路线</button></div>}
+            <div className="relative mx-4 mt-4 overflow-hidden rounded-2xl bg-[#172b46] px-5 py-4 text-white sm:mx-6"><RouteIllustration/><div className="relative flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><PathEmblem size={34}/><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-[#f0dcb7]">{activeGroup.reality === "canon" ? "Original Timeline" : "Alternate Route"}</p><p className="mt-1 truncate text-[11px] text-[#aab8cb]">{activeGroup.reality === "au" ? activeGroup.auContext || "沿着另一条可能的道路…" : `T-${activeGroup.timeline}`}</p></div></div><button type="button" onClick={editRoute} className="shrink-0 rounded-xl border border-[#bca778]/70 bg-[#172b46]/70 px-3 py-2 text-[11px] text-[#f3dbaa] transition hover:bg-white/10"><Route size={14} className="mr-1 inline"/> 路线</button></div></div>
+            {showRouteEditor && <div className="z-10 mx-4 mt-2 space-y-3 rounded-2xl border border-[#e7dfce] bg-[#fffdf8] p-4 sm:mx-6"><div className="flex items-center justify-between text-xs font-semibold"><span>编辑这条道路</span><button type="button" onClick={() => setShowRouteEditor(false)} title="关闭路线编辑"><X size={16}/></button></div><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button type="button" key={value} onClick={() => setRouteDraft(d => ({ ...d, reality: value }))} className={`rounded-lg border px-3 py-1.5 text-xs ${routeDraft.reality === value ? "border-[#bea776] bg-white text-[#7d663e]" : "border-[#e4e6e8] text-[#8390a0]"}`}>{value === "canon" ? "原作" : "AU"}</button>)}</div>{routeDraft.reality === "canon" ? <ViaeTimelineSelect value={routeDraft.timeline} onChange={v => setRouteDraft(d => ({ ...d, timeline: v }))} className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/> : <textarea value={routeDraft.auContext} onChange={e => setRouteDraft(d => ({ ...d, auContext: e.target.value }))} rows={3} placeholder="这条歧路的世界背景…" className="w-full rounded-lg border border-[#e1e3e8] bg-white px-3 py-2 text-sm"/>}<button type="button" disabled={isLoading} onClick={saveRoute} className="rounded-lg bg-[#1a314c] px-4 py-2 text-xs text-white disabled:opacity-50">保存路线</button></div>}
             {showManage && <div className="z-10 mx-4 mt-2 space-y-3 rounded-xl border border-[#e5e9ed] bg-white p-4 shadow-sm sm:mx-6"><div className="flex items-center justify-between text-xs font-semibold"><span>道路与同行者</span><button type="button" onClick={() => setShowManage(false)} title="关闭管理"><X size={16}/></button></div><button onClick={() => rename(activeGroup)} type="button" className="flex items-center gap-2 rounded-lg border border-[#e0e4e8] px-3 py-2 text-xs"><Pencil size={14}/> 重新命名</button><p className="text-xs text-[#718195]">{memberLabel}</p><div className="flex flex-wrap items-center gap-2"><span className="text-[11px] text-[#8390a0]">交流方式</span>{(["outsider", "insider"] as const).map(value => <button key={value} type="button" disabled={isLoading || activeGroup.pov === value} onClick={() => changeExistingMode(value)} className={`rounded-lg border px-3 py-1.5 text-xs disabled:opacity-60 ${activeGroup.pov === value ? "border-[#baa573] bg-[#fffaf0] text-[#695836]" : "border-[#e4e9ee] bg-white text-[#748395]"}`}>{value === "outsider" ? "旁观" : "参与"}</button>)}</div><p className="text-[11px] leading-5 text-[#96a1ad]">{activeGroup.type === "direct" ? "小径更换交流方式需满足对应人数；有历史消息时请新建小径。" : "路口可在旁观和参与之间切换。"}</p>{activeGroup.type === "direct" && activeGroup.messages.length === 0 && <div className="flex flex-wrap gap-2">{characters.filter(c => !activeGroup.members.includes(c.id)).map(c => <button key={c.id} type="button" disabled={isLoading || activeGroup.members.length >= 2} onClick={() => updateGroup(activeGroup.id, g => ({ ...g, members: [...g.members, c.id], updatedAt: Date.now() }))} className="rounded-full border border-[#e4e9ee] px-2 py-1 text-[11px] text-[#748395] disabled:opacity-40">+ {c.name}</button>)}{activeGroup.members.length > 1 && <button type="button" disabled={isLoading} onClick={() => updateGroup(activeGroup.id, g => ({ ...g, members: g.members.slice(0, 1), defaultPovChar: g.members[0], updatedAt: Date.now() }))} className="rounded-full border border-[#e5d8d8] px-2 py-1 text-[11px] text-rose-600">移除第二位角色</button>}</div>}{activeGroup.type === "group" && <div className="flex flex-wrap gap-2">{characters.map(c => <button key={c.id} type="button" disabled={isLoading} onClick={() => { const included = activeGroup.members.includes(c.id); if (included && activeGroup.members.length <= 2) { notify("路口至少需要两位角色"); return; } updateGroup(activeGroup.id, g => ({ ...g, members: included ? g.members.filter(id => id !== c.id) : [...g.members, c.id], updatedAt: Date.now() })); }} className={`rounded-full border px-3 py-1 text-xs disabled:opacity-50 ${activeGroup.members.includes(c.id) ? "border-[#baa573] bg-[#fffaf0] text-[#695836]" : "border-[#e4e9ee] text-[#748395]"}`}>{c.avatar} {c.name}</button>)}</div>}</div>}
             <section className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-6 sm:px-8" aria-label="Viae 对话消息">
               <div className="flex items-center gap-3 text-[10px] text-[#9eabb7]"><div className="h-px flex-1 bg-[#e6e9eb]"/><Sparkles size={13} color={GOLD}/> WAYPOINT · 此刻 <div className="h-px flex-1 bg-[#e6e9eb]"/></div>
@@ -289,12 +289,12 @@ export function LimeInterface({ session, updateSession, characters, onExit, onSe
                 const isUser = message.role === "user";
                 const isDirection = isUser && (message.kind === "director" || (isObserving && !message.kind));
                 const text = asText(message.content);
-                const partial = !isUser && isLoading && index === activeGroup.messages.length - 1 && !/<\/lime_chat>/i.test(text);
+                const partial = !isUser && isLoading && index === activeGroup.messages.length - 1 && !/<\/(?:viae_chat|lime_chat)>/i.test(text);
                 const segments = isUser ? [{ charId: "", text }] : partial ? [{ charId: "", text: "角色正在回复…" }] : parseSpeakers(text);
                 return <div key={message.id || index} className={`group flex flex-col gap-2 ${isDirection ? "items-center" : isUser ? "items-end" : "items-start"}`}>
                   {isDirection ? <div className="max-w-[94%] rounded-xl border border-[#e9dfcb] bg-[#fffdf8] px-5 py-3 text-center shadow-[0_2px_12px_rgba(172,140,88,0.05)] sm:max-w-[80%]"><div className="mb-1 flex items-center justify-center gap-2 text-[10px] font-semibold tracking-widest text-[#aa8b50]"><Sparkles size={13}/> SCENE DIRECTION / 剧情提示 <span className="font-normal text-[#ac9d82]">{time(message.createdAt)}</span></div><p className="whitespace-pre-wrap break-words text-left text-[13px] leading-6 text-[#685a45]">{text}</p></div> : segments.map((part, i) => {
                     const char = who(part.charId);
-                    const content = part.text.replace(/<\/?lime_chat>/gi, "");
+                    const content = part.text.replace(/<\/?(?:viae_chat|lime_chat)>/gi, "");
                     const isPhoneOwner = isObserving && !isUser && part.charId === (viewChar?.id || activeGroup.members[0]);
                     const isOutgoing = isUser || isPhoneOwner;
                     return <div key={i} className={`flex max-w-[94%] items-end gap-2 sm:max-w-[80%] ${isOutgoing ? "flex-row-reverse" : "flex-row"} ${isPhoneOwner ? "self-end" : ""}`}>

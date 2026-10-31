@@ -7,7 +7,9 @@ import {
     Disc, Save, ArrowUp, Sun, Moon, FileText, Square,
     AlertTriangle, CloudRain, 
 } from "lucide-react";
-import { CHARACTERS, MODEL_DATA } from "../types";
+import { CHARACTERS, type NovelDraft } from "../types";
+import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
+import { NovelArchiveActions } from "./NovelArchiveActions";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModal";
 import { useMusic } from "../context/MusicContext";
@@ -152,6 +154,9 @@ export const NovelInterface = ({
     onImageGenerated, setSessions,
     syncStatus, onManualSync,
     initialSelectedModel,
+    provider, providers = [], onProviderChange,
+    selectedModel, customModelId, onModelChange, onCustomModelChange,
+    onImportNovelSession,
 }: any) => {
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
@@ -165,13 +170,33 @@ export const NovelInterface = ({
 
     const [directorInput, setDirectorInput] = useState("");
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>(["sakiko"]);
-    const [selectedModel, setSelectedModel] = useState(initialSelectedModel || "google/gemini-3-flash-preview");
-    useEffect(() => { if (initialSelectedModel) setSelectedModel(initialSelectedModel); }, [initialSelectedModel]);
+    // The same model/provider state powers Engineering, Chat, VIAE and Novel.
+    const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
+    const [providerModels, setProviderModels] = useState<LocalModelGroup[]>([]);
+    useEffect(() => {
+        let alive = true;
+        if (!provider) { setProviderModels([]); return; }
+        fetch(`/api/providers?models=${encodeURIComponent(provider)}`, { cache: "no-store" })
+            .then(r => r.json()).then(data => { if (alive) setProviderModels(Array.isArray(data.groups) ? data.groups : []); })
+            .catch(() => { if (alive) setProviderModels([]); });
+        return () => { alive = false; };
+    }, [provider]);
+    const availableModels = (providerModels.length ? providerModels : fallbackModelGroups(provider || "")).flatMap(g => g.models);
     const [scenario, setScenario] = useState("午后的红茶店"); 
     const [action, setAction] = useState("谈心");
     const [style, setStyle] = useState("温馨, 治愈, 心理描写细腻, 2000字");
 
     const [outline, setOutline] = useState(currentSession.localWorldInfo || "");
+    // Restore the draft carried by an imported Novel JSON when its new session opens.
+    useEffect(() => {
+        const draft = currentSession?.novelDraft as NovelDraft | undefined;
+        setSelectedCharIds(Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : ["sakiko"]);
+        setScenario(draft?.scenario || "午后的红茶店");
+        setAction(draft?.action || "谈心");
+        setStyle(draft?.style || "温馨, 治愈, 心理描写细腻, 2000字");
+        setOutline(currentSession?.localWorldInfo || draft?.outline || "");
+        setThemeMode(draft?.themeMode === "paper" ? "paper" : "dark");
+    }, [currentSession?.id]);
     const { currentTrack } = useMusic();
     const lastDrawPromptRef = useRef("");
 
@@ -344,7 +369,7 @@ export const NovelInterface = ({
                 handleSend(prompt, undefined, {
                     useMusicControl,
                     novelConfig,
-                    modelOverride: selectedModel 
+                    modelOverride: activeModel
                 });
             }
         }
@@ -357,7 +382,7 @@ export const NovelInterface = ({
             handleSend(prompt, undefined, {
                 useMusicControl,
                 novelConfig,
-                modelOverride: selectedModel 
+                modelOverride: activeModel
             });
         }
 
@@ -529,6 +554,13 @@ export const NovelInterface = ({
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
                                 <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone="novel" />
+                                <NovelArchiveActions
+                                    session={currentSession}
+                                    draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
+                                    onImport={onImportNovelSession}
+                                    disabled={isLoading}
+                                    className={`rounded-xl border ${theme.border} p-3`}
+                                />
 
                                 <div>
                                     <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> DREAM OUTLINE</label>
@@ -542,19 +574,18 @@ export const NovelInterface = ({
 
                                 <div className={`${theme.inputBg} p-4 rounded-2xl border ${theme.border} space-y-5 shadow-sm`}>
 
-                                    <div>
-                                        <label className={`text-[10px] ${theme.text} opacity-50 font-black uppercase tracking-widest mb-2 block`}>
-                                            AI Architect
-                                        </label>
-                                        <select
-                                            value={selectedModel}
-                                            onChange={e => setSelectedModel(e.target.value)}
-                                            className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus} transition-all`}
-                                        >
-                                            {MODEL_DATA.flatMap(g => g.models).map(m => (
-                                                <option key={m.id} value={m.id}>{m.name}</option>
-                                            ))}
+                                    <div className="space-y-2">
+                                        <label className={`text-[10px] ${theme.text} opacity-50 font-black uppercase tracking-widest mb-2 block`}>AI Architect · Shared Model</label>
+                                        <select aria-label="小说模型供应商" value={provider || ""} onChange={e => onProviderChange(e.target.value)} className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`}>
+                                            {providers.map((p: PublicLocalProvider) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                            {!providers.some((p: PublicLocalProvider) => p.id === provider) && <option value={provider}>{provider || "未配置供应商"}</option>}
                                         </select>
+                                        <select aria-label="小说模型" value={availableModels.some(m => m.id === selectedModel) ? selectedModel : ""} onChange={e => onModelChange(e.target.value)} className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`}>
+                                            <option value="">手动输入模型 ID</option>
+                                            {availableModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                        </select>
+                                        <input aria-label="小说自定义模型 ID" value={customModelId || ""} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className={`w-full ${theme.inputBg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`} />
+                                        <p className={`text-[10px] ${theme.text} opacity-50`}>当前：{activeModel || "请选择模型"} · 与其他模式同步</p>
                                     </div>
 
                                     <div>

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LimeConversation, LimeMessage, Session } from "../types";
+import type { ViaeConversation, ViaeMessage, Session } from "../types";
 import { formatLocalMemoryEntries, LOCAL_STM_SLOTS, parseLocalMemoryEntries } from "../lib/localMemory";
 
 const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /** Viae messages live *inside* the Viae workspace; they never enter normal chat history. */
-export function useLimeEngine({ session, updateSession, provider, model, notify }: {
+export function useViaeEngine({ session, updateSession, provider, model, notify }: {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
   provider: string;
@@ -21,7 +21,7 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
   useEffect(() => () => abortRef.current?.abort(), []);
   const activeGroup = (session.limeGroups || []).find(g => g.id === session.limeGroupId);
 
-  const patchGroup = (id: string, mapper: (group: LimeConversation) => LimeConversation) => {
+  const patchGroup = (id: string, mapper: (group: ViaeConversation) => ViaeConversation) => {
     updateSession(current => ({
       ...current,
       updatedAt: Date.now(),
@@ -46,9 +46,9 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
     if (regenerate && !preceding.some(msg => msg.role === "user")) return;
 
     const requestId = newId();
-    const userMessage: LimeMessage | null = regenerate ? null : { id: newId(), role: "user", kind: activeGroup.pov === "outsider" ? "director" : "chat", content: text, createdAt: Date.now() };
+    const userMessage: ViaeMessage | null = regenerate ? null : { id: newId(), role: "user", kind: activeGroup.pov === "outsider" ? "director" : "chat", content: text, createdAt: Date.now() };
     const context = userMessage ? [...preceding, userMessage] : preceding;
-    const assistant: LimeMessage = { id: requestId, role: "assistant", content: "", createdAt: Date.now(), modelName: model };
+    const assistant: ViaeMessage = { id: requestId, role: "assistant", content: "", createdAt: Date.now(), modelName: model };
     const groupId = activeGroup.id;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -64,10 +64,11 @@ export function useLimeEngine({ session, updateSession, provider, model, notify 
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
+          // Legacy wire mode remains "lime" for compatibility with saved sessions.
           memoryMode: "lime", provider, model,
           messages: context.map(msg => ({ role: msg.role, content: msg.content, kind: msg.kind })),
           stm: activeGroup.stm || "", ltm: activeGroup.ltm || "",
-          limeGroup: {
+          viaeGroup: {
             name: activeGroup.name,
             type: activeGroup.type,
             members: activeGroup.members,
