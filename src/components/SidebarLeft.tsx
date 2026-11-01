@@ -6,10 +6,12 @@ import {
     FolderPlus, Plus, Search, Folder, Trash2, Download, Upload,
     Globe, Image as ImageIcon,
     ListChecks, CheckSquare, Square, Sparkles, Terminal, Disc,
-    CloudRain, AlertTriangle, Mic,
-    Cloud, RefreshCw, Check
+    HardDrive, AlertTriangle, Mic,
+    RefreshCw, Check
 } from "lucide-react";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
+import { useLanguage } from "../context/LanguageContext";
+import { localText } from "../lib/i18nLocal";
 import { SessionItem } from "./Common";
 import { BatchDeleteModal } from "./BatchDeleteModal";
 
@@ -86,6 +88,7 @@ export const SidebarLeft = ({
     syncStatus, onManualSync,
     apiProvider, setApiProvider, providers = [],
 }: any) => {
+    const { locale } = useLanguage();
     const importInputRef = useRef<HTMLInputElement>(null);
 
     const [showNewChatMenu, setShowNewChatMenu] = useState(false);
@@ -300,7 +303,7 @@ export const SidebarLeft = ({
                     <div className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
-                                <Cloud size={10} /> Cloud Sync
+                                <HardDrive size={10} /> Local Sync
                             </span>
 
                             <div className="flex gap-1 opacity-50 hover:opacity-100 transition-opacity">
@@ -332,28 +335,28 @@ export const SidebarLeft = ({
                             {syncStatus === 'syncing' ? (
                                 <>
                                     <RefreshCw size={14} className="animate-spin" />
-                                    <span>SYNCING...</span>
+                                    <span>{localText(locale, "sync.syncing")}</span>
                                 </>
                             ) : syncStatus === 'error' ? (
                                 <>
                                     <AlertTriangle size={14} />
-                                    <span>SYNC FAILED</span>
+                                    <span>{localText(locale, "sync.failed")}</span>
                                 </>
                             ) : syncStatus === 'success' ? (
                                 <>
                                     <Check size={14} />
-                                    <span>ALL SYNCED</span>
+                                    <span>{localText(locale, "sync.saved")}</span>
                                 </>
                             ) : (
                                 <>
-                                    <CloudRain size={14} /> 
-                                    <span>SYNC NOW</span>
+                                    <HardDrive size={14} />
+                                    <span>{localText(locale, "sync.now")}</span>
                                 </>
                             )}
                         </button>
 
                         <div className="text-[9px] text-center mt-1.5 text-gray-300 font-mono">
-                            {syncStatus === 'idle' ? 'Auto-sync active' : syncStatus === 'success' ? 'Data is safe' : 'Check connection'}
+                            {syncStatus === "idle" ? localText(locale, "sync.auto") : syncStatus === "success" ? localText(locale, "sync.success") : syncStatus === "unsaved" ? localText(locale, "sync.pending") : syncStatus === "error" ? localText(locale, "sync.check") : localText(locale, "sync.syncing")}
                         </div>
                     </div>
 

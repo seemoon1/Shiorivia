@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { ThinkingBlock } from "./Common";
 import { CHARACTERS } from "../types";
+import { useLanguage } from "../context/LanguageContext";
+import { characterDisplayName } from "../lib/characterNames";
 import { WardrobeModal } from "./WardrobeModal";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModal";
@@ -274,6 +276,7 @@ export const ChatInterface = ({
     charName, outfits,
 }: any) => {
 
+    const { locale } = useLanguage();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [showFullPlayer, setShowFullPlayer] = useState(false);
     const { isPlaying } = useMusic();
@@ -443,13 +446,13 @@ export const ChatInterface = ({
                                 <span className="flex items-center gap-2 truncate text-[#527762]">
                                     <TreeDeciduous size={19} className="shrink-0 text-[#729481]" aria-hidden="true" />
                                     <span className="font-semibold tracking-wide">Umbra</span>
-                                    <span className="truncate text-[11px] text-slate-500">· {currentCharacter.name}</span>
+                                    <span className="truncate text-[11px] text-slate-500">· {characterDisplayName(currentCharacter.id, currentCharacter.name, locale)}</span>
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-2 truncate text-[#365b75]">
                                     <Hammer size={18} className="shrink-0 text-[#6487a1]" aria-hidden="true" />
                                     <span className="font-semibold tracking-wide">Officina</span>
-                                    <span className="truncate text-[11px] text-slate-500">· {currentCharacter.name}</span>
+                                    <span className="truncate text-[11px] text-slate-500">· {characterDisplayName(currentCharacter.id, currentCharacter.name, locale)}</span>
                                 </span>
                             )}
                         </span>

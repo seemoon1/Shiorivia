@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, Sparkles, Radio, ChevronLeft, Send, Copy, Lock, Check, Brain, Activity, Moon, Ghost, Bot, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { CHAR_DATA } from "../data/char_config";
+import { useLanguage } from "../context/LanguageContext";
+import { characterDisplayName } from "../lib/characterNames";
 import { SuggestionModal } from "./Modals";
 import { TimelinePanel } from "./TimelinePanel";
 import { MemoryPreviewButton } from "./MemoryVaultModal";
@@ -39,6 +41,7 @@ const SidebarRightComponent = ({
         if (pageIndex >= charList.length) setPageIndex(0);
     }, [charList.length]);
 
+    const { locale } = useLanguage();
     const currentChar = charList[pageIndex];
 
     const themeColor = currentChar ? (
@@ -155,7 +158,7 @@ const SidebarRightComponent = ({
                                     <div className="rounded-lg border shadow-sm transition-colors duration-500" style={{ backgroundColor: `${themeColor}10`, borderColor: `${themeColor}40` }}>
                                         <div className="p-3">
                                             <div className="flex justify-between items-center mb-3">
-                                                <div className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1" style={{ color: themeColor }}><Heart size={10} /> Target: {currentChar.name}</div>
+                                                <div className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1" style={{ color: themeColor }}><Heart size={10} /> Target: {characterDisplayName((dbChars?.length ? dbChars : CHAR_DATA).find((c: any) => c.name === currentChar.name)?.id, currentChar.name, locale)}</div>
                                                 {charList.length > 1 && (
                                                     <div className="flex gap-1">
                                                         <button onClick={() => setPageIndex(p => p > 0 ? p - 1 : charList.length - 1)} className="p-1 hover:bg-white rounded shadow-sm"><ChevronLeft size={10} /></button>
@@ -224,7 +227,7 @@ const SidebarRightComponent = ({
                                             </div>
 
                                             <div className="text-left z-10 flex-1 min-w-0">
-                                                <div className="text-xs font-bold truncate">{char.name}</div>
+                                                <div className="text-xs font-bold truncate">{characterDisplayName(char.id, char.name, locale)}</div>
                                                 <div className={`text-[9px] truncate ${activeCharacterId === char.id ? 'text-white/80' : 'text-gray-400'}`}>
                                                     {char.sub}
                                                 </div>

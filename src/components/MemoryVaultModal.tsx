@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Archive, Brain, Check, LockKeyhole, Plus, Save, Trash2, X } from "lucide-react";
 import { formatLocalMemoryEntries, latestLocalMemoryEntry, LOCAL_STM_SLOTS, parseLocalMemoryEntries } from "../lib/localMemory";
+import { useLanguage } from "../context/LanguageContext";
+import { localText } from "../lib/i18nLocal";
 
 export type MemoryTone = "engineering" | "story" | "novel" | "novel-sage" | "novel-paper";
 
@@ -30,6 +32,7 @@ export function MemoryPreviewButton({ stm, ltm, onOpen, tone = "story" }: {
   onOpen: () => void;
   tone?: MemoryTone;
 }) {
+  const { locale } = useLanguage();
   const style = tones[tone === "novel-sage" ? "story" : tone === "novel-paper" ? "novel" : tone];
   const stmCount = parseLocalMemoryEntries(stm).length;
   const ltmCount = parseLocalMemoryEntries(ltm).length;
@@ -37,20 +40,21 @@ export function MemoryPreviewButton({ stm, ltm, onOpen, tone = "story" }: {
   const latestLtm = latestLocalMemoryEntry(ltm);
 
   return (
-    <button type="button" onClick={onOpen} className={`w-full rounded-xl border ${style.border} bg-white/85 p-3 text-left shadow-sm transition hover:bg-white`} aria-label="打开记忆档案">
+    <button type="button" onClick={onOpen} className={`w-full rounded-xl border ${style.border} bg-white/85 p-3 text-left shadow-sm transition hover:bg-white`} aria-label={localText(locale, "memory.open")}>
       <div className={`mb-3 flex items-center justify-between gap-2 text-xs font-bold ${style.accent}`}>
         <span className="flex items-center gap-2"><Brain size={15} /> Memory Vault / 记忆档案</span>
         <span className={`rounded-md px-2 py-1 text-[10px] ${style.tag}`}>OPEN</span>
       </div>
       <div className="space-y-2 text-[11px] leading-5 text-slate-600">
-        <div className="rounded-lg bg-slate-50 p-2"><span className="font-semibold text-slate-400">STM · {stmCount}</span><p className="mt-0.5 line-clamp-2 break-words">{latestStm || "暂无短期记忆"}</p></div>
-        <div className="rounded-lg bg-slate-50 p-2"><span className="font-semibold text-slate-400">LTM · {ltmCount}</span><p className="mt-0.5 line-clamp-2 break-words">{latestLtm || "暂无长期记忆"}</p></div>
+        <div className="rounded-lg bg-slate-50 p-2"><span className="font-semibold text-slate-400">STM · {stmCount}</span><p className="mt-0.5 line-clamp-2 break-words">{latestStm || localText(locale, "memory.emptyStm")}</p></div>
+        <div className="rounded-lg bg-slate-50 p-2"><span className="font-semibold text-slate-400">LTM · {ltmCount}</span><p className="mt-0.5 line-clamp-2 break-words">{latestLtm || localText(locale, "memory.emptyLtm")}</p></div>
       </div>
     </button>
   );
 }
 
 export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "", onSave, tone = "engineering" }: MemoryVaultProps) {
+  const { locale } = useLanguage();
   const style = tones[tone === "novel-sage" ? "story" : tone === "novel-paper" ? "novel" : tone];
   const [stmSlots, setStmSlots] = useState<string[]>([]);
   const [ltmSlots, setLtmSlots] = useState<string[]>([]);
@@ -82,10 +86,10 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
 
   const save = () => {
     if (stm !== original.current.stm || ltm !== original.current.ltm) {
-      setError("记忆在编辑期间已更新。为避免覆盖新内容，请关闭并重新打开记忆档案后再编辑。");
+      setError(localText(locale, "memory.changed"));
       return;
     }
-    if (!window.confirm("确定保存这份会话的 STM / LTM 记忆吗？")) return;
+    if (!window.confirm(localText(locale, "memory.confirm"))) return;
     onSave({ stm: formatLocalMemoryEntries(stmSlots), ltm: formatLocalMemoryEntries(ltmSlots) });
     onClose();
   };
@@ -97,27 +101,27 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
           <div>
             <p className={`mb-1 text-[10px] font-bold uppercase tracking-[0.2em] ${style.accent}`}>Shiorivia · Local Memory</p>
             <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl"><Brain size={21} className={style.accent} /> Memory Vault / 记忆档案</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-500">六个基础短期记忆槽，长期记忆可自由追加。旧存档中的额外记忆会完整保留。</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{localText(locale, "memory.description")}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="关闭记忆档案" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X size={19} /></button>
+          <button type="button" onClick={onClose} aria-label={localText(locale, "memory.close")} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X size={19} /></button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mb-5 grid gap-3 sm:grid-cols-2">
             <div className={`rounded-xl border ${style.border} ${style.tag} p-3`}>
               <div className={`mb-1 flex items-center gap-1.5 text-xs font-bold ${style.accent}`}><Brain size={14} /> Latest STM</div>
-              <p className="line-clamp-3 min-h-10 break-words text-xs leading-6 text-slate-600">{latestLocalMemoryEntry(stm) || "尚无短期记忆"}</p>
+              <p className="line-clamp-3 min-h-10 break-words text-xs leading-6 text-slate-600">{latestLocalMemoryEntry(stm) || localText(locale, "memory.emptyStm")}</p>
             </div>
             <div className={`rounded-xl border ${style.border} ${style.tag} p-3`}>
               <div className={`mb-1 flex items-center gap-1.5 text-xs font-bold ${style.accent}`}><Archive size={14} /> Latest LTM</div>
-              <p className="line-clamp-3 min-h-10 break-words text-xs leading-6 text-slate-600">{latestLocalMemoryEntry(ltm) || "尚无长期记忆"}</p>
+              <p className="line-clamp-3 min-h-10 break-words text-xs leading-6 text-slate-600">{latestLocalMemoryEntry(ltm) || localText(locale, "memory.emptyLtm")}</p>
             </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             <section>
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className={`flex items-center gap-2 text-sm font-bold ${style.accent}`}><Brain size={16} /> STM · 短期记忆</h3>
+                <h3 className={`flex items-center gap-2 text-sm font-bold ${style.accent}`}><Brain size={16} /> STM · {localText(locale, "memory.stm")}</h3>
                 <span className={`rounded-md px-2 py-1 text-[10px] ${style.tag}`}>{filledStm} 条 · 基础 {LOCAL_STM_SLOTS} 格</span>
               </div>
               {visibleStmCount > LOCAL_STM_SLOTS && <p className="mb-3 text-xs leading-5 text-amber-700">检测到旧存档或自动摘要产生的额外短期记忆；已保留全部 {visibleStmCount} 格，不会截断。</p>}
@@ -138,11 +142,11 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
             </section>
             <section>
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className={`flex items-center gap-2 text-sm font-bold ${style.accent}`}><Archive size={16} /> LTM · 长期记忆</h3>
-                <button type="button" onClick={() => setLtmSlots((prev) => [...prev, ""])} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${style.button}`}><Plus size={14} /> 添加记忆</button>
+                <h3 className={`flex items-center gap-2 text-sm font-bold ${style.accent}`}><Archive size={16} /> LTM · {localText(locale, "memory.ltm")}</h3>
+                <button type="button" onClick={() => setLtmSlots((prev) => [...prev, ""])} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${style.button}`}><Plus size={14} /> {localText(locale, "memory.add")}</button>
               </div>
               <div className="space-y-3">
-                {ltmSlots.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-xs text-slate-400">长期记忆档案目前为空，可点击「添加记忆」。</div>}
+                {ltmSlots.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-xs text-slate-400">{localText(locale, "memory.emptyList")}</div>}
                 {ltmSlots.map((entry, index) => (
                   <div key={index} className="rounded-xl border border-slate-200 bg-white p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
@@ -163,8 +167,8 @@ export function MemoryVaultModal({ open, onClose, sessionId, stm = "", ltm = "",
         <footer className={`flex shrink-0 flex-col gap-3 border-t ${style.border} ${tone === "novel-paper" ? "bg-[#f8efd9]" : tone === "novel-sage" ? "bg-[#e4eee3]" : "bg-white"} px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6`}>
           <div className="flex items-start gap-2 text-[11px] leading-5 text-slate-500"><LockKeyhole size={15} className="mt-0.5 shrink-0" /> 保存回原有 STM/LTM 字段，不会改变旧存档格式。自动摘要流程保持原有行为。</div>
           <div className="flex shrink-0 items-center justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">取消</button>
-            <button type="button" onClick={save} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold text-white ${style.button}`}><Save size={15} /> 保存记忆 <Check size={13} /></button>
+            <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">{localText(locale, "memory.cancel")}</button>
+            <button type="button" onClick={save} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold text-white ${style.button}`}><Save size={15} /> {localText(locale, "memory.save")} <Check size={13} /></button>
           </div>
           {error && <p role="alert" className="text-xs text-red-600 sm:basis-full">{error}</p>}
         </footer>

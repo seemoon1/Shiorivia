@@ -12,6 +12,8 @@ import type { PublicLocalProvider, LocalModelGroup } from "../lib/localProviders
 import { MemoryVaultModal } from "./MemoryVaultModal";
 import { useViaeEngine } from "../hooks/useViaeEngine";
 import { ViaeTimelineSelect } from "./ViaeTimelineSelect";
+import { useLanguage } from "../context/LanguageContext";
+import { characterDisplayName } from "../lib/characterNames";
 
 // Historical Local JSON keeps `limeGroups`, `limeGroupId`, and memoryMode="lime".
 // Viae, Semita, and Compitum are presentation names, not a save-format migration.
@@ -75,6 +77,7 @@ interface ViaeProps {
 }
 
 export function ViaeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
+  const { locale } = useLanguage();
   const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useViaeEngine({
     session, updateSession, provider, model: customModel.trim() || model, notify,
   });
@@ -101,7 +104,10 @@ export function ViaeInterface({ session, updateSession, characters, onExit, onSe
   const bottom = useRef<HTMLDivElement | null>(null);
   const conversations = session.limeGroups || [];
   const providerConfigured = providers.some(p => p.id === provider);
-  const who = (id: string) => characters.find(c => c.id === id);
+  const who = (id: string) => {
+    const c = characters.find(c => c.id === id);
+    return c ? { ...c, name: characterDisplayName(c.id, c.name, locale) } : undefined;
+  };
   const time = (value?: number) => mounted && value ? new Date(value).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => { setMounted(true); return () => currentAudio.current?.pause(); }, []);

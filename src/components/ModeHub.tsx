@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import type { TranslationKey } from "../lib/i18n";
+import { localText } from "../lib/i18nLocal";
 
 type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
 
@@ -14,6 +15,8 @@ type ModeHubProps = {
   onResume: () => void;
   onOpenSettings: () => void;
   hasSession: boolean;
+  loading?: boolean;
+  syncStatus?: "idle" | "syncing" | "error" | "success" | "unsaved";
 };
 
 const buildModes = (t: (key: TranslationKey) => string) => [
@@ -49,8 +52,8 @@ const buildModes = (t: (key: TranslationKey) => string) => [
   },
 ] as const;
 
-export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeHubProps) {
-  const { t } = useLanguage();
+export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession, loading = false, syncStatus = "idle" }: ModeHubProps) {
+  const { t, locale } = useLanguage();
   const modes = buildModes(t);
   return (
     <main className="relative isolate min-h-[100dvh] overflow-y-auto bg-[#f6f8f7] text-slate-800">
@@ -68,12 +71,16 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeH
             <Settings2 size={16} /> {t("home.settings")}
           </button>
         </header>
+        <div role="status" aria-live="polite" className="mt-5 inline-flex w-fit items-center gap-2 self-start rounded-full border border-[#dbe6df] bg-white/80 px-3 py-1.5 text-[11px] text-[#567462]">
+          <span className={`h-1.5 w-1.5 rounded-full ${loading || syncStatus === "syncing" ? "bg-amber-400" : syncStatus === "error" ? "bg-rose-500" : syncStatus === "unsaved" ? "bg-amber-500" : "bg-emerald-500"}`} />
+          <span>{localText(locale, "sync.title")} · {loading ? localText(locale, "sync.loading") : localText(locale, `sync.${syncStatus}`)}</span>
+        </div>
 
         <div className="mx-auto w-full max-w-3xl pb-8 pt-12 text-center sm:pt-16">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/75 px-4 py-1.5 text-[11px] font-semibold tracking-wider text-emerald-700"><House size={13} /> WHERE STORIES FIND THEIR WAY</p>
           <h1 className="text-3xl font-semibold tracking-tight text-[#243b33] sm:text-5xl">{t("home.heading")}</h1>
           <p className="mt-4 text-sm leading-7 text-slate-500">{t("home.description")}</p>
-          {hasSession && (
+          {hasSession && !loading && (
             <button type="button" onClick={onResume} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#355d50] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#284c41]">
               {t("home.resume")} <ArrowRight size={16} />
             </button>
@@ -87,8 +94,8 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession }: ModeH
               <button
                 key={mode.id}
                 type="button"
-                disabled={!mode.ready}
-                onClick={() => { if (mode.ready) onEnter(mode.id as ReadyMode); }}
+                disabled={!mode.ready || loading}
+                onClick={() => { if (mode.ready && !loading) onEnter(mode.id as ReadyMode); }}
                 className={`group flex min-h-[180px] flex-col items-start rounded-2xl border border-slate-200 bg-white/90 p-5 text-left shadow-sm transition ${mode.border} ${mode.ready ? "hover:-translate-y-0.5 hover:shadow-md" : "cursor-not-allowed opacity-65"}`}
               >
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${mode.background} ${mode.color}`}><Icon size={22} /></div>

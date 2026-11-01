@@ -5,7 +5,7 @@ import {
     Book, Sparkles, Settings2, PanelRight, AlignLeft,
     LogOut, RefreshCw, X, Edit2, Trash2, Check, 
     Disc, Save, ArrowUp, Sun, Moon, FileText, Square,
-    AlertTriangle, CloudRain, 
+    AlertTriangle, HardDrive,
 } from "lucide-react";
 import { CHARACTERS, type NovelDraft } from "../types";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
@@ -17,6 +17,9 @@ import { smartColorize } from "../lib/textFormatter";
 import { parseDrawTag } from "../lib/parseDraw"; 
 import { cleanDrawTag } from "../lib/parseDraw"; 
 import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
+import { useLanguage } from "../context/LanguageContext";
+import { characterDisplayName } from "../lib/characterNames";
+import { localText } from "../lib/i18nLocal";
 
 const THEMES = {
     sage: {
@@ -158,6 +161,7 @@ export const NovelInterface = ({
     selectedModel, customModelId, onModelChange, onCustomModelChange,
     onImportNovelSession,
 }: any) => {
+    const { locale } = useLanguage();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
@@ -351,7 +355,7 @@ export const NovelInterface = ({
 
     const handleGenerate = (type: 'new' | 'continue', optionText?: string) => {
         if (isLoading) return;
-        const targetNames = chars.filter((c: any) => selectedCharIds.includes(c.id)).map((c: any) => c.name).join(", ");
+        const targetNames = chars.filter((c: any) => selectedCharIds.includes(c.id)).map((c: any) => characterDisplayName(c.id, c.name, locale)).join(", ");
         const novelConfig = { charNames: targetNames, scenario, action, style, outline };
 
         if (type === 'new') {
@@ -613,19 +617,19 @@ export const NovelInterface = ({
                                             {syncStatus === 'syncing' ? <RefreshCw size={14} className="animate-spin" /> :
                                                 syncStatus === 'success' ? <Check size={14} /> :
                                                     syncStatus === 'error' ? <AlertTriangle size={14} /> :
-                                                        <CloudRain size={14} />}
+                                                        <HardDrive size={14} />}
 
-                                            <span>{syncStatus === 'idle' ? 'COMMIT TO CLOUD' : syncStatus.toUpperCase()}</span>
+                                            <span>{syncStatus === "syncing" ? localText(locale, "sync.syncing") : syncStatus === "success" ? localText(locale, "sync.saved") : syncStatus === "error" ? localText(locale, "sync.failed") : localText(locale, "sync.now")}</span>
                                         </button>
 
                                         <p className={`text-[9px] text-center mt-2 ${theme.text} opacity-30 font-mono italic`}>
-                                            {syncStatus === 'saving' ? 'Auto-saving memory...' : 'Ready for next chapter.'}
+                                            {syncStatus === "syncing" ? localText(locale, "sync.syncing") : localText(locale, "novel.ready")}
                                         </p>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className={`text-xs ${theme.accent} font-bold mb-3 block uppercase tracking-wider`}>Cast Selection</label>
+                                    <label className={`text-xs ${theme.accent} font-bold mb-3 block uppercase tracking-wider`}>{localText(locale, "novel.cast")}</label>
                                     <div className="grid grid-cols-4 gap-2">
                                         {chars.map((c: any) => {
                                             const isSelected = selectedCharIds.includes(c.id);
@@ -637,7 +641,7 @@ export const NovelInterface = ({
                                                         ? `${theme.selectBorder} ${theme.selectBg} shadow-sm`
                                                         : `${theme.border} ${theme.hover} opacity-60 hover:opacity-100`
                                                         }`}
-                                                    title={c.name}
+                                                    title={characterDisplayName(c.id, c.name, locale)}
                                                 >
                                                     {c.avatar}
                                                     {isSelected && (

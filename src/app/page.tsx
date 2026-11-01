@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { CHARACTERS, Session, type NovelDraft } from "../types";
@@ -424,14 +424,16 @@ export default function Home() {
         (effectiveConfig.outfits && Object.keys(effectiveConfig.outfits).length > 0)
     );
 
-    if (cloud.initLoaded && showModeHub) {
+    if (!cloud.initLoaded || showModeHub) {
         return (
             <>
                 <ModeHub
                     onEnter={enterMode}
-                    onResume={() => setShowModeHub(false)}
+                    onResume={() => { if (cloud.initLoaded) setShowModeHub(false); }}
                     onOpenSettings={() => setShowSettingsCenter(true)}
                     hasSession={Boolean(currentSession)}
+                    loading={!cloud.initLoaded}
+                    syncStatus={cloud.status}
                 />
                 <SettingsCenter
                     open={showSettingsCenter}
@@ -575,14 +577,6 @@ export default function Home() {
         );
     }
 
-    if (!cloud.initLoaded) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-[#0a0a0c] text-white flex-col gap-4 font-mono">
-                <Loader2 className="animate-spin text-emerald-500" size={48} />
-                <div className="text-xs tracking-[0.3em] opacity-50 animate-pulse">INITIALIZING LOCAL MEMORY...</div>
-            </div>
-        );
-    }
 
     return (
         <div

@@ -4,6 +4,8 @@ import { LORE_LIBRARY } from "../../../data/lore_library";
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
+import { characterNameInstruction } from "../../../lib/characterNames";
+import { normalizeLocale } from "../../../lib/locale";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
 import { BGM_LIBRARY } from "../../../data/bgm_library";
@@ -508,6 +510,7 @@ ${COLOR_INSTRUCTION}
     }
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
+    finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
     const selectedProvider = getServerLocalProvider(provider);
     if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
