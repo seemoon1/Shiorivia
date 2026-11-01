@@ -10,7 +10,7 @@ import {
 } from "../lib/charta";
 import { ChartaPortrait } from "./ChartaPortrait";
 
-type Draft = { id: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; description: string; createdAt: number; updatedAt: number };
+type Draft = { id: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; createdAt: number; updatedAt: number };
 const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", createdAt: Date.now(), updatedAt: Date.now() });
 const colors = ["#799783", "#688ca4", "#ba8295", "#a38ebc", "#c1a276", "#4d7972", "#bd7674", "#65728d"];
 
@@ -37,8 +37,8 @@ function compactImage(file: File): Promise<string> {
 
 export function ChartaInterface({ characters, save, remove, usedIds, onExit, loaded, storageError }: {
   characters: ChartaCharacter[];
-  save: (entry: ChartaCharacter) => boolean;
-  remove: (id: string) => boolean;
+  save: (entry: ChartaCharacter) => Promise<boolean>;
+  remove: (id: string) => Promise<boolean>;
   usedIds: string[];
   onExit: () => void;
   loaded: boolean;
@@ -56,18 +56,23 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   const [message, setMessage] = useState("");
   const importRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
+  const portraitRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
   const update = (next: Draft) => { setDraft(next); setDirty(true); setMessage(""); };
   const select = (next: Draft | null) => {
     if (dirty && !window.confirm(txt("unsaved"))) return;
     setDraft(next); setDirty(false); setShowAdd(false); setMessage("");
   };
   const start = () => select(newDraft(locale));
-  const saveDraft = () => {
-    if (!draft?.names[draft.primaryLanguage]?.trim() || !draft.hex || !draft.avatar) { setMessage(txt("required")); return; }
+  const saveDraft = async () => {
+    if (busy || !draft) return;
+    if (!draft.names[draft.primaryLanguage]?.trim() || !draft.hex || !draft.avatar) { setMessage(txt("required")); return; }
+    setBusy(true);
     try {
       const data = parseChartaCharacter(draft);
-      if (save(data)) { setDraft(data); setDirty(false); setMessage(txt("saved")); }
+      if (await save(data)) { setDraft(data); setDirty(false); setMessage(txt("saved")); }
     } catch (e) { setMessage(e instanceof Error ? e.message : txt("required")); }
+    finally { setBusy(false); }
   };
   const exportDraft = () => {
     if (!draft) return;
@@ -84,8 +89,9 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       if (file.size > 1024 * 1024) throw new Error(txt("fileError"));
       const item = decodeChartaImport(JSON.parse(await file.text()));
       // Import is always a new ID, even if the file originated from this library.
-      const imported = { ...item, id: makeChartaId(), createdAt: Date.now(), updatedAt: Date.now() };
-      if (save(imported)) { setDraft(imported); setDirty(false); setMessage(txt("imported")); }
+      // A disk-backed path belongs to the original profile ID; never link two characters to one portrait.
+      const imported = { ...item, portrait: undefined, id: makeChartaId(), createdAt: Date.now(), updatedAt: Date.now() };
+      if (await save(imported)) { setDraft(imported); setDirty(false); setMessage(txt("imported")); }
     } catch (e) { setMessage(e instanceof Error ? e.message : txt("fileError")); }
   };
   const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -93,11 +99,29 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     try { update({ ...draft, avatar: await compactImage(file) }); }
     catch { setMessage(txt("imageError")); }
   };
-  const deleteDraft = () => {
-    if (!draft || !characters.some(c => c.id === draft.id)) return;
+  const uploadStandee = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; event.target.value = "";
+    if (!file || !draft || busy) return;
+    if (!/^(image\/png|image\/jpeg|image\/webp)$/.test(file.type) || file.size > 8 * 1024 * 1024) {
+      setMessage(txt("standeeError")); return;
+    }
+    setBusy(true);
+    try {
+      const form = new FormData(); form.append("id", draft.id); form.append("image", file);
+      const response = await fetch("/api/local/charta", { method: "POST", body: form });
+      if (!response.ok) throw new Error(txt("standeeError"));
+      const data = await response.json();
+      update({ ...draft, portrait: data.portrait });
+    } catch { setMessage(txt("standeeError")); }
+    finally { setBusy(false); }
+  };
+  const deleteDraft = async () => {
+    if (!draft || busy || !characters.some(c => c.id === draft.id)) return;
     if (usedIds.includes(draft.id)) { setMessage(txt("inUse")); return; }
-    if (window.confirm(txt("confirmDelete")) && remove(draft.id)) {
-      setDraft(null); setDirty(false); setMessage(txt("deleted"));
+    if (window.confirm(txt("confirmDelete"))) {
+      setBusy(true);
+      try { if (await remove(draft.id)) { setDraft(null); setDirty(false); setMessage(txt("deleted")); } }
+      finally { setBusy(false); }
     }
   };
   const addLanguage = () => {
@@ -109,6 +133,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   return <main className="min-h-screen bg-[#f7f8f5] text-[#2c443a]" style={{ backgroundImage: "radial-gradient(ellipse at top right, #e8ede7, transparent 60%)" }}>
     <input ref={importRef} type="file" className="hidden" accept=".json,application/json" onChange={importFile} />
     <input ref={imageRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadImage} />
+    <input ref={portraitRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadStandee} />
     <div className="mx-auto max-w-7xl px-4 py-7 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce5dc] pb-5">
         <button type="button" onClick={() => { if (!dirty || window.confirm(txt("unsaved"))) onExit(); }} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
@@ -144,11 +169,18 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               <div className="flex flex-wrap items-start gap-5"><ChartaPortrait character={{avatar:draft.avatar||"📜",hex:draft.hex}} className="h-28 w-28 rounded-2xl border border-[#d4dfd5]"/>
                 <div className="min-w-0 flex-1 space-y-2"><p className="text-xs text-[#6e8472]">{txt("preset")} *</p><div className="flex flex-wrap gap-2">{CHARTA_PRESET_AVATARS.map(a=><button type="button" key={a} onClick={()=>update({...draft,avatar:a})} aria-label={a} aria-pressed={draft.avatar===a} className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl ${draft.avatar===a?"border-[#4b7b5b] bg-[#edf5ec]":"border-[#dce5da] hover:bg-[#f6faf5]"}`}>{a}</button>)}</div><button type="button" onClick={()=>imageRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg border border-[#ccdacc] px-3 py-2 text-xs"><Upload size={14}/>{txt("upload")}</button><p className="text-[10px] text-[#94a596]">{txt("uploadHint")}</p></div>
               </div>
+             <div className="rounded-2xl border border-[#dce5dc] bg-[#f8faf6] p-4 sm:p-5">
+               <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="font-serif text-base text-[#365443]">{txt("standeeTitle")}</h4><p className="mt-1 text-[11px] leading-5 text-[#829888]">{txt("standeeHint")}</p></div><button type="button" disabled={busy} onClick={() => portraitRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdccc] bg-white px-3 py-2 text-xs text-[#456b57] hover:bg-[#edf4ec] disabled:opacity-50"><Upload size={14}/>{txt("standeeUpload")}</button></div>
+               <div className="mt-4 flex min-h-[190px] items-end justify-center overflow-hidden rounded-xl border border-[#e4eae0] bg-[radial-gradient(ellipse_at_bottom,#dae7dc,#f7faf7_70%)]">
+                 {draft.portrait ? <img src={draft.portrait} alt={txt("standeeTitle")} className="max-h-[300px] w-auto max-w-full object-contain object-bottom" /> : <span className="self-center text-xs tracking-wide text-[#94a99a]">{txt("standeeEmpty")}</span>}
+               </div>
+               {draft.portrait && <button type="button" onClick={() => update({ ...draft, portrait: undefined })} className="mt-3 text-xs text-[#9a746f] hover:underline">{txt("standeeRemove")}</button>}
+             </div>
               <div className="flex flex-wrap items-center gap-3"><label className="text-xs text-[#728976]">{txt("color")} *<input type="color" value={/^#[0-9a-f]{6}$/i.test(draft.hex)?draft.hex:"#799783"} onChange={e=>update({...draft,hex:e.target.value})} className="ml-3 h-9 w-12 cursor-pointer align-middle" /></label><label className="text-xs text-[#728976]">HEX<input value={draft.hex} onChange={e=>update({...draft,hex:e.target.value})} maxLength={7} className="ml-2 w-24 rounded-lg border px-2 py-2 font-mono text-xs"/></label><Palette size={18} className="text-[#8da596]" /></div>
               <div className="flex flex-wrap gap-2" aria-label={txt("palette")}>{colors.map(c=><button type="button" key={c} onClick={()=>update({...draft,hex:c})} aria-label={c} title={c} aria-pressed={draft.hex===c} className={`h-8 w-8 rounded-full border-2 ${draft.hex===c?"border-[#243b33]":"border-white"}`} style={{backgroundColor:c}}/>)}</div>
             </div>
             <div className="space-y-3"><h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">03 · {txt("notes")}</h3><p className="text-xs leading-6 text-[#8a9d8d]">{txt("notesHelp")}</p><textarea value={draft.description} onChange={e=>update({...draft,description:e.target.value})} maxLength={20000} rows={10} className="w-full resize-y rounded-xl border border-[#d7e1d6] bg-[#fbfcf9] p-4 text-sm leading-7 outline-none focus:border-[#7e9f86]"/></div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={!characters.some(c=>c.id===draft.id)} onClick={deleteDraft} className="inline-flex items-center gap-2 rounded-xl border border-rose-100 px-3 py-3 text-xs text-rose-600 disabled:opacity-30"><Trash2 size={15}/>{txt("delete")}</button><div className="flex flex-wrap gap-2"><button type="button" onClick={exportDraft} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-3 text-xs"><Download size={15}/>{txt("export")}</button><button type="button" onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-3 text-xs font-semibold text-white hover:bg-[#355640]"><Save size={15}/>{txt("save")}</button></div></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={!characters.some(c=>c.id===draft.id)} onClick={deleteDraft} className="inline-flex items-center gap-2 rounded-xl border border-rose-100 px-3 py-3 text-xs text-rose-600 disabled:opacity-30"><Trash2 size={15}/>{txt("delete")}</button><div className="flex flex-wrap gap-2"><button type="button" onClick={exportDraft} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-3 text-xs"><Download size={15}/>{txt("export")}</button><button type="button" disabled={busy} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-3 text-xs font-semibold text-white hover:bg-[#355640] disabled:opacity-50"><Save size={15}/>{txt("save")}</button></div></div>
           </div>}
           {(message || storageError) && <p role="status" className="mt-4 rounded-lg bg-[#f2f4ee] px-4 py-3 text-xs text-[#607566]">{storageError || message}</p>}
           <p className="mt-5 text-[11px] leading-6 text-[#9cab9c]">{txt("independent")}</p>

@@ -59,10 +59,10 @@ export default function RootLayout({
           strategy="beforeInteractive" 
         />
         
-        <Script 
-          src="/lib/live2dcubismcore.min.js" 
-          strategy="beforeInteractive" 
-        />
+        {process.env.NEXT_PUBLIC_ENABLE_LOCAL_LIVE2D === "true" && <Script
+          src="/lib/live2dcubismcore.min.js"
+          strategy="beforeInteractive"
+        />}
         
         <Script 
           src="/lib/vconsole.min.js"

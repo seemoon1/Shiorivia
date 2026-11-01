@@ -16,6 +16,7 @@ import { ChatInterface } from "../components/ChatInterface";
 import { Background } from "../components/Background";
 import { TransitionEffects } from "../components/TransitionEffects";
 import { SaveLoadModal } from "../components/SaveLoadModal";
+import { SyncConflictModal } from "../components/SyncConflictModal";
 import { CodeRepositoryModal } from "../components/CodeRepositoryPanel";
 import { TachieStage } from "../components/TachieStage";
 import { NovelInterface } from "../components/NovelInterface";
@@ -35,7 +36,7 @@ import { useChatEngine } from "../hooks/useChatEngine";
 import { useChartaCharacters } from "../hooks/useChartaCharacters";
 import { toChartaCharConfig, nameForCharta } from "../lib/charta";
 import { ChartaInterface } from "../components/ChartaInterface";
-import { ChartaPortrait } from "../components/ChartaPortrait";
+import { StaticPortraitStage } from "../components/StaticPortraitStage";
 import { useUI } from "../hooks/useUI";
 import { useFileHandler } from "../hooks/useFileHandler";
 
@@ -432,7 +433,8 @@ export default function Home() {
         allChars.find(c => c.id === stageCharId),
         [stageCharId, allChars]);
 
-    const showLive2D = effectiveConfig && (
+    // Live2D is opt-in until the Cubism Core redistribution/licensing review is complete.
+    const showLive2D = process.env.NEXT_PUBLIC_ENABLE_LOCAL_LIVE2D === "true" && effectiveConfig && (
         effectiveConfig.modelUrl ||
         (effectiveConfig.outfits && Object.keys(effectiveConfig.outfits).length > 0)
     );
@@ -611,9 +613,11 @@ export default function Home() {
 
             {stageDbChar && (
                 customStage ? (
-                    <div className="pointer-events-none absolute bottom-10 left-1/2 z-[1] -translate-x-1/2 opacity-70">
-                        <ChartaPortrait character={customStage} className="h-48 w-48 rounded-full border-4 border-white/60 shadow-xl sm:h-64 sm:w-64" />
-                    </div>
+                    customStage.portrait ? <StaticPortraitStage
+                        src={customStage.portrait}
+                        leftSidebarOpen={ui.leftSidebarOpen}
+                        rightSidebarOpen={ui.rightSidebarOpen}
+                    /> : null
                 ) : showLive2D ? (
                     <Live2DStage
                         key={stageCharId}
@@ -821,6 +825,16 @@ export default function Home() {
             <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
 
             <CodeRepositoryModal isOpen={ui.showCodeRepo} onClose={() => ui.setShowCodeRepo(false)} repository={currentSession?.codeRepository || {}} onUpdate={engine.handleRepoUpdate} />
+            <SyncConflictModal
+                isOpen={cloud.conflictModal.isOpen}
+                cloudData={cloud.conflictModal.cloudData}
+                localData={cloud.conflictModal.localData}
+                reason={cloud.conflictModal.reason}
+                onResolve={(choice: "cloud" | "local") => {
+                    cloud.setConflictModal(prev => ({ ...prev, isOpen: false }));
+                    void cloud.triggerSync(choice === "cloud" ? "force_pull" : "force_push");
+                }}
+            />
             <WorldInfoModal isOpen={ui.showGlobalWorld} onClose={() => ui.setShowGlobalWorld(false)} title="Global" content={cloud.globalWorldInfo} setContent={cloud.setGlobalWorldInfo} onSave={() => localStorage.setItem("shiorivia_global_world", cloud.globalWorldInfo)} />
             <WorldInfoModal isOpen={ui.showLocalWorld} onClose={() => ui.setShowLocalWorld(false)} title="Local" content={currentSession?.localWorldInfo || ""} setContent={(v: string) => cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, localWorldInfo: v } : s))} onSave={() => { }} />
 

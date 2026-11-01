@@ -18,8 +18,9 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
         isOpen: boolean; cloudData: any; localData: any; reason: 'conflict'|'mass_loss';
     }>({ isOpen: false, cloudData: null, localData: null, reason: 'conflict' });
 
-    const calcHash = (d: any) => JSON.stringify(d).length;
-    const lastSnapshotHash = useRef(0);
+    // String length is not a hash: equal-sized edits were silently skipped.
+    const serialize = (d: unknown) => JSON.stringify(d);
+    const lastSnapshot = useRef("");
 
     const countTotalMessages = (sess: Session[]) => sess.reduce((acc, s) => acc + (s.messages ? s.messages.length : 0), 0);
 
@@ -31,16 +32,8 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
             return;
         }
 
-        if (mode === 'auto') {
-            const currentCount = countTotalMessages(sessions);
-            // console.log(`[Sync-Auto] Count Check: Cur=${currentCount} vs Last=${lastSavedMsgCount.current}`);
-            if (currentCount < lastSavedMsgCount.current) {
-                console.warn(`[Sync-Auto] Blocked: Data count decreased.`);
-                setStatus('unsaved');
-                hasUnsavedChanges.current = true;
-                return; 
-            }
-        }
+        // A smaller message count is normal after deletions, regeneration or slot loads.
+        // Severe losses are checked against the last saved snapshot below, not blocked forever.
 
         if (mode === 'manual') {
             if (!confirm("💾 确定要将当前状态写入硬盘吗？\n(覆盖存档)")) {
@@ -53,14 +46,12 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
 
         try {
             const localPayload = { sessions, folders, globalWorldInfo, bgImage };
-            const currentHash = calcHash(localPayload);
-            console.log(`[Sync] Local Hash: ${currentHash}`); 
+            const currentSnapshot = serialize(localPayload);
 
-            const res = await fetch("/api/local/sync");
+            const res = await fetch("/api/local/sync", { cache: "no-store" });
+            if (!res.ok) throw new Error(`Local sync read failed: ${res.status}`);
             const { data: serverData, lastModified } = await res.json();
-            const serverHash = serverData ? calcHash(serverData) : 0;
-            
-            console.log(`[Sync] Server Hash: ${serverHash}, LastMod: ${lastModified}`); 
+            const serverSnapshot = serverData ? serialize(serverData) : "";
 
             if (mode === 'force_pull' || !initLoaded) {
                 console.log(`[Sync] Force Pull Executing...`);
@@ -71,7 +62,7 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
                     setBgImage(serverData.bgImage || null);
                     
                     setLastServerTime(lastModified);
-                    lastSnapshotHash.current = serverHash; 
+                    lastSnapshot.current = serverSnapshot;
                     lastSavedMsgCount.current = countTotalMessages(serverData.sessions || []);
                     hasUnsavedChanges.current = false;
                 }
@@ -80,7 +71,7 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
                 return;
             }
 
-            if (lastModified > lastServerTime && currentHash !== lastSnapshotHash.current) {
+            if (mode !== 'force_push' && lastModified > lastServerTime && serverSnapshot !== lastSnapshot.current) {
                 console.warn(`[Sync] Conflict Detected!`);
                 if (mode === 'manual') {
                     setConflictModal({
@@ -95,21 +86,27 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
                 return;
             }
 
-            if (mode === 'manual' || mode === 'force_push') {
-                if (currentHash < serverHash * 0.8 && serverHash > 1000) {
-                    console.warn(`[Sync] Mass Loss Detected! Cur: ${currentHash}, Server: ${serverHash}`);
+            const currentCount = countTotalMessages(sessions);
+            const diskCount = countTotalMessages(serverData?.sessions || []);
+            const missingMostMessages = diskCount >= 10 && currentCount < diskCount * 0.5;
+            if (mode === 'auto' && missingMostMessages) {
+                // A drastic shrink needs an explicit manual decision; never autosave over it.
+                hasUnsavedChanges.current = true;
+                setStatus('unsaved');
+                return;
+            }
+            if (mode === 'manual' && missingMostMessages) {
                     setConflictModal({
                         isOpen: true,
                         cloudData: { ...serverData, _ts: lastModified },
                         localData: { ...localPayload, _ts: Date.now() },
                         reason: 'mass_loss'
                     });
-                    setStatus('idle');
+                    setStatus('unsaved');
                     return;
-                }
             }
 
-            const hasChanges = currentHash !== lastSnapshotHash.current;
+            const hasChanges = currentSnapshot !== lastSnapshot.current;
             
             if (mode === 'manual' && !hasChanges) {
                 console.log(`[Sync] Manual check - No changes.`);
@@ -131,7 +128,7 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
                 if (saveRes.ok) {
                     const json = await saveRes.json();
                     setLastServerTime(json.lastModified);
-                    lastSnapshotHash.current = currentHash;
+                    lastSnapshot.current = currentSnapshot;
                     lastSavedMsgCount.current = countTotalMessages(sessions);
                     hasUnsavedChanges.current = false;
 

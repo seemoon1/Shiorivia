@@ -19,6 +19,7 @@ export type ChartaCharacter = {
   names: Record<string, string>;
   hex: string;
   avatar: string; // Emoji preset or validated, resized data:image/png/jpeg/webp
+  portrait?: string; // Local-only, disk-backed full-body illustration URL
   description: string;
   createdAt: number;
   updatedAt: number;
@@ -44,7 +45,9 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   if (!isHex(input.hex) || !isAvatar(input.avatar)) throw new Error("A theme color and avatar are required.");
   if (typeof input.description !== "string" || input.description.length > 20000) throw new Error("Character notes exceed the limit.");
   const id = typeof input.id === "string" && /^charta-[a-zA-Z0-9-]{8,90}$/.test(input.id) ? input.id : makeChartaId();
-  return { id, primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, description: input.description,
+  const portrait = typeof input.portrait === "string" && new RegExp(`^/api/local/charta\\?portrait=${id}&v=[0-9]{1,14}$`).test(input.portrait)
+    ? input.portrait : undefined;
+  return { id, primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description,
     createdAt: Number.isFinite(input.createdAt) ? Number(input.createdAt) : Date.now(), updatedAt: Date.now() };
 }
 

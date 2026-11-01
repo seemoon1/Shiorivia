@@ -1,27 +1,9 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, HardDrive, Monitor, Save, Clock, ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { AlertTriangle, HardDrive, Monitor, Save } from "lucide-react";
 
 export const SyncConflictModal = ({ isOpen, cloudData, localData, onResolve, reason }: any) => {
-    const [timeLeft, setTimeLeft] = useState(60);
-
-    useEffect(() => {
-        if (isOpen) {
-            setTimeLeft(60);
-            const timer = setInterval(() => {
-                setTimeLeft((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        onResolve('local'); 
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => clearInterval(timer);
-        }
-    }, [isOpen, onResolve]);
+    // A conflict must never overwrite the disk merely because a timer expired.
 
     if (!isOpen) return null;
 
@@ -100,7 +82,7 @@ export const SyncConflictModal = ({ isOpen, cloudData, localData, onResolve, rea
                 
                 <div className="bg-gray-100 py-1 text-center">
                     <span className="text-[9px] text-gray-400 font-mono flex items-center justify-center gap-1">
-                        <Clock size={8} /> Auto-picking Memory in {timeLeft}s
+                        Save is paused until you choose a version. No automatic overwrite.
                     </span>
                 </div>
             </motion.div>
