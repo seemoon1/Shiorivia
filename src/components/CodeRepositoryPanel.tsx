@@ -112,7 +112,7 @@ const CodeEditor = ({ repository, onUpdate, onClose, isFullScreen, toggleFullScr
 
                     <div className="flex items-center gap-2 font-bold text-slate-200">
                         <Terminal size={14} className="text-emerald-500" />
-                        <span className="hidden md:inline">MUTSU IDE</span>
+                        <span className="hidden md:inline">OFFICINA IDE</span>
                         <span className="md:hidden text-emerald-500 truncate max-w-[100px]">{activeFile}</span>
                     </div>
                 </div>
