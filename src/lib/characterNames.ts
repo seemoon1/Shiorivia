@@ -18,12 +18,12 @@ export const CHARACTER_NAMES = {
 export function characterDisplayName(id: string | undefined, original: string | undefined, locale: Locale): string {
   if (!id || !(id in CHARACTER_NAMES)) return original || id || "";
   const name = CHARACTER_NAMES[id as keyof typeof CHARACTER_NAMES];
-  return locale === "zh-CN" ? name.zh : locale === "ja" ? name.ja : name.romanized;
+  return locale === "zh-CN" ? name.zh : (locale === "zh-TW" || locale === "ja") ? name.ja : name.romanized;
 }
 
 /** Output-name guidance applies only to built-in IDs, never user-created characters. */
 export function characterNameInstruction(locale: Locale): string {
-  const column = locale === "zh-CN" ? "zh" : locale === "ja" ? "ja" : "romanized";
+  const column = locale === "zh-CN" ? "zh" : (locale === "zh-TW" || locale === "ja") ? "ja" : "romanized";
   const list = Object.entries(CHARACTER_NAMES).map(([id, names]) => `${id} = ${names[column]}`).join("; ");
   return `[BUILT-IN CHARACTER NAME POLICY] For built-in characters, use these names in newly generated visible dialogue, prose and explanations: ${list}. Keep machine-readable charId values unchanged. This rule does not rename or translate any existing conversation, user text, world book, character lore, or user-created character. If a user explicitly supplies a nickname or alternate form, respect the narrative context.`;
 }

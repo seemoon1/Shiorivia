@@ -1,4 +1,6 @@
 "use client";
+import { useLanguage } from "../context/LanguageContext";
+import { deepText } from "../lib/i18nDeep";
 
 /** Original-stage labels adapted from the Tsukinomiya timeline selector.
  *  Descriptions are intentionally visible ONLY within this select control.
@@ -23,12 +25,13 @@ export function ViaeTimelineSelect({ value, onChange, className = "" }: {
   onChange: (id: string) => void;
   className?: string;
 }) {
+  const { locale } = useLanguage();
   const known = VIAE_TIMELINES.some(item => item.value === value);
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className={className} aria-label="选择原作时间线">
-      {!known && <option value={value}>T-{value} · 已保存的自定义时间线</option>}
+    <select value={value} onChange={e => onChange(e.target.value)} className={className} aria-label={deepText(locale, "viae.timelineLabel")}>
+      {!known && <option value={value}>T-{value} · {deepText(locale, "viae.customTimeline")}</option>}
       {VIAE_TIMELINES.map(item => (
-        <option key={item.value} value={item.value}>T-{item.value} · {item.description}</option>
+        <option key={item.value} value={item.value}>T-{item.value} · {deepText(locale, `timeline.${item.value}` as import("../lib/i18nDeep").DeepTextKey)}</option>
       ))}
     </select>
   );

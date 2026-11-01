@@ -13,6 +13,7 @@ import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } f
 import { useLanguage } from "../context/LanguageContext";
 import { localText } from "../lib/i18nLocal";
 import { SessionItem } from "./Common";
+import { deepText } from "../lib/i18nDeep";
 import { BatchDeleteModal } from "./BatchDeleteModal";
 
 const checkEnv = async (feature: 'openrouter' | 'google' | 'tavily' | 'sd' | 'tts' | 'music') => {
@@ -151,7 +152,7 @@ export const SidebarLeft = ({
                                             {p.label}
                                         </button>
                                     ))}
-                                    {providers.length === 0 && <p className="col-span-2 px-2 py-2 text-[11px] text-amber-600">请先在 .env.local 配置 API 密钥。</p>}
+                                    {providers.length === 0 && <p className="col-span-2 px-2 py-2 text-[11px] text-amber-600">{deepText(locale, "explorer.noKey")}</p>}
                                 </div>
                                 <p className="mb-2 text-[10px] text-slate-400">{catalogSource === "live" ? "Live models" : "Offline model fallbacks"}</p>
 
@@ -180,12 +181,12 @@ export const SidebarLeft = ({
                         {showChatPanel && (
                             <div className="flex-1 flex flex-col min-h-0 p-2">
                                 <div className="flex justify-between items-center mb-2 px-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Explorer · 所有会话</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Explorer · {deepText(locale, "explorer.title")}</span>
                                     <div className="flex gap-1">
-                                        <button onClick={createFolder} className="p-1 hover:bg-gray-50 rounded text-gray-400" title="New Folder"><FolderPlus size={14} /></button>
-                                        <button onClick={() => { setIsBatchMode(!isBatchMode); setSelectedIds(new Set()); }} className={`p-1 rounded transition-colors ${isBatchMode ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`} title="Batch Manage"><ListChecks size={14} /></button>
+                                        <button onClick={createFolder} className="p-1 hover:bg-gray-50 rounded text-gray-400" title={deepText(locale, "explorer.newFolder")}><FolderPlus size={14} /></button>
+                                        <button onClick={() => { setIsBatchMode(!isBatchMode); setSelectedIds(new Set()); }} className={`p-1 rounded transition-colors ${isBatchMode ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`} title={deepText(locale, "explorer.batch")}><ListChecks size={14} /></button>
                                         <div className="relative">
-                                            <button onClick={() => setShowNewChatMenu(!showNewChatMenu)} className="p-1 hover:bg-emerald-50 rounded text-emerald-600 flex items-center gap-0.5"><Plus size={14} /><ChevronDown size={10} /></button>
+                                            <button onClick={() => setShowNewChatMenu(!showNewChatMenu)} title={deepText(locale, "explorer.new")} className="p-1 hover:bg-emerald-50 rounded text-emerald-600 flex items-center gap-0.5"><Plus size={14} /><ChevronDown size={10} /></button>
                                             <AnimatePresence>
                                                 {showNewChatMenu && (
                                                     <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
@@ -307,10 +308,10 @@ export const SidebarLeft = ({
                             </span>
 
                             <div className="flex gap-1 opacity-50 hover:opacity-100 transition-opacity">
-                                <button onClick={handleExportData} className="p-1 hover:bg-gray-200 rounded text-gray-500" title="Local Backup (JSON)">
+                                <button onClick={handleExportData} className="p-1 hover:bg-gray-200 rounded text-gray-500" title={deepText(locale, "explorer.export")}>
                                     <Download size={12} />
                                 </button>
-                                <button onClick={() => importInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded text-gray-500" title="Restore from JSON">
+                                <button onClick={() => importInputRef.current?.click()} className="p-1 hover:bg-gray-200 rounded text-gray-500" title={deepText(locale, "explorer.import")}>
                                     <Upload size={12} />
                                 </button>
                                 <input type="file" ref={importInputRef} onChange={handleImportData} className="hidden" accept=".json" />

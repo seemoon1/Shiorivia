@@ -20,6 +20,8 @@ import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { localText } from "../lib/i18nLocal";
+import { isUntitledNovel } from "../lib/sessionTitles";
+import { deepText } from "../lib/i18nDeep";
 
 const THEMES = {
     sage: {
@@ -336,7 +338,7 @@ export const NovelInterface = ({
 
             const metaRegex = /<meta title="(.*?)" chapter="(.*?)" \/>/;
             const match = lastMsg.content.match(metaRegex);
-            if (match && updateSessionTitle && (["New Novel", "New Dream", "未命名作品"].includes(currentSession.title))) {
+            if (match && updateSessionTitle && isUntitledNovel(currentSession.title)) {
                 updateSessionTitle(currentSession.id, match[1]);
             }
 
@@ -561,7 +563,7 @@ export const NovelInterface = ({
                             border-b ${theme.border} flex justify-between items-center
                             pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 px-6
                         `}>
-                                <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>TELA · CREATION</div><h2 className={`text-xl font-serif ${theme.title}`}>创作设定</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
+                                <div><div className={`text-[10px] font-bold ${theme.text} opacity-50 uppercase tracking-widest mb-1`}>TELA · CREATION</div><h2 className={`text-xl font-serif ${theme.title}`}>{deepText(locale, "novel.controls")}</h2></div>{isMobile && <button onClick={() => setRightOpen(false)} className={`${theme.text} hover:${theme.accent}`}><X /></button>}</div>
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
                                 <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone={themeMode === "sage" ? "novel-sage" : "novel-paper"} />
@@ -574,11 +576,11 @@ export const NovelInterface = ({
                                 />
 
                                 <div>
-                                    <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> GLOBAL SETTING · 全局设定</label>
+                                    <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> GLOBAL SETTING · {deepText(locale, "novel.outline")}</label>
                                     <textarea
                                         value={outline}
                                         onChange={e => handleOutlineChange(e.target.value)}
-                                        placeholder="全局设定..."
+                                        placeholder={deepText(locale, "novel.outlinePlaceholder")}
                                         className={`w-full h-32 ${theme.inputBg} border ${theme.border} rounded p-3 text-xs ${theme.text} ${theme.focus} outline-none resize-none font-mono ${theme.placeholder}`}
                                     />
                                 </div>
@@ -592,11 +594,11 @@ export const NovelInterface = ({
                                             {!providers.some((p: PublicLocalProvider) => p.id === provider) && <option value={provider}>{provider || "未配置供应商"}</option>}
                                         </select>
                                         <select aria-label="小说模型" value={availableModels.some(m => m.id === selectedModel) ? selectedModel : ""} onChange={e => onModelChange(e.target.value)} className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`}>
-                                            <option value="">手动输入模型 ID</option>
+                                            <option value="">{deepText(locale, "novel.manual")}</option>
                                             {availableModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                         </select>
                                         <input aria-label="小说自定义模型 ID" value={customModelId || ""} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className={`w-full ${theme.inputBg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`} />
-                                        <p className={`text-[10px] ${theme.text} opacity-50`}>当前：{activeModel || "请选择模型"} · 与其他模式同步</p>
+                                        <p className={`text-[10px] ${theme.text} opacity-50`}>{deepText(locale, "novel.current")}：{activeModel || deepText(locale, "novel.manual")} · {deepText(locale, "novel.sync")}</p>
                                     </div>
 
                                     <div>

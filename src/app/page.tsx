@@ -28,6 +28,9 @@ import { EffectType } from "../components/TransitionEffects";
 
 import { useMusic } from "../context/MusicContext";
 import { useLocalFileSync } from "../hooks/useLocalFileSync";
+import { useLanguage } from "../context/LanguageContext";
+import { defaultSessionTitle, sessionGreeting } from "../lib/sessionTitles";
+import { characterDisplayName } from "../lib/characterNames";
 import { useChatEngine } from "../hooks/useChatEngine";
 import { useUI } from "../hooks/useUI";
 import { useFileHandler } from "../hooks/useFileHandler";
@@ -35,6 +38,7 @@ import { useFileHandler } from "../hooks/useFileHandler";
 const Live2DStage = dynamic(() => import("../components/Live2DStage").then(m => m.Live2DStage), { ssr: false });
 
 export default function Home() {
+    const { locale } = useLanguage();
     const [currentSessionId, setCurrentSessionId] = useState<string>("");
     const [activeCharacterId, setActiveCharacterId] = useState("sakiko");
     const [voiceVariant, setVoiceVariant] = useState("black");
@@ -202,14 +206,14 @@ export default function Home() {
             const newId = Date.now().toString();
             const genesisSession: Session = {
                 id: newId,
-                title: "New Project",
+                title: defaultSessionTitle("infinite", locale),
                 folderId: null,
                 characterId: "mutsu", 
                 voiceVariant: "default",
                 memoryMode: "infinite",
                 messages: [{
                     role: "assistant",
-                    content: "Shiorivia is ready.\n我是若叶睦。请下达指令。",
+                    content: sessionGreeting("infinite", characterDisplayName("mutsu", "若叶 睦", locale), locale),
                     modelName: "System"
                 }],
                 updatedAt: Date.now()
@@ -223,7 +227,7 @@ export default function Home() {
             setCurrentSessionId(cloud.sessions[0].id);
             if (cloud.sessions[0].characterId) setActiveCharacterId(cloud.sessions[0].characterId);
         }
-    }, [cloud.sessions, currentSessionId, cloud.initLoaded, settingsHydrated, config.engineeringTransition]);
+    }, [cloud.sessions, currentSessionId, cloud.initLoaded, settingsHydrated, config.engineeringTransition, locale]);
 
     const dynamicCharacter = useMemo(() => {
         const base = CHAR_DATA.find(c => c.id === activeCharacterId) || CHAR_DATA[0];
@@ -272,11 +276,11 @@ export default function Home() {
         const currentMode = currentSession?.memoryMode || 'sliding';
         const nextMode = targetMode || currentMode; 
 
-        const charName = CHARACTERS.find(c => c.id === charId)?.name;
+        const charName = characterDisplayName(charId, CHARACTERS.find(c => c.id === charId)?.name, locale);
 
         let initContent = "";
-        if (nextMode === 'infinite') initContent = `我是${charName}。欢迎来到 Shiorivia。请下达指令。`;
-        if (nextMode === 'chat') initContent = `我是${charName || '你的聊天伙伴'}。今天想聊些什么？`;
+        if (nextMode === 'infinite') initContent = sessionGreeting("infinite", charName, locale);
+        if (nextMode === 'chat') initContent = sessionGreeting("chat", charName, locale);
 
         const initialMessages: any[] = [];
         if (initContent) {
@@ -289,7 +293,7 @@ export default function Home() {
 
         const newSession: Session = {
             id: newId,
-            title: nextMode === 'infinite' ? "New Project" : nextMode === 'sliding' ? "New Story" : nextMode === 'chat' ? "New Chat" : nextMode === 'novel' ? "New Novel" : "VIAE Workspace",
+            title: nextMode === 'lime' ? "VIAE Workspace" : defaultSessionTitle(nextMode, locale),
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -354,14 +358,14 @@ export default function Home() {
             const genesisId = Date.now().toString();
             const genesisSession: Session = {
                 id: genesisId,
-                title: "New Project",
+                title: defaultSessionTitle("infinite", locale),
                 folderId: null,
                 characterId: "mutsu",
                 voiceVariant: "default",
                 memoryMode: "infinite",
                 messages: [{
                     role: "assistant",
-                    content: "Shiorivia is ready.\n我是若叶睦。所有旧世界已归零。",
+                    content: sessionGreeting("infinite", characterDisplayName("mutsu", "若叶 睦", locale), locale),
                     modelName: "System"
                 }],
                 updatedAt: Date.now()
