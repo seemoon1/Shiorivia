@@ -5,6 +5,7 @@ import { calculateNewStats } from "../lib/emotionalEngine";
 import { uploadImageToCloud } from "../lib/cloudUtils";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
 import { useLanguage } from "../context/LanguageContext";
+import { asChartaPromptData } from "../lib/charta";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -13,7 +14,7 @@ export const useChatEngine = ({
     config, 
     setTrackId, showToast, setIsGlobalGenerating,
     manualOutfitId,
-    apiProvider 
+    apiProvider, customCharacters = []
 }: any) => {
     
     const { locale } = useLanguage();
@@ -97,6 +98,7 @@ export const useChatEngine = ({
                     codeRepository: currentSession.codeRepository,
                     provider: apiProvider, 
                     uiLanguage: locale,
+                    customCharacters: customCharacters.map(asChartaPromptData),
                 }),
                 signal: abortControllerRef.current.signal
             });
@@ -140,7 +142,7 @@ export const useChatEngine = ({
                             const r = await fetch("/api/summarize", {
                                 method: "POST", headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    text: `User: ${txt}\n${CHARACTERS.find(c => c.id === activeCharacterId)?.name || 'Character'}: ${fullText}`,
+                                    text: `User: ${txt}\n${customCharacters.find((c: any) => c.id === activeCharacterId)?.names?.[locale] || CHARACTERS.find(c => c.id === activeCharacterId)?.name || 'Character'}: ${fullText}`,
                                     mode: "micro", provider: apiProvider, model: modelToUse, uiLanguage: locale,
                                 }),
                             });

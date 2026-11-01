@@ -32,6 +32,10 @@ import { useLanguage } from "../context/LanguageContext";
 import { defaultSessionTitle, sessionGreeting } from "../lib/sessionTitles";
 import { characterDisplayName } from "../lib/characterNames";
 import { useChatEngine } from "../hooks/useChatEngine";
+import { useChartaCharacters } from "../hooks/useChartaCharacters";
+import { toChartaCharConfig, nameForCharta } from "../lib/charta";
+import { ChartaInterface } from "../components/ChartaInterface";
+import { ChartaPortrait } from "../components/ChartaPortrait";
 import { useUI } from "../hooks/useUI";
 import { useFileHandler } from "../hooks/useFileHandler";
 
@@ -54,6 +58,7 @@ export default function Home() {
 
     const ui = useUI();
     const [showModeHub, setShowModeHub] = useState(true);
+    const [showCharta, setShowCharta] = useState(false);
     const [showSettingsCenter, setShowSettingsCenter] = useState(false);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
 
@@ -68,6 +73,8 @@ export default function Home() {
     }, [activeCharacterId]);
 
     const cloud = useLocalFileSync(isGlobalGenerating, ui.showToast);
+    const charta = useChartaCharacters();
+    const allChars = useMemo(() => [...CHAR_DATA, ...charta.characters.map(char => toChartaCharConfig(char, locale))], [charta.characters, locale]);
 
     const music = useMusic();
 
@@ -189,6 +196,7 @@ export default function Home() {
         setIsGlobalGenerating,
         manualOutfitId,
         apiProvider,
+        customCharacters: charta.characters,
     });
 
     const fileHandler = useFileHandler({
@@ -230,7 +238,7 @@ export default function Home() {
     }, [cloud.sessions, currentSessionId, cloud.initLoaded, settingsHydrated, config.engineeringTransition, locale]);
 
     const dynamicCharacter = useMemo(() => {
-        const base = CHAR_DATA.find(c => c.id === activeCharacterId) || CHAR_DATA[0];
+        const base = allChars.find(c => c.id === activeCharacterId) || CHAR_DATA[0];
 
         let finalChar = { ...base };
 
@@ -269,14 +277,14 @@ export default function Home() {
         }
 
         return finalChar;
-    }, [activeCharacterId, voiceVariant]);
+    }, [activeCharacterId, voiceVariant, allChars]);
 
     const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel' | 'chat' | 'lime') => {
         const newId = Date.now().toString();
         const currentMode = currentSession?.memoryMode || 'sliding';
         const nextMode = targetMode || currentMode; 
 
-        const charName = characterDisplayName(charId, CHARACTERS.find(c => c.id === charId)?.name, locale);
+        const charName = charta.characters.some(c => c.id === charId) ? nameForCharta(charta.characters.find(c => c.id === charId)!, locale) : characterDisplayName(charId, CHARACTERS.find(c => c.id === charId)?.name, locale);
 
         let initContent = "";
         if (nextMode === 'infinite') initContent = sessionGreeting("infinite", charName, locale);
@@ -419,20 +427,28 @@ export default function Home() {
     const stageOutfit = currentSession?.memoryMode === 'chat'
         ? (manualOutfitId || "default")
         : (currentSession?.currentOutfitId || manualOutfitId || "default");
+    const customStage = charta.characters.find(c => c.id === stageCharId);
     const stageDbChar = useMemo(() =>
-        CHAR_DATA.find(c => c.id === stageCharId),
-        [stageCharId]);
+        allChars.find(c => c.id === stageCharId),
+        [stageCharId, allChars]);
 
     const showLive2D = effectiveConfig && (
         effectiveConfig.modelUrl ||
         (effectiveConfig.outfits && Object.keys(effectiveConfig.outfits).length > 0)
     );
 
+    if (showCharta && cloud.initLoaded) {
+        return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove}
+            loaded={charta.loaded} storageError={charta.error}
+            usedIds={cloud.sessions.flatMap(s => [s.characterId, ...((s.limeGroups || []).flatMap(g => g.members))])}
+            onExit={() => setShowCharta(false)} />;
+    }
     if (!cloud.initLoaded || showModeHub) {
         return (
             <>
                 <ModeHub
                     onEnter={enterMode}
+                    onOpenCharta={() => setShowCharta(true)}
                     onResume={() => { if (cloud.initLoaded) setShowModeHub(false); }}
                     onOpenSettings={() => setShowSettingsCenter(true)}
                     hasSession={Boolean(currentSession)}
@@ -469,7 +485,8 @@ export default function Home() {
                 <ViaeInterface
                     session={currentSession}
                     updateSession={(updater) => cloud.setSessions(prev => prev.map(s => s.id === currentSession.id ? updater(s) : s))}
-                    characters={CHAR_DATA}
+                    characters={allChars}
+                    customCharacters={charta.characters}
                     onExit={() => setShowModeHub(true)}
                     onSettings={() => setShowSettingsCenter(true)}
                     providers={visibleProviders}
@@ -533,7 +550,7 @@ export default function Home() {
                 handleSend={engine.handleSend}
                 isLoading={engine.isLoading}
                 createNewSession={createNewSession}
-                dbChars={CHAR_DATA}
+                dbChars={allChars}
                 stopGeneration={engine.stopGeneration}
                 handleRegenerate={engine.handleRegenerate}
                 setIsGlobalGenerating={setIsGlobalGenerating}
@@ -593,7 +610,11 @@ export default function Home() {
                 : dynamicCharacter.hex} bgImage={cloud.bgImage} bgName={currentSession?.currentBackground} />
 
             {stageDbChar && (
-                showLive2D ? (
+                customStage ? (
+                    <div className="pointer-events-none absolute bottom-10 left-1/2 z-[1] -translate-x-1/2 opacity-70">
+                        <ChartaPortrait character={customStage} className="h-48 w-48 rounded-full border-4 border-white/60 shadow-xl sm:h-64 sm:w-64" />
+                    </div>
+                ) : showLive2D ? (
                     <Live2DStage
                         key={stageCharId}
                         characterId={stageCharId}
@@ -610,7 +631,7 @@ export default function Home() {
                             id: stageDbChar.id,     
                             current_sprite: stageMotion
                         }]}
-                        dbChars={CHAR_DATA} 
+                        dbChars={allChars}
                     />
                 )
             )}
@@ -730,7 +751,7 @@ export default function Home() {
                     selectedFile={engine.selectedFile} setSelectedFile={engine.setSelectedFile}
                     fileInputRef={fileHandler.fileInputRef} handleFileSelect={fileHandler.handleFileSelect}
 
-                    dbChars={CHAR_DATA} currentOutfitId={manualOutfitId} setManualOutfitId={setManualOutfitId}
+                    dbChars={allChars} currentOutfitId={manualOutfitId} setManualOutfitId={setManualOutfitId}
                     isGlobalGenerating={isGlobalGenerating}
 
                     apiProvider={apiProvider}
@@ -793,7 +814,7 @@ export default function Home() {
                     }}
                     voiceVariant={voiceVariant} onRepoUpdate={engine.handleRepoUpdate}
                     onCharSwitch={(id: string) => { setActiveCharacterId(id); setVoiceVariant("default"); cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, characterId: id } : s)) }}
-                    dbChars={CHAR_DATA}
+                    dbChars={allChars}
                 />
             </div>
 

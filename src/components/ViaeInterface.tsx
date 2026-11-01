@@ -65,6 +65,7 @@ interface ViaeProps {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
   characters: { id: string; name: string; avatar: string; hex: string; sub?: string }[];
+  customCharacters?: import("../lib/charta").ChartaCharacter[];
   onExit: () => void;
   onSettings: () => void;
   providers: PublicLocalProvider[];
@@ -77,10 +78,10 @@ interface ViaeProps {
   notify: (message: string) => void;
 }
 
-export function ViaeInterface({ session, updateSession, characters, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
+export function ViaeInterface({ session, updateSession, characters, customCharacters = [], onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify }: ViaeProps) {
   const { locale } = useLanguage();
   const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useViaeEngine({
-    session, updateSession, provider, model: customModel.trim() || model, notify,
+    session, updateSession, provider, model: customModel.trim() || model, notify, customCharacters,
   });
   const [creating, setCreating] = useState(false);
   const [kind, setKind] = useState<"direct" | "group">("direct");

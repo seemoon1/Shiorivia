@@ -6,6 +6,7 @@ import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
 import { characterNameInstruction } from "../../../lib/characterNames";
 import { normalizeLocale } from "../../../lib/locale";
+import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/chartaWire";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
 import { BGM_LIBRARY } from "../../../data/bgm_library";
@@ -228,7 +229,9 @@ export async function POST(req: Request) {
       temperature = 0.7, 
     } = body;
 
-    const allChars = CHAR_DATA; 
+    const customCast = chartaWireCharacters(body.customCharacters, body.uiLanguage)
+      .filter(c => !CHAR_DATA.some(builtin => builtin.id === c.id));
+    const allChars = [...CHAR_DATA, ...customCast];
 
     const colorMapObj = {
       "User": "#6A5ACD", "System": "#000000",
@@ -329,7 +332,7 @@ ${COLOR_INSTRUCTION}
       const cast = members.map((id: string) => {
         const char = allChars.find((c: any) => c.id === id);
         const lore = String(LORE_LIBRARY[id] || "").slice(0, 2500);
-        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore}`;
+        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore || customCast.find(c => c.id === id)?.description || ""}`;
       }).join("\n\n");
       const directorTag = "[SCENE_DIRECTION / 场外剧情提示 — NOT SPOKEN IN CHAT]";
       finalSystemPrompt = [
@@ -511,6 +514,7 @@ ${COLOR_INSTRUCTION}
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
     finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
+    finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
     const selectedProvider = getServerLocalProvider(provider);
     if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);

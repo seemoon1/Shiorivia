@@ -2,11 +2,12 @@
 
 import {
   ArrowRight, BookOpen, Hammer, House, TreeDeciduous, Settings2,
-  Route, Sparkles,
+  Route, Sparkles, FilePenLine,
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import type { TranslationKey } from "../lib/i18n";
 import { localText } from "../lib/i18nLocal";
+import { chartaText } from "../lib/chartaText";
 
 type ReadyMode = "infinite" | "sliding" | "novel" | "chat" | "lime";
 
@@ -14,6 +15,7 @@ type ModeHubProps = {
   onEnter: (mode: ReadyMode) => void;
   onResume: () => void;
   onOpenSettings: () => void;
+  onOpenCharta: () => void;
   hasSession: boolean;
   loading?: boolean;
   syncStatus?: "idle" | "syncing" | "error" | "success" | "unsaved";
@@ -52,7 +54,7 @@ const buildModes = (t: (key: TranslationKey) => string) => [
   },
 ] as const;
 
-export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession, loading = false, syncStatus = "idle" }: ModeHubProps) {
+export function ModeHub({ onEnter, onResume, onOpenSettings, onOpenCharta, hasSession, loading = false, syncStatus = "idle" }: ModeHubProps) {
   const { t, locale } = useLanguage();
   const modes = buildModes(t);
   return (
@@ -108,6 +110,12 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, hasSession, loading
               </button>
             );
           })}
+          <button type="button" disabled={loading} onClick={onOpenCharta}
+            className="group flex min-h-[180px] flex-col items-start rounded-2xl border border-[#e2ded3] bg-[#fffdfa] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c7b899] hover:shadow-md disabled:opacity-50">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f1eada] text-[#8d7856]"><FilePenLine size={22}/></div>
+            <div className="mt-4 flex w-full items-baseline justify-between gap-2"><h2 className="text-lg font-bold">Charta <span className="text-xs font-normal text-slate-500">· {({ "zh-CN": "纸", "zh-TW": "紙", en: "Paper", ja: "紙", ko: "종이" } as const)[locale]}</span></h2><ArrowRight size={16} className="text-slate-300 group-hover:text-slate-600"/></div>
+            <p className="mt-2 text-xs leading-6 text-slate-500">{chartaText(locale, "intro")}</p>
+          </button>
         </section>
         <p className="mt-auto pt-10 text-center text-[11px] text-slate-400">Shiorivia · Local-first, your stories stay yours.</p>
       </div>
