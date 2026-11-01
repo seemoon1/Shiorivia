@@ -165,19 +165,44 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               {Object.keys(draft.names).filter(lang=>lang!==draft.primaryLanguage).map(lang=><div key={lang} className="flex items-center gap-2"><span className="w-14 shrink-0 text-xs text-[#809587]">{lang}</span><input value={draft.names[lang]||""} onChange={e=>update({...draft,names:{...draft.names,[lang]:e.target.value}})} placeholder={txt("extraName")} maxLength={100} className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm outline-none focus:border-[#7e9f86]"/><button type="button" title="Remove" onClick={()=>{const next={...draft.names};delete next[lang];update({...draft,names:next});}}><X size={16}/></button></div>)}
               <p className="text-[11px] leading-6 text-[#8ba08f]">{txt("nameHint")}</p>
             </div>
-            <div className="space-y-4"><h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">02 · {txt("appearance")}</h3>
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">02 · {txt("appearance")}</h3>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(250px,0.88fr)] lg:items-stretch">
+                <section aria-label={txt("appearance")} className="min-w-0 rounded-2xl border border-[#dce6dc] bg-[#fcfdfa] p-4 sm:p-5">
               <div className="flex flex-wrap items-start gap-5"><ChartaPortrait character={{avatar:draft.avatar||"📜",hex:draft.hex}} className="h-28 w-28 rounded-2xl border border-[#d4dfd5]"/>
                 <div className="min-w-0 flex-1 space-y-2"><p className="text-xs text-[#6e8472]">{txt("preset")} *</p><div className="flex flex-wrap gap-2">{CHARTA_PRESET_AVATARS.map(a=><button type="button" key={a} onClick={()=>update({...draft,avatar:a})} aria-label={a} aria-pressed={draft.avatar===a} className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl ${draft.avatar===a?"border-[#4b7b5b] bg-[#edf5ec]":"border-[#dce5da] hover:bg-[#f6faf5]"}`}>{a}</button>)}</div><button type="button" onClick={()=>imageRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg border border-[#ccdacc] px-3 py-2 text-xs"><Upload size={14}/>{txt("upload")}</button><p className="text-[10px] text-[#94a596]">{txt("uploadHint")}</p></div>
               </div>
-             <div className="rounded-2xl border border-[#dce5dc] bg-[#f8faf6] p-4 sm:p-5">
-               <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="font-serif text-base text-[#365443]">{txt("standeeTitle")}</h4><p className="mt-1 text-[11px] leading-5 text-[#829888]">{txt("standeeHint")}</p></div><button type="button" disabled={busy} onClick={() => portraitRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdccc] bg-white px-3 py-2 text-xs text-[#456b57] hover:bg-[#edf4ec] disabled:opacity-50"><Upload size={14}/>{txt("standeeUpload")}</button></div>
-               <div className="mt-4 flex min-h-[190px] items-end justify-center overflow-hidden rounded-xl border border-[#e4eae0] bg-[radial-gradient(ellipse_at_bottom,#dae7dc,#f7faf7_70%)]">
-                 {draft.portrait ? <img src={draft.portrait} alt={txt("standeeTitle")} className="max-h-[300px] w-auto max-w-full object-contain object-bottom" /> : <span className="self-center text-xs tracking-wide text-[#94a99a]">{txt("standeeEmpty")}</span>}
-               </div>
-               {draft.portrait && <button type="button" onClick={() => update({ ...draft, portrait: undefined })} className="mt-3 text-xs text-[#9a746f] hover:underline">{txt("standeeRemove")}</button>}
-             </div>
-              <div className="flex flex-wrap items-center gap-3"><label className="text-xs text-[#728976]">{txt("color")} *<input type="color" value={/^#[0-9a-f]{6}$/i.test(draft.hex)?draft.hex:"#799783"} onChange={e=>update({...draft,hex:e.target.value})} className="ml-3 h-9 w-12 cursor-pointer align-middle" /></label><label className="text-xs text-[#728976]">HEX<input value={draft.hex} onChange={e=>update({...draft,hex:e.target.value})} maxLength={7} className="ml-2 w-24 rounded-lg border px-2 py-2 font-mono text-xs"/></label><Palette size={18} className="text-[#8da596]" /></div>
-              <div className="flex flex-wrap gap-2" aria-label={txt("palette")}>{colors.map(c=><button type="button" key={c} onClick={()=>update({...draft,hex:c})} aria-label={c} title={c} aria-pressed={draft.hex===c} className={`h-8 w-8 rounded-full border-2 ${draft.hex===c?"border-[#243b33]":"border-white"}`} style={{backgroundColor:c}}/>)}</div>
+                  <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[#e7eee6] pt-5">
+                    <label className="text-xs text-[#728976]">{txt("color")} *<input type="color" value={/^#[0-9a-f]{6}$/i.test(draft.hex)?draft.hex:"#799783"} onChange={e=>update({...draft,hex:e.target.value})} className="ml-3 h-9 w-12 cursor-pointer align-middle" /></label>
+                    <label className="text-xs text-[#728976]">HEX<input value={draft.hex} onChange={e=>update({...draft,hex:e.target.value})} maxLength={7} className="ml-2 w-24 rounded-lg border px-2 py-2 font-mono text-xs"/></label>
+                    <Palette size={18} className="text-[#8da596]" />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2" aria-label={txt("palette")}>{colors.map(c=><button type="button" key={c} onClick={()=>update({...draft,hex:c})} aria-label={c} title={c} aria-pressed={draft.hex===c} className={`h-8 w-8 rounded-full border-2 ${draft.hex===c?"border-[#243b33]":"border-white"}`} style={{backgroundColor:c}}/>)}</div>
+                </section>
+                <section aria-label={txt("standeeTitle")} className="min-w-0 rounded-2xl border border-[#dce6dc] bg-[#fcfdfa] p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-serif text-lg text-[#365443]">{txt("standeeTitle")}</h4>
+                      <p className="mt-1 max-w-sm text-[11px] leading-6 text-[#829888]">{txt("standeeHint")}</p>
+                    </div>
+                  </div>
+                  <div className="relative mx-auto mt-4 aspect-[2/3] w-full max-w-[285px] overflow-hidden rounded-[20px] border border-[#d4e0d3] bg-[radial-gradient(ellipse_at_50%_85%,#dce9dd_0%,#f8faf6_76%)]">
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-x-7 bottom-0 h-px bg-[#a8bdac]/70" />
+                    {draft.portrait ? (
+                      <img src={draft.portrait} alt={txt("standeeTitle")} className="absolute inset-0 h-full w-full object-contain object-bottom" />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-5 text-center text-[#91a595]">
+                        <span aria-hidden="true" className="font-serif text-4xl font-light text-[#b9cbb9]">✧</span>
+                        <span className="text-xs leading-6">{txt("standeeEmpty")}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <button type="button" disabled={busy} onClick={() => portraitRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdccc] bg-white px-3 py-2 text-xs font-medium text-[#456b57] transition-colors hover:bg-[#edf4ec] disabled:opacity-50"><Upload size={14}/>{txt("standeeUpload")}</button>
+                    {draft.portrait && <button type="button" disabled={busy} onClick={() => update({ ...draft, portrait: undefined })} className="text-xs text-[#9a746f] hover:underline disabled:opacity-50">{txt("standeeRemove")}</button>}
+                  </div>
+                </section>
+              </div>
             </div>
             <div className="space-y-3"><h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">03 · {txt("notes")}</h3><p className="text-xs leading-6 text-[#8a9d8d]">{txt("notesHelp")}</p><textarea value={draft.description} onChange={e=>update({...draft,description:e.target.value})} maxLength={20000} rows={10} className="w-full resize-y rounded-xl border border-[#d7e1d6] bg-[#fbfcf9] p-4 text-sm leading-7 outline-none focus:border-[#7e9f86]"/></div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={!characters.some(c=>c.id===draft.id)} onClick={deleteDraft} className="inline-flex items-center gap-2 rounded-xl border border-rose-100 px-3 py-3 text-xs text-rose-600 disabled:opacity-30"><Trash2 size={15}/>{txt("delete")}</button><div className="flex flex-wrap gap-2"><button type="button" onClick={exportDraft} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-3 text-xs"><Download size={15}/>{txt("export")}</button><button type="button" disabled={busy} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-3 text-xs font-semibold text-white hover:bg-[#355640] disabled:opacity-50"><Save size={15}/>{txt("save")}</button></div></div>

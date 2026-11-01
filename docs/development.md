@@ -2,7 +2,7 @@
 
 ## Prerequisites / 环境
 
-- Git; Node.js and npm (the project currently uses Next.js 14.1.0).
+- Git; Node.js 24 and npm (see `.nvmrc`; Next.js 16.4.3).
 - For optional character asset scanners: Python 3, either installed normally or managed using [uv](https://docs.astral.sh/uv/).
 - A trusted local computer. **Do not expose this development server directly to the public Internet.** See [SECURITY.md](../SECURITY.md).
 

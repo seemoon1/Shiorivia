@@ -6,7 +6,7 @@
 
 - Keep `.env.local`, API keys and `data_storage/` out of Git; rotate keys if accidentally disclosed.
 - LLM prompts, media and search queries are sent to the providers you choose; check their policies.
-- This older project uses Next.js 14 and intentionally defers framework upgrades to a tested modernization phase. Do not assume the current dependencies are patched.
+- The project uses Next.js 16.4.3; run explicit TypeScript and dependency checks. Framework upgrades do not replace a security audit.
 - Treat any community-provided character scripts, assets or plugin code as untrusted; review before executing.
 - Report security concerns privately to the maintainers once a private channel has been published. Avoid posting exploitable details or secrets in public Issues.
 
