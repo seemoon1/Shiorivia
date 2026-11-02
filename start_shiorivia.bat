@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 title Shiorivia - Local Edition
 
 echo.
@@ -14,7 +15,7 @@ echo [1/5] Checking Node.js environment...
 where node >nul 2>nul
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js is NOT installed or not in PATH!
-    echo Please install Node.js v18 or later.
+    echo Please install Node.js 24 LTS.
     pause
     exit /b
 )
@@ -49,7 +50,7 @@ echo [3/5] Checking dependencies...
 if exist "node_modules\" goto :SKIP_INSTALL
 
 echo    - node_modules not found. Installing...
-call npm install
+call npm ci
 if %errorlevel% neq 0 (
     echo [ERROR] npm install failed!
     pause
@@ -59,13 +60,8 @@ echo    - Dependencies installed.
 
 :SKIP_INSTALL
 
-:: 4. 配置文件生成
-echo [4/5] Checking config files...
-if exist "scripts\ensure_configs.js" (
-    node scripts/ensure_configs.js
-) else (
-    echo    - Script 'ensure_configs.js' not found, skipping.
-)
+:: 4. Config files are tracked in src/data (no auto-generator needed).
+echo [4/5] Configuration ready.
 
 :: 5. 启动服务
 echo.
@@ -77,11 +73,9 @@ echo    Status: STARTING...
 echo ==================================================
 echo.
 
-:: 打开浏览器 (稍微延迟一点，防止网页报错)
-timeout /t 3 >nul
-start "" "http://localhost:3000"
-
-:: 启动 Next.js (这是最容易报错的地方)
+:: Start Next.js first. A child PowerShell waits for a successful HTTP response;
+:: opening a browser before the listener exists caused ERR_CONNECTION_REFUSED.
+start "" /b powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$url='http://127.0.0.1:3000'; for($i=0;$i -lt 120;$i++){ try { $r=Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ Start-Process $url; exit 0 } } catch {} ; Start-Sleep -Seconds 1 }; Write-Host '[WARN] Server readiness timed out; see launcher output.'"
 call npm run dev
 
 :: 如果运行到这里，说明服务器崩溃了

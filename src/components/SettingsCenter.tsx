@@ -6,6 +6,8 @@ import {
   Settings2, Sparkles, X,
 } from "lucide-react";
 import type { PublicLocalProvider } from "../lib/localProviders";
+import type { ImageSettings, ProviderCapability } from "../lib/imageSettings";
+import { capabilityFor } from "../lib/imageSettings";
 import { useLanguage } from "../context/LanguageContext";
 import { LANGUAGE_OPTIONS, type Locale } from "../lib/locale";
 
@@ -29,6 +31,15 @@ type Props = {
   providers: PublicLocalProvider[];
   disabledProviders: string[];
   onToggleProvider: (id: string) => void;
+  autoSync: boolean;
+  autoSyncInterval: 3 | 4 | 5;
+  onAutoSyncChange: (enabled: boolean) => void;
+  onAutoSyncIntervalChange: (turns: 3 | 4 | 5) => void;
+  imageSettings: ImageSettings;
+  onImageSettingsChange: (changes: Partial<ImageSettings>) => void;
+  providerCapabilities: Record<string, ProviderCapability>;
+  onProviderCapabilitiesChange: (id: string, changes: Partial<ProviderCapability>) => void;
+  falConfigured: boolean;
 };
 
 type Tab = "general" | "ai" | "media" | "developer";
@@ -71,7 +82,7 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
   );
 }
 
-export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, engineeringTransitionEnabled, onToggleEngineeringTransition, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider }: Props) {
+export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, engineeringTransitionEnabled, onToggleEngineeringTransition, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { t, locale, setLocale } = useLanguage();
 
@@ -136,6 +147,10 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                   <div className="mb-7 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">{t("settings.storyTheme.unavailable")}</div>
                 )}
                 <SectionTitle>{t("settings.data")}</SectionTitle>
+                <div className="mb-6 rounded-2xl border border-[#dce7de] bg-white p-5">
+                  <div className="flex items-center justify-between gap-4"><div><h3 className="text-sm font-semibold text-[#345b48]">自动增量同步</h3><p className="mt-2 text-xs leading-5 text-slate-500">默认关闭。仅在完整对话达到设定轮数后追加新消息；删除和编辑仍需手动保存。</p></div><button type="button" role="switch" aria-checked={autoSync} aria-label="自动增量同步" onClick={() => onAutoSyncChange(!autoSync)} className={`h-6 w-11 shrink-0 rounded-full p-1 transition ${autoSync ? "bg-[#5c927b]" : "bg-slate-200"}`}><span className={`block h-4 w-4 rounded-full bg-white shadow-sm transition ${autoSync ? "translate-x-5" : ""}`}/></button></div>
+                  <label className="mt-4 block text-xs text-[#61786d]">每隔多少轮完整对话同步<select disabled={!autoSync} value={autoSyncInterval} onChange={e => onAutoSyncIntervalChange(Number(e.target.value) as 3 | 4 | 5)} className="mt-2 block w-full rounded-xl border border-[#dce7de] bg-[#f9fbf9] px-3 py-2 text-sm disabled:opacity-40"><option value={3}>3 轮</option><option value={4}>4 轮 · 默认</option><option value={5}>5 轮</option></select></label>
+                </div>
                 <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">
                   <BookOpen size={17} className="mt-0.5 shrink-0 text-[#65927c]" />
                   <span>{t("settings.data.description")}</span>
@@ -155,6 +170,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                         <p className="font-semibold">{provider.label} {activeProvider === provider.id && <span className="ml-1 text-[10px] text-emerald-600">{t("settings.active")}</span>}</p>
                         <p className="mt-1 text-xs text-slate-400">{provider.configured ? t("settings.configured") : t("settings.unconfigured")}{" · "}{provider.custom ? t("settings.custom") : t("settings.default")}</p>
                       </div>
+                      {provider.custom && <div className="flex shrink-0 gap-2 text-[11px] text-slate-600"><label className="flex items-center gap-1"><input type="checkbox" checked={capabilityFor(provider.id, providerCapabilities).llm} onChange={e => onProviderCapabilitiesChange(provider.id, { llm: e.target.checked })}/>LLM</label><label className="flex items-center gap-1"><input type="checkbox" checked={capabilityFor(provider.id, providerCapabilities).image} onChange={e => onProviderCapabilitiesChange(provider.id, { image: e.target.checked })}/>生图</label></div>}
                       <button type="button" disabled={!provider.configured} aria-pressed={!disabledProviders.includes(provider.id)} onClick={() => onToggleProvider(provider.id)}
                         className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold ${disabledProviders.includes(provider.id) ? "border-slate-200 bg-slate-50 text-slate-400" : "border-emerald-200 bg-emerald-50 text-emerald-700"} disabled:opacity-40`}>
                         {disabledProviders.includes(provider.id) ? t("settings.disabled") : t("settings.enabled")}
@@ -166,6 +182,21 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <SectionTitle>{t("settings.extensions")}</SectionTitle>
                 <SwitchRow title={t("settings.webSearch")} description={t("settings.webSearch.description")} checked={values.webSearch} onClick={() => onToggle("webSearch")} icon={Globe2} />
                 <SwitchRow title={t("settings.imageGen")} description={t("settings.imageGen.description")} checked={values.imageGen} onClick={() => onToggle("imageGen")} icon={ImageIcon} />
+                <div className="mt-4 space-y-3 rounded-2xl border border-[#e0e9df] bg-[#fcfdfb] p-4">
+                  <p className="text-xs font-semibold tracking-widest text-[#4b705e]">IMAGE STUDIO · 生图设置</p>
+                  <label className="block text-xs text-slate-600">图像供应商<select value={imageSettings.provider} onChange={e => onImageSettingsChange({provider: e.target.value})} className="mt-1 block w-full rounded-lg border bg-white p-2 text-sm">
+                    <option value="comfyui">ComfyUI · Local</option>
+                    {falConfigured && <option value="fal">fal.ai</option>}
+                    {providers.filter(p => p.configured && (p.id === 'google' || p.id === 'openrouter' || (p.custom && capabilityFor(p.id, providerCapabilities).image))).map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select></label>
+                  <label className="block text-xs text-slate-600">模型 ID / ComfyUI Checkpoint 名称<input value={imageSettings.model} onChange={e => onImageSettingsChange({model:e.target.value})} placeholder="输入生图模型 ID 或 .safetensors 文件名" className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
+                  <label className="block text-xs text-slate-600">正面风格提示词<textarea rows={2} value={imageSettings.positive} onChange={e => onImageSettingsChange({positive:e.target.value})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
+                  <label className="block text-xs text-slate-600">负面提示词<textarea rows={2} value={imageSettings.negative} onChange={e => onImageSettingsChange({negative:e.target.value})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {([['width','宽度'],['height','高度'],['steps','步数'],['cfg','CFG']] as const).map(([key,label]) => <label key={key} className="text-xs text-slate-600">{label}<input type="number" min={1} max={2048} value={imageSettings[key]} onChange={e => onImageSettingsChange({[key]:Number(e.target.value)})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>)}
+                  </div>
+                  <p className="text-[11px] leading-5 text-slate-500">ComfyUI 默认只注入场景描述；自定义工作流使用 data_storage/comfyui-workflow.json，正负面和模型名由你掌控。</p>
+                </div>
               </section>
             )}
 
@@ -174,7 +205,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <h2 className="mb-2 text-xl font-bold">{t("settings.media")}</h2>
                 <p className="mb-8 text-sm text-slate-400">{t("settings.media.description")}</p>
                 <SectionTitle>{t("settings.voiceAndMusic")}</SectionTitle>
-                <SwitchRow title={t("settings.tts")} description={t("settings.tts.description")} checked={values.tts} onClick={() => onToggle("tts")} icon={Mic} />
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-400"><Mic size={18}/><span>{t("settings.tts")} · 开发中 / In development</span></div>
                 <SwitchRow title={t("settings.autoDJ")} description={t("settings.autoDJ.description")} checked={values.musicControl} onClick={() => onToggle("musicControl")} icon={Music2} />
               </section>
             )}

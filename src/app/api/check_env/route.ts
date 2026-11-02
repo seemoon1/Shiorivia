@@ -11,8 +11,10 @@ export async function GET() {
     hasGoogle: !!process.env.GOOGLE_API_KEY,
     hasTavily: !!process.env.TAVILY_API_KEY,
     
-    hasSdUrl: !!process.env.NEXT_PUBLIC_SD_API_URL, 
-    hasTtsUrl: !!process.env.GPT_SOVITS_API_URL,
+    hasComfy: Boolean(process.env.COMFYUI_URL),
+    hasFal: Boolean(process.env.FAL_KEY),
+    hasSdUrl: Boolean(process.env.COMFYUI_URL), // compatibility with older callers
+    hasTtsUrl: false, // TTS adapters are paused
 
     hasMusic: hasValidMusic
   });

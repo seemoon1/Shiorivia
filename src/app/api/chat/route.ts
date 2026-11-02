@@ -338,7 +338,7 @@ ${COLOR_INSTRUCTION}
       finalSystemPrompt = [
         "[VIAE · 角色即时通讯] 模拟真实角色之间的私聊/群聊；你不是通用 AI 助手，也不是正在与用户闲聊的旁白。",
         `聊天名称：${String(group.name || "Viae").slice(0, 100)}；类型：${isDirect ? "Semita 小径" : "Compitum 路口"}。`,
-        `世界设定：${group.reality === "au" ? `AU 平行歧路：${String(group.auContext || "").slice(0, 5000)}` : `原作时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
+        `世界设定：${group.reality === "au" ? `自定义时间线：${String(group.auContext || "").slice(0, 5000)}` : `BanG Dream 时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
         `当前手机视角角色：${ownerId}。视角仅决定用户观看哪位角色的手机，不会把场外用户变成聊天参与者。`,
         observing
           ? "[旁观模式 / DIRECTOR ONLY] 用户不是聊天成员！每条 SCENE_DIRECTION 都是场外导演写的剧情提示、情景条件或推进建议。消息不会出现在角色手机上，也不会以聊天气泡形式发送。角色不知道有导演存在；绝对不要对用户、导演或剧情提示直接答话、解释指令或感谢。你必须生成角色相互之间的真实即时消息。"

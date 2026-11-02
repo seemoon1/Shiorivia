@@ -3,7 +3,7 @@
 ## Prerequisites / 环境
 
 - Git; Node.js 24 and npm (see `.nvmrc`; Next.js 16.4.3).
-- For optional character asset scanners: Python 3, either installed normally or managed using [uv](https://docs.astral.sh/uv/).
+- Character sprites are uploaded in Charta; retired background, Live2D and sprite scanners are no longer required.
 - A trusted local computer. **Do not expose this development server directly to the public Internet.** See [SECURITY.md](../SECURITY.md).
 
 ## Run locally / 本地启动
@@ -27,16 +27,12 @@ Edit `.env.local` and fill in only the values you use. Empty values in the examp
 
 **No default `ACCESS_CODE` is provided.** Without it, access-code validation returns HTTP 503. Do not commit real credentials or paste them into bug reports. `.gitignore` helps prevent accidents but does not protect secrets that were already committed; rotate any exposed key.
 
-## Optional asset scanners / 可选素材扫描
+## Local assets / 本地素材
 
-For example, on a Windows machine with uv managing Python:
-
-```powershell
-uv run --no-project --python 3.12 scripts/scan_live2d_local.py
-uv run --no-project --python 3.12 scripts/scan_tachie.py
-```
-
-These scripts scan your own `public/live2d/` and `public/tachie/` directories and update configuration files under `src/data/`. Only use media you have permission to redistribute. The `mutsu` character ID is not a reference to the old product name.
+Open **Charta** to upload a portrait for a custom character. See [Charta portraits](charta-portraits.md).
+For optional image generation with ComfyUI or a configured image provider, see [Image Studio](image-studio.md).
+Live2D remains paused pending licensing review. You must supply artwork you have the right to use.
+Automatic full background switching is disabled; user-picked backgrounds remain supported.
 
 ## Verify / 验证
 

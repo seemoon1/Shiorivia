@@ -29,6 +29,8 @@ import { EffectType } from "../components/TransitionEffects";
 
 import { useMusic } from "../context/MusicContext";
 import { useLocalFileSync } from "../hooks/useLocalFileSync";
+import { DEFAULT_SYNC_PREFERENCES, readLocalSyncPreferences } from "../lib/localSyncPreferences";
+import { DEFAULT_IMAGE_SETTINGS, capabilityFor, type ImageSettings, type ProviderCapability } from "../lib/imageSettings";
 import { useLanguage } from "../context/LanguageContext";
 import { defaultSessionTitle, sessionGreeting } from "../lib/sessionTitles";
 import { characterDisplayName } from "../lib/characterNames";
@@ -73,7 +75,13 @@ export default function Home() {
         if (!config) console.warn("⚠️ Config is missing! Live2DStage will NOT render.");
     }, [activeCharacterId]);
 
-    const cloud = useLocalFileSync(isGlobalGenerating, ui.showToast);
+    const [syncPreferences, setSyncPreferences] = useState(DEFAULT_SYNC_PREFERENCES);
+    useEffect(() => { setSyncPreferences(readLocalSyncPreferences()); }, []);
+    const updateSyncPreferences = (next: typeof syncPreferences) => {
+        setSyncPreferences(next);
+        try { localStorage.setItem("shiorivia_sync_preferences_v1", JSON.stringify(next)); } catch {}
+    };
+    const cloud = useLocalFileSync(isGlobalGenerating, ui.showToast, syncPreferences);
     const charta = useChartaCharacters();
     const allChars = useMemo(() => [...CHAR_DATA, ...charta.characters.map(char => toChartaCharConfig(char, locale))], [charta.characters, locale]);
 
@@ -86,6 +94,7 @@ export default function Home() {
         musicControl: false,
         engineeringTransition: false,
         storyTheme: "sky" as StoryTheme,
+        imageSettings: DEFAULT_IMAGE_SETTINGS,
         selectedModel: "google/gemini-3-flash-preview",
         customModelId: "",
         expandedGroups: ["Gemini (Google)"] as string[]
@@ -94,6 +103,8 @@ export default function Home() {
     const [apiProvider, setApiProvider] = useState<string>('openrouter');
     const [settingsHydrated, setSettingsHydrated] = useState(false);
     const [disabledProviders, setDisabledProviders] = useState<string[]>([]);
+    const [providerCapabilities, setProviderCapabilities] = useState<Record<string, ProviderCapability>>({});
+    const [falConfigured, setFalConfigured] = useState(false);
     const [allProviders, setAllProviders] = useState<PublicLocalProvider[]>(DEFAULT_LOCAL_PROVIDERS);
     useEffect(() => {
         try {
@@ -102,11 +113,21 @@ export default function Home() {
             if (saved && typeof saved === "object") {
                 if (Array.isArray(saved.disabledProviders)) setDisabledProviders(saved.disabledProviders.filter((x: unknown) => typeof x === "string"));
                 if (typeof saved.apiProvider === "string") setApiProvider(saved.apiProvider);
+                if (saved.providerCapabilities && typeof saved.providerCapabilities === "object") {
+                    const caps: Record<string, ProviderCapability> = {};
+                    for (const [id, entry] of Object.entries(saved.providerCapabilities as Record<string, any>)) {
+                        if (/^custom_[1-4]$/.test(id)) caps[id] = { llm: entry?.llm !== false, image: entry?.image === true };
+                    }
+                    setProviderCapabilities(caps);
+                }
                 setConfig(prev => ({
                     ...prev,
                     webSearch: typeof saved.webSearch === "boolean" ? saved.webSearch : prev.webSearch,
                     imageGen: typeof saved.imageGen === "boolean" ? saved.imageGen : prev.imageGen,
-                    tts: typeof saved.tts === "boolean" ? saved.tts : prev.tts,
+                    imageSettings: saved.imageSettings && typeof saved.imageSettings === "object"
+                        ? { ...DEFAULT_IMAGE_SETTINGS, ...Object.fromEntries(Object.entries(saved.imageSettings).filter(([k]) => k in DEFAULT_IMAGE_SETTINGS)) }
+                        : prev.imageSettings,
+                    tts: false, // TTS is under development
                     musicControl: typeof saved.musicControl === "boolean" ? saved.musicControl : prev.musicControl,
                     engineeringTransition: typeof saved.engineeringTransition === "boolean" ? saved.engineeringTransition : false,
                     storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
@@ -122,14 +143,15 @@ export default function Home() {
     useEffect(() => {
         if (!settingsHydrated) return;
         try {
-            const { webSearch, imageGen, tts, musicControl, engineeringTransition, storyTheme } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts, musicControl, engineeringTransition, storyTheme, disabledProviders, apiProvider }));
+            const { webSearch, imageGen, tts, musicControl, engineeringTransition, storyTheme, imageSettings } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, engineeringTransition, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.engineeringTransition, config.storyTheme, disabledProviders, apiProvider]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.engineeringTransition, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
 
-    const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders, disabledProviders), [allProviders, disabledProviders]);
+    const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders.filter(p => !p.custom || capabilityFor(p.id, providerCapabilities).llm), disabledProviders), [allProviders, disabledProviders, providerCapabilities]);
+    useEffect(() => { fetch('/api/check_env').then(r => r.json()).then(d => setFalConfigured(Boolean(d.hasFal))).catch(() => {}); }, []);
     useEffect(() => {
         let active = true;
         fetch('/api/providers', { cache: 'no-store' }).then(r => r.json()).then(data => {
@@ -164,7 +186,10 @@ export default function Home() {
                 const env = await res.json();
                 const available: Record<SettingKey, boolean> = {
                     webSearch: Boolean(env.hasTavily),
-                    imageGen: Boolean(env.hasSdUrl),
+                    imageGen: config.imageSettings.provider === "comfyui" ? Boolean(env.hasComfy)
+                        : config.imageSettings.provider === "fal" ? Boolean(env.hasFal)
+                        : allProviders.some(p => p.id === config.imageSettings.provider && p.configured &&
+                            (!p.custom || capabilityFor(p.id, providerCapabilities).image)),
                     tts: Boolean(env.hasTtsUrl),
                     musicControl: Boolean(env.hasMusic),
                 };
@@ -474,6 +499,15 @@ export default function Home() {
                     providers={allProviders}
                     disabledProviders={disabledProviders}
                     onToggleProvider={toggleProviderDisabled}
+                    autoSync={syncPreferences.autoSync}
+                    autoSyncInterval={syncPreferences.autoSyncInterval}
+                    onAutoSyncChange={(autoSync) => updateSyncPreferences({ ...syncPreferences, autoSync })}
+                    onAutoSyncIntervalChange={(autoSyncInterval) => updateSyncPreferences({ ...syncPreferences, autoSyncInterval })}
+                        imageSettings={config.imageSettings}
+                        onImageSettingsChange={(patch) => setConfig(prev => ({...prev, imageSettings: {...prev.imageSettings, ...patch}}))}
+                        providerCapabilities={providerCapabilities}
+                        onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
+                        falConfigured={falConfigured}
                 />
                 <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
             </>
@@ -517,6 +551,15 @@ export default function Home() {
                     providers={allProviders}
                     disabledProviders={disabledProviders}
                     onToggleProvider={toggleProviderDisabled}
+                    autoSync={syncPreferences.autoSync}
+                    autoSyncInterval={syncPreferences.autoSyncInterval}
+                    onAutoSyncChange={(autoSync) => updateSyncPreferences({ ...syncPreferences, autoSync })}
+                    onAutoSyncIntervalChange={(autoSyncInterval) => updateSyncPreferences({ ...syncPreferences, autoSyncInterval })}
+                    imageSettings={config.imageSettings}
+                    onImageSettingsChange={(patch) => setConfig(prev => ({...prev, imageSettings: {...prev.imageSettings, ...patch}}))}
+                    providerCapabilities={providerCapabilities}
+                    onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
+                    falConfigured={falConfigured}
                 />
                 {ui.toast && <div role="status" className="fixed bottom-5 left-1/2 z-[300] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm text-white shadow-lg">{ui.toast}</div>}
             </>
@@ -595,6 +638,15 @@ export default function Home() {
                 providers={allProviders}
                 disabledProviders={disabledProviders}
                 onToggleProvider={toggleProviderDisabled}
+                autoSync={syncPreferences.autoSync}
+                autoSyncInterval={syncPreferences.autoSyncInterval}
+                onAutoSyncChange={(autoSync) => updateSyncPreferences({ ...syncPreferences, autoSync })}
+                onAutoSyncIntervalChange={(autoSyncInterval) => updateSyncPreferences({ ...syncPreferences, autoSyncInterval })}
+                imageSettings={config.imageSettings}
+                onImageSettingsChange={(patch) => setConfig(prev => ({...prev, imageSettings: {...prev.imageSettings, ...patch}}))}
+                providerCapabilities={providerCapabilities}
+                onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
+                falConfigured={falConfigured}
             />
             </>
         );
@@ -609,7 +661,7 @@ export default function Home() {
         >
             <Background hex={currentSession?.memoryMode === 'sliding'
                 ? ({ sky: "#e0f2fe", sage: "#b7d3b0", rose: "#f4c6d2" }[config.storyTheme])
-                : dynamicCharacter.hex} bgImage={cloud.bgImage} bgName={currentSession?.currentBackground} />
+                : dynamicCharacter.hex} bgImage={cloud.bgImage} />
 
             {stageDbChar && (
                 customStage ? (
@@ -881,6 +933,15 @@ export default function Home() {
                 providers={allProviders}
                 disabledProviders={disabledProviders}
                 onToggleProvider={toggleProviderDisabled}
+                autoSync={syncPreferences.autoSync}
+                autoSyncInterval={syncPreferences.autoSyncInterval}
+                onAutoSyncChange={(autoSync) => updateSyncPreferences({ ...syncPreferences, autoSync })}
+                onAutoSyncIntervalChange={(autoSyncInterval) => updateSyncPreferences({ ...syncPreferences, autoSyncInterval })}
+                imageSettings={config.imageSettings}
+                onImageSettingsChange={(patch) => setConfig(prev => ({...prev, imageSettings: {...prev.imageSettings, ...patch}}))}
+                providerCapabilities={providerCapabilities}
+                onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
+                falConfigured={falConfigured}
             />
             <MemoryVaultModal
                 open={showMemoryVault}

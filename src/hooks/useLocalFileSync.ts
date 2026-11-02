@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Session, ChatFolder } from "../types";
+import { collectAppendDeltas, completedTurns } from "../lib/appendSync";
+import type { LocalSyncPreferences } from "../lib/localSyncPreferences";
 
-export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: string) => void) => {
+export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: string) => void, preferences: LocalSyncPreferences) => {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [folders, setFolders] = useState<ChatFolder[]>([]);
     const [globalWorldInfo, setGlobalWorldInfo] = useState("");
@@ -27,10 +29,7 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
     const performSync = useCallback(async (mode: 'auto' | 'manual' | 'force_push' | 'force_pull') => {
         console.log(`[Sync] Triggered. Mode: ${mode}`); 
 
-        if (isGlobalGenerating && mode === 'auto') {
-            console.log(`[Sync] Skipped: Generating...`);
-            return;
-        }
+        if (mode === 'auto' && (isGlobalGenerating || !preferences.autoSync)) return;
 
         // A smaller message count is normal after deletions, regeneration or slot loads.
         // Severe losses are checked against the last saved snapshot below, not blocked forever.
@@ -83,6 +82,21 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
                 } else {
                     setStatus('error');
                 }
+                return;
+            }
+
+            if (mode === 'auto') {
+                // Compare only appendable, completed messages against the last disk snapshot.
+                // Character metadata, edits and deletions NEVER write automatically.
+                const saved = lastSnapshot.current ? JSON.parse(lastSnapshot.current) : null;
+                const deltas = saved ? collectAppendDeltas(sessions, saved.sessions || []) : [];
+                if (completedTurns(deltas) < preferences.autoSyncInterval) { setStatus('unsaved'); return; }
+                const append = await fetch('/api/local/sync/append', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deltas }) });
+                if (!append.ok) { setStatus('unsaved'); return; }
+                const result = await append.json();
+                lastSnapshot.current = serialize(result.data);
+                setLastServerTime(result.lastModified);
+                setStatus(currentSnapshot === lastSnapshot.current ? 'success' : 'unsaved');
                 return;
             }
 
@@ -147,15 +161,16 @@ export const useLocalFileSync = (isGlobalGenerating: boolean, showToast: (msg: s
             console.error("[Sync] CRITICAL ERROR:", e);
             setStatus('error');
         }
-    }, [sessions, folders, globalWorldInfo, bgImage, initLoaded, lastServerTime]);
+    }, [sessions, folders, globalWorldInfo, bgImage, initLoaded, lastServerTime, preferences.autoSync, preferences.autoSyncInterval, isGlobalGenerating]);
 
     useEffect(() => {
         if (!initLoaded) return;
         hasUnsavedChanges.current = true;
         setStatus('unsaved');
-        const timer = setTimeout(() => { performSync('auto'); }, 2000);
+        if (!preferences.autoSync || isGlobalGenerating) return;
+        const timer = setTimeout(() => { void performSync('auto'); }, 2500);
         return () => clearTimeout(timer);
-    }, [sessions, folders, globalWorldInfo, bgImage]);
+    }, [sessions, folders, globalWorldInfo, bgImage, preferences.autoSync, preferences.autoSyncInterval, isGlobalGenerating]);
 
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {

@@ -46,7 +46,7 @@ Shiorivia 是一个**本地优先的沉浸式 AI 交互与创作前端**。它�
 
 聊天存档保存在项目根目录的 `data_storage/`；Charta 档案与上传立绘保存在 `data_storage/charta/`。建议定期备份整个目录。需要联网调用第三方模型时，对话内容会发送给所选择的服务商；**本地优先不代表模型可以离线推理**。
 
-**素材与许可：** 使用自己的立绘、背景和音乐；传统静态立绘也可以通过 `scripts/scan_tachie.py` 配置。Live2D 因 SDK 授权与再分发问题**暂缓开发，默认关闭**，不得在公开分发包中附带未获许可的 Cubism Core。Shiorivia 是非官方同人项目，第三方角色和素材权利归原权利人所有。源码遵循 [AGPL-3.0](LICENSE)，官方名称与视觉标识另见 [品牌政策](TRADEMARKS.md)。
+**素材与许可：** 在 Charta 中上传自定义角色立绘，使用有权使用的背景与音乐。原有素材扫描脚本已停用。Live2D 因 SDK 授权与再分发问题**暂缓开发，默认关闭**，不得在公开分发包中附带未获许可的 Cubism Core。Shiorivia 是非官方同人项目，第三方角色和素材权利归原权利人所有。源码遵循 [AGPL-3.0](LICENSE)，官方名称与视觉标识另见 [品牌政策](TRADEMARKS.md)。
 
 ---
 
@@ -76,7 +76,7 @@ Shiorivia 是一款**本機優先的沉浸式 AI 互動與創作前端**，將�
 
 對話存檔儲存在專案根目錄的 `data_storage/`；Charta 角色檔案及立繪儲存在 `data_storage/charta/`。請定期備份。呼叫外部模型時，相關內容會傳送至選定的服務商；**本機優先不等於離線推論**。
 
-**素材與授權：** 請使用有權使用的立繪、背景與音樂。傳統立繪可透過 `scripts/scan_tachie.py` 設定。Live2D 因 SDK 授權與散布疑慮而**暫停開發，預設關閉**；請勿公開散布未取得授權的 Cubism Core。本專案為非官方同人作品，第三方角色及素材權利由各權利人保留。程式碼依 [AGPL-3.0](LICENSE) 開源，品牌標識另依[品牌政策](TRADEMARKS.md) 管理。
+**素材與授權：** 請使用有權使用的立繪、背景與音樂；自訂角色立繪可從 Charta 上傳，舊素材掃描腳本已停用。Live2D 因 SDK 授權與散布疑慮而**暫停開發，預設關閉**；請勿公開散布未取得授權的 Cubism Core。本專案為非官方同人作品，第三方角色及素材權利由各權利人保留。程式碼依 [AGPL-3.0](LICENSE) 開源，品牌標識另依[品牌政策](TRADEMARKS.md) 管理。
 
 ---
 
@@ -106,7 +106,7 @@ The UI supports **Simplified Chinese, Traditional Chinese, English, Japanese, an
 
 Chat saves live under `data_storage/` in the project root. Charta profiles and uploaded illustrations live under `data_storage/charta/`. Back up that directory regularly. Prompts sent to externally hosted models leave your computer for the provider you selected: **local-first storage is not offline model inference**.
 
-**Assets and rights:** Bring artwork, backgrounds, and music you have permission to use; classic sprite assets can also be indexed using `scripts/scan_tachie.py`. Live2D development is **paused and disabled by default** pending SDK licensing and redistribution review. Do not publicly distribute a proprietary Cubism Core without appropriate rights. Shiorivia is an unofficial fan project; third-party characters and artwork remain subject to their owners' rights. Source code is under [AGPL-3.0](LICENSE); official branding is governed separately by the [marks policy](TRADEMARKS.md).
+**Assets and rights:** Bring artwork, backgrounds, and music you have permission to use. Upload custom-character stage portraits through Charta; the legacy scanners have been removed. Live2D development is **paused and disabled by default** pending SDK licensing and redistribution review. Do not publicly distribute a proprietary Cubism Core without appropriate rights. Shiorivia is an unofficial fan project; third-party characters and artwork remain subject to their owners' rights. Source code is under [AGPL-3.0](LICENSE); official branding is governed separately by the [marks policy](TRADEMARKS.md).
 
 ---
 
@@ -136,7 +136,7 @@ UI は**簡体字中国語、繁体字中国語、英語、日本語、韓国語
 
 会話データはプロジェクト直下の `data_storage/`、Charta の設定と立ち絵は `data_storage/charta/` に保存されます。定期的にバックアップしてください。外部 AI モデルを利用すると、会話内容は選択したサービスに送信されます。**ローカル優先はオフライン推論を意味しません**。
 
-**素材・ライセンス：** 利用権のある画像や音楽を用意してください。従来の立ち絵は `scripts/scan_tachie.py` でも登録できます。Live2D は SDK のライセンスと再配布を確認するため、**開発を一時停止し、初期状態では無効**にしています。権利を持たない Cubism Core を公開配布しないでください。本作は非公式のファンプロジェクトです。第三者のキャラクターや素材の権利は各権利者に帰属します。コードは [AGPL-3.0](LICENSE)、公式の名称・ロゴは別途[ブランドポリシー](TRADEMARKS.md)に従います。
+**素材・ライセンス：** 利用権のある画像や音楽を用意し、オリジナルキャラクターの立ち絵は Charta から登録してください。従来の自動スキャン用スクリプトは削除されました。Live2D は SDK のライセンスと再配布を確認するため、**開発を一時停止し、初期状態では無効**にしています。権利を持たない Cubism Core を公開配布しないでください。本作は非公式のファンプロジェクトです。第三者のキャラクターや素材の権利は各権利者に帰属します。コードは [AGPL-3.0](LICENSE)、公式の名称・ロゴは別途[ブランドポリシー](TRADEMARKS.md)に従います。
 
 ---
 
@@ -166,7 +166,7 @@ UI는 **중국어 간체, 중국어 번체, 영어, 일본어, 한국어**를 �
 
 대화 저장 데이터는 프로젝트의 `data_storage/` 폴더에, Charta 캐릭터 설정과 일러스트는 `data_storage/charta/`에 보관됩니다. 폴더 전체를 정기적으로 백업하세요. 외부 모델 사용 시 대화 내용은 선택한 제공업체로 전송됩니다. **로컬 우선 저장 방식이 오프라인 AI 추론을 뜻하지는 않습니다**.
 
-**에셋 및 라이선스:** 사용 권한이 있는 그림, 배경, 음악을 준비하세요. 기존 캐릭터 스프라이트는 `scripts/scan_tachie.py`로 등록할 수도 있습니다. Live2D는 SDK 라이선스와 재배포 문제를 검토하기 위해 **개발이 잠정 중단되었고 기본적으로 비활성화**되어 있습니다. 권리가 없는 Cubism Core를 공개 배포하지 마세요. Shiorivia는 비공식 팬 프로젝트이며 제삼자 캐릭터와 콘텐츠의 권리는 원저작자에게 있습니다. 코드는 [AGPL-3.0](LICENSE), 공식 브랜드는 별도의 [브랜드 정책](TRADEMARKS.md)을 따릅니다.
+**에셋 및 라이선스:** 사용 권한이 있는 그림, 배경, 음악을 준비하세요. 커스텀 캐릭터 스탠딩 이미지는 Charta에서 업로드할 수 있으며 기존 자동 스캔 스크립트는 제거되었습니다. Live2D는 SDK 라이선스와 재배포 문제를 검토하기 위해 **개발이 잠정 중단되었고 기본적으로 비활성화**되어 있습니다. 권리가 없는 Cubism Core를 공개 배포하지 마세요. Shiorivia는 비공식 팬 프로젝트이며 제삼자 캐릭터와 콘텐츠의 권리는 원저작자에게 있습니다. 코드는 [AGPL-3.0](LICENSE), 공식 브랜드는 별도의 [브랜드 정책](TRADEMARKS.md)을 따릅니다.
 
 ---
 

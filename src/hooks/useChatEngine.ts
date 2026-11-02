@@ -201,13 +201,30 @@ export const useChatEngine = ({
                     try {
                         setIsGlobalGenerating(true);
                         
+                        const subjectId = drawCmd.charId || activeCharacterId;
+                        const subjectName = customCharacters.find((c: any) => c.id === subjectId)?.names?.[locale]
+                            || CHARACTERS.find(c => c.id === subjectId)?.name || subjectId;
+                        const rawStatus = currentSession?.charStatus;
+                        const subjectStatus = Array.isArray(rawStatus)
+                            ? rawStatus.find((s: any) => s?.name === subjectName) || rawStatus[0]
+                            : rawStatus;
+                        const appearance = [subjectStatus?.clothing, subjectStatus?.bodyState, subjectStatus?.innerState]
+                            .filter((item: unknown) => typeof item === 'string').join('; ').slice(0, 600);
+                        const scenePrompt = [drawCmd.description, `character: ${subjectName}`,
+                            `outfit: ${drawCmd.outfitId || manualOutfitId || 'default'}`,
+                            appearance ? `current state: ${appearance}` : ''].filter(Boolean).join(', ');
                         const drawPayload = {
                             outfitId: drawCmd.outfitId || manualOutfitId || "casual", 
                             charId: drawCmd.charId || activeCharacterId,
-                            description: drawCmd.description,
-                            negativePrompt: drawCmd.negativePrompt,
-                            isErotic: config.erotic,
-                            ...drawCmd.parameters
+                            description: scenePrompt,
+                            provider: config.imageSettings?.provider || 'comfyui',
+                            model: config.imageSettings?.model || '',
+                            positive: config.imageSettings?.positive || '',
+                            negative: config.imageSettings?.negative || '',
+                            width: config.imageSettings?.width,
+                            height: config.imageSettings?.height,
+                            steps: config.imageSettings?.steps,
+                            cfg: config.imageSettings?.cfg
                         };
 
                         const configRes = await fetch("/api/draw", {
@@ -241,6 +258,8 @@ export const useChatEngine = ({
                                 }));
                                 showToast("🎨 Render Complete");
                             }
+                        } else {
+                            showToast(`❌ Render Failed: ${drawData.error || 'Unknown image error'}`);
                         }
                     } catch (e) { 
                         console.error("Auto-Draw Failed:", e); 
