@@ -197,7 +197,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                     {([['width','宽度'],['height','高度'],['steps','步数'],['cfg','CFG']] as const).map(([key,label]) => <label key={key} className="text-xs text-slate-600">{label}<input type="number" min={1} max={2048} value={imageSettings[key]} onChange={e => onImageSettingsChange({[key]:Number(e.target.value)})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>)}
                   </div>
                   </div>}
-                  <p className="text-[11px] leading-5 text-slate-500">ComfyUI 从 API 工作流读取模型、CLIP、KSampler 和尺寸；Shiorivia 只填入 {{SHIORIVIA_SCENE}}。保存至 data_storage/comfyui-workflow.json。</p>
+                  <p className="text-[11px] leading-5 text-slate-500">ComfyUI 从 API 工作流读取模型、CLIP、KSampler 和尺寸；Shiorivia 只填入 {"{{SHIORIVIA_SCENE}}"}。保存至 data_storage/comfyui-workflow.json。</p>
                 </div>
               </section>
             )}
