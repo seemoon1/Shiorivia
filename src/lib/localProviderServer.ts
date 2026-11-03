@@ -16,7 +16,7 @@ function normalizeBaseURL(raw: string): string | null {
 
 export function serverLocalProviders(): ServerLocalProvider[] {
   const defaults = DEFAULT_LOCAL_PROVIDERS.map((p) => {
-    const apiKey = (p.id === "deepseek" ? process.env.DEEPSEEK_API_KEY
+    const apiKey = (p.id === "fal" ? process.env.FAL_KEY : p.id === "deepseek" ? process.env.DEEPSEEK_API_KEY
       : p.id === "google" ? process.env.GOOGLE_API_KEY
       : process.env.OPENROUTER_API_KEY) || "";
     const baseURL = p.id === "deepseek" ? "https://api.deepseek.com"

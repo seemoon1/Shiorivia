@@ -1,5 +1,6 @@
 /** ComfyUI API-format workflow injection: replace scene placeholders only.
  * User-controlled model/style prompts, LoRA nodes and workflow graph are preserved.
+ * The workflow controls all literal values; only marked placeholders are substituted.
  */
 export type WorkflowGraph = Record<string, { class_type: string; inputs: Record<string, unknown> }>;
 export function injectComfyScene(workflow: WorkflowGraph, options: {

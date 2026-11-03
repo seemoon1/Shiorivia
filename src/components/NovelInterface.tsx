@@ -14,7 +14,8 @@ import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModal";
 import { useMusic } from "../context/MusicContext";
 import { smartColorize } from "../lib/textFormatter";
-import { parseDrawTag } from "../lib/parseDraw"; 
+import { parseDrawTag } from "../lib/parseDraw";
+import { buildDrawRequest } from "../lib/drawRequest";
 import { cleanDrawTag } from "../lib/parseDraw"; 
 import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
 import { useLanguage } from "../context/LanguageContext";
@@ -157,6 +158,7 @@ export const NovelInterface = ({
     handleRegenerate, createNewSession,
     stopGeneration, setIsGlobalGenerating,
     onImageGenerated, setSessions,
+    onGenerateDraw, imageSettings, debugMode, useImageGen, showToast,
     syncStatus, onManualSync,
     initialSelectedModel,
     provider, providers = [], onProviderChange,
@@ -211,6 +213,17 @@ export const NovelInterface = ({
 
     const [dynamicBg, setDynamicBg] = useState<string | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+
+    const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+    const confirmNovelDraw = async (index: number) => {
+        if (drawingIndex !== null) return;
+        if (!useImageGen) { showToast('请先在设置中启用生图功能'); return; }
+        if (!window.confirm('确认按当前设置生成这幅插图吗？')) return;
+        setDrawingIndex(index);
+        try { await onGenerateDraw(index); }
+        catch (error) { showToast(`插图生成失败：${error instanceof Error ? error.message : '未知错误'}`); }
+        finally { setDrawingIndex(null); }
+    };
 
     const generateImage = async (cmdOrPrompt: any) => {
         const cmd = typeof cmdOrPrompt === 'string' ? { description: cmdOrPrompt } : cmdOrPrompt;
@@ -268,7 +281,7 @@ export const NovelInterface = ({
 
                             if (setSessions && currentSession && anchorIndex !== -1) {
                                 const sessionId = currentSession.id;
-                                const drawTag = `<draw>${prompt}</draw>`;
+                                const drawTag = `<draw>${cmd.description}</draw>`;
 
                                 setSessions((prevSessions: any[]) => {
                                     return prevSessions.map(s => {
@@ -342,16 +355,7 @@ export const NovelInterface = ({
                 updateSessionTitle(currentSession.id, match[1]);
             }
 
-            const drawCmd = parseDrawTag(lastMsg.content);
-
-            if (drawCmd && drawCmd.trigger && !isDrawing) {
-                if (drawCmd.description !== lastDrawPromptRef.current) {
-                    lastDrawPromptRef.current = drawCmd.description;
-
-                    console.log("🎨 Novel Auto-Draw Triggered:", drawCmd);
-                    generateImage(drawCmd); 
-                }
-            }
+            // Illustrations remain as pending <draw> instructions until the user confirms.
         }
     }, [currentSession?.messages, isLoading]);
 
@@ -502,6 +506,20 @@ export const NovelInterface = ({
                                     <div className="flex items-center gap-4 mb-8 opacity-30 justify-center"><div className={`h-px ${theme.text} w-12`}></div><span className="font-mono text-xs tracking-widest uppercase">{title}</span><div className={`h-px ${theme.text} w-12`}></div></div>
                                     <div className={`prose ${theme.prose} prose-lg md:prose-xl leading-loose ${theme.text} font-serif whitespace-pre-wrap`}>
                                         <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} theme={theme} />
+
+                                        {parseDrawTag(msg.content)?.trigger && (
+                                            <button type="button" disabled={drawingIndex !== null || isLoading}
+                                                onClick={() => void confirmNovelDraw(msg.realIndex)}
+                                                className="mt-5 flex items-center gap-3 rounded-xl border border-[#d7ccb4] bg-[#fffdf8]/80 px-4 py-3 text-xs text-[#7b6a4d] transition hover:bg-[#f7f1df] disabled:opacity-50">
+                                                <Sparkles size={15}/><span>插图待生成</span>
+                                                <span className="ml-auto text-[11px]">{drawingIndex === msg.realIndex ? '生成中…' : '点击生成'}</span>
+                                            </button>
+                                        )}
+                                        {debugMode && (msg.content.includes('<draw>') || msg.content.includes('<draw_log>')) && (
+                                            <pre className="mt-4 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#18232f] p-3 text-left font-mono text-[11px] text-[#d7e7df]">
+                                                {JSON.stringify({ instruction: msg.content.match(/<(?:draw|draw_log)>([\s\S]*?)<\/(?:draw|draw_log)>/)?.[1], request: buildDrawRequest(msg.content.replaceAll('<draw_log>', '<draw>').replaceAll('</draw_log>', '</draw>'), { activeCharacterId: selectedCharIds[0] || currentSession.characterId, characters: chars, charStatus: currentSession.charStatus, settings: imageSettings }) }, null, 2)}
+                                            </pre>
+                                        )}
                                     </div>
                                 </div>
                             )

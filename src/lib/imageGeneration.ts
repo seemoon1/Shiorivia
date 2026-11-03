@@ -26,7 +26,6 @@ export async function generateImage(payload: DrawRequest): Promise<{ image: stri
   if (provider === 'comfyui') {
     const target = process.env.COMFYUI_URL;
     if (!target) throw Error('Set COMFYUI_URL in .env.local first');
-    if (!model) throw Error('Choose your ComfyUI checkpoint filename in Image Studio');
     const url = new URL(target);
     if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw Error('ComfyUI must use a local loopback HTTP address');
     const root = url.origin;
@@ -35,7 +34,38 @@ export async function generateImage(payload: DrawRequest): Promise<{ image: stri
     let workflow: WorkflowGraph;
     try { workflow = JSON.parse(await fs.readFile(custom, 'utf8')); }
     catch (e) { if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e; workflow = JSON.parse(await fs.readFile(fallback, 'utf8')); }
+    // A saved ComfyUI API graph owns its checkpoint, CLIP, LoRAs and sampler.
+    // Shiorivia only replaces explicit placeholders; no inferred checkpoint override.
     const graph = injectComfyScene(workflow, { scene, positive, negative, model, width, height, steps, cfg, seed });
+    const loaders = Object.values(graph).filter(node => node?.class_type === 'CheckpointLoaderSimple');
+    const unresolved = loaders.some(node => node.inputs.ckpt_name === '{{SHIORIVIA_MODEL}}');
+    if (unresolved && !model) throw Error('Choose a checkpoint in Image Studio or export your configured ComfyUI API workflow to data_storage/comfyui-workflow.json');
+    if (loaders.length) {
+      // Read the names installed on THIS ComfyUI instance; never hardcode a model catalog.
+      try {
+        const infoRes = await fetch(root + '/object_info/CheckpointLoaderSimple', { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+        if (infoRes.ok) {
+          const info = await jsonBody(infoRes);
+          const candidates: unknown = info?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0];
+          if (Array.isArray(candidates) && candidates.every(item => typeof item === 'string')) {
+            const installed = candidates as string[];
+            for (const loader of loaders) {
+              const wanted = loader.inputs.ckpt_name;
+              if (typeof wanted !== 'string' || wanted.includes('{{')) continue;
+              if (installed.includes(wanted)) continue;
+              const exact = installed.filter(v => v.toLowerCase() === wanted.toLowerCase());
+              const byStem = installed.filter(v => v.replace(/\.(safetensors|ckpt|pt)$/i, '').toLowerCase() === wanted.replace(/\.(safetensors|ckpt|pt)$/i, '').toLowerCase());
+              const matches = exact.length ? exact : byStem;
+              if (matches.length === 1) loader.inputs.ckpt_name = matches[0];
+              else throw Error(`ComfyUI checkpoint not found: ${wanted}. Available: ${installed.slice(0, 12).join(', ') || '(none)'}`);
+            }
+          }
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('ComfyUI checkpoint not found:')) throw e;
+        // Older/custom ComfyUI nodes may not expose object_info; let the backend validate.
+      }
+    }
     const queued = await fetch(root + '/prompt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: graph, client_id: crypto.randomUUID() }), signal: AbortSignal.timeout(20000) });
     const submission = await jsonBody(queued);
     if (!queued.ok || !submission.prompt_id) throw Error('ComfyUI rejected workflow: ' + JSON.stringify(submission).slice(0, 400));

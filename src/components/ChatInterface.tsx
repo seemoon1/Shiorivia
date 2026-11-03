@@ -11,6 +11,7 @@ import {
     ToggleLeft, ToggleRight, Skull, Binary, CloudRain, AlertTriangle
 } from "lucide-react";
 import { ThinkingBlock } from "./Common";
+import { buildDrawRequest } from "../lib/drawRequest";
 import { CHARACTERS } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
@@ -22,16 +23,15 @@ import ReactMarkdown from "react-markdown";
 import { smartColorize } from "../lib/textFormatter";
 import { cleanDrawTag } from "../lib/parseDraw";
 
-const DrawPlaceholder = () => (
-    <div className="flex items-center gap-3 p-3 my-4 bg-gray-50/50 border border-purple-200/50 rounded-xl animate-pulse backdrop-blur-sm">
-        <div className="p-2 bg-purple-100 rounded-full">
-            <Sparkles size={16} className="text-purple-500 animate-spin-slow" />
-        </div>
-        <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-purple-700 tracking-wide">AI ARCHITECT</span>
-            <span className="text-[10px] text-purple-400 font-mono">Constructing visual memory...</span>
-        </div>
-    </div>
+const DrawPlaceholder = ({ onGenerate, busy, disabled }: {
+    onGenerate: () => void; busy: boolean; disabled: boolean;
+}) => (
+    <button type="button" disabled={disabled} onClick={onGenerate}
+        className="group/draw my-2 flex items-center gap-3 rounded-xl border border-[#e2d9c6] bg-[#fffdf8] px-4 py-3 text-left shadow-[0_2px_10px_rgba(83,67,43,0.04)] transition-colors hover:border-[#bda77c] hover:bg-[#fcf8ed] disabled:cursor-wait disabled:opacity-60">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f1eadc] text-[#967b4d]"><ImageIcon size={16}/></span>
+        <span className="text-xs font-medium text-[#6d604c]">插图待生成</span>
+        <span className="ml-auto text-[11px] text-[#9f8b6b]">{busy ? '生成中…' : '点击生成'}</span>
+    </button>
 );
 
 const renderContent = (text: string) => {
@@ -52,7 +52,7 @@ const renderContent = (text: string) => {
             <div className="flex flex-col gap-2">
                 <span className="whitespace-pre-wrap leading-relaxed">
                     {segments.map((segment, i) => {
-                        if (segment.startsWith("<draw>")) return <DrawPlaceholder key={i} />;
+                        // Draw tags have been stripped; their pending cards render below each assistant reply.
 
                         const textParts = smartColorize(segment);
                         return (
@@ -266,6 +266,7 @@ export const ChatInterface = ({
     toggleWardrobe,
     apiProvider, setApiProvider,
     debugMode, setDebugMode,
+    onGenerateDraw, imageSettings, useImageGen,
     triggerEffect,
 
     currentOutfitId,
@@ -282,6 +283,16 @@ export const ChatInterface = ({
     const { isPlaying } = useMusic();
 
     const [showWardrobe, setShowWardrobe] = useState(false);
+    const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+    const confirmDraw = async (index: number) => {
+        if (drawingIndex !== null) return;
+        if (!useImageGen) { showToast('请先在设置中启用生图功能'); return; }
+        if (!window.confirm('确认按当前设置生成这幅插图吗？')) return;
+        setDrawingIndex(index);
+        try { await onGenerateDraw(index); }
+        catch (error) { showToast(`插图生成失败：${error instanceof Error ? error.message : '未知错误'}`); }
+        finally { setDrawingIndex(null); }
+    };
 
     const [showMobileTopMenu, setShowMobileTopMenu] = useState(false);
 
@@ -610,6 +621,11 @@ export const ChatInterface = ({
                     const logDrawMatch = txt.match(/<draw_log>([\s\S]*?)<\/draw_log>/);
 
                     const rawDrawContent = (activeDrawMatch ? activeDrawMatch[1] : (logDrawMatch ? logDrawMatch[1] : null))?.trim();
+                    const drawDebugRequest = rawDrawContent && msg.role === 'assistant'
+                        ? buildDrawRequest(activeDrawMatch ? txt : txt.replaceAll("<draw_log>", "<draw>").replaceAll("</draw_log>", "</draw>"), { activeCharacterId: msg.characterId || currentSession.characterId,
+                            characters: dbChars, charStatus: currentSession.charStatus,
+                            settings: imageSettings })
+                        : null;
 
                     const msgCharId = msg.characterId || currentSession.characterId;
                     const msgChar = (dbChars?.length ? dbChars : CHARACTERS).find((c: any) => c.id === msgCharId) || currentCharacter;
@@ -635,11 +651,15 @@ export const ChatInterface = ({
 
                                 {thought && currentSession.memoryMode === 'infinite' && <ThinkingBlock thought={thought} />}
 
-                                {answer && (
+                                {answer && (msg.role !== 'assistant' || Boolean(cleanDrawTag(answer).trim())) && (
                                     <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm w-fit ${msg.role === 'user' ? 'bg-slate-800 text-white rounded-br-none ml-auto' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'}`}>
                                         {msg.role === 'assistant' ? renderContent(answer) : <div className="whitespace-pre-wrap">{answer}</div>}
                                         {msg.role === 'assistant' && msg.modelName && <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-1.5 text-[9px] font-bold tracking-wider opacity-40 uppercase"><Cpu size={10} /> {msg.modelName.split('/').pop()}</div>}
                                     </div>
+                                )}
+                                {msg.role === 'assistant' && activeDrawMatch && (
+                                    <DrawPlaceholder busy={drawingIndex === i} disabled={drawingIndex !== null}
+                                        onGenerate={() => void confirmDraw(i)} />
                                 )}
 
                                 {debugMode && rawDrawContent && msg.role === 'assistant' && (
@@ -648,12 +668,12 @@ export const ChatInterface = ({
                                             <span className="flex items-center gap-2 font-bold tracking-wider">
                                                 <Terminal size={12} /> AI VISUAL INSTRUCTION
                                             </span>
-                                            <span className="text-[9px] opacity-50">RAW JSON</span>
+                                            <span className="text-[9px] opacity-50">DEBUG · FULL REQUEST</span>
                                         </div>
                                         <pre className="whitespace-pre-wrap break-all text-gray-300">
                                             {(() => {
-                                                try { return JSON.stringify(JSON.parse(rawDrawContent), null, 2); }
-                                                catch { return rawDrawContent; }
+                                                try { return JSON.stringify({ instruction: JSON.parse(rawDrawContent), request: drawDebugRequest }, null, 2); }
+                                                catch { return JSON.stringify({ instruction: rawDrawContent, request: drawDebugRequest }, null, 2); }
                                             })()}
                                         </pre>
                                     </div>

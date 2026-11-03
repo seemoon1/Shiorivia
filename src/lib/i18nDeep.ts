@@ -68,7 +68,7 @@ const strings: Record<string, readonly [string, string, string, string, string]>
   "timeline.4-5": ["MyGO!!!!! · 矛盾与暂时分离", "MyGO!!!!! · 衝突與短暫分離", "MyGO!!!!! · Conflict and separation", "MyGO!!!!! · 亀裂と一時的な別れ", "MyGO!!!!! · 갈등과 일시적 이별"],
   "timeline.5-6": ["MyGO!!!!! · 重聚之后（诗超绊）", "MyGO!!!!! · 重聚後（詩超絆）", "MyGO!!!!! · Reunited (Utakotoba)", "MyGO!!!!! · 再集結（詩超絆）", "MyGO!!!!! · 재결합 이후"],
   "timeline.6-7": ["Ave Mujica · 成立与出道", "Ave Mujica · 成立與出道", "Ave Mujica · Formation and debut", "Ave Mujica · 結成とデビュー", "Ave Mujica · 결성과 데뷔"],
-  "timeline.7-8": ["Ave Mujica · 假设的解散时期", "Ave Mujica · 假設的解散時期", "Ave Mujica · Hypothetical breakup", "Ave Mujica · 仮想の解散期", "Ave Mujica · 가상의 해산"],
+  "timeline.7-8": ["Ave Mujica · 解散时期", "Ave Mujica · 解散時期", "Ave Mujica · Breakup period", "Ave Mujica · 解散期", "Ave Mujica · 해산 시기"],
   "timeline.8-9": ["Ave Mujica · 重组与和解", "Ave Mujica · 重組與和解", "Ave Mujica · Reunion and reconciliation", "Ave Mujica · 再結成と和解", "Ave Mujica · 재결성과 화해"],
   "timeline.9-10": ["未来 · 后日谈", "未來 · 後日談", "Future · After story", "未来 · 後日談", "미래 · 후일담"],
   "viae.paths": ["道路", "道路", "Your paths", "あなたの道", "나의 길"],

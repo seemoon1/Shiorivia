@@ -14,7 +14,7 @@ export const VIAE_TIMELINES = [
   { value: "4-5", description: "MyGO!!!!! · 矛盾与暂时分离" },
   { value: "5-6", description: "MyGO!!!!! · 重聚之后（诗超绊）" },
   { value: "6-7", description: "Ave Mujica · 成立与出道" },
-  { value: "7-8", description: "Ave Mujica · 假设的解散时期" },
+  { value: "7-8", description: "Ave Mujica · 解散时期" },
   { value: "8-9", description: "Ave Mujica · 重组与和解" },
   { value: "9-10", description: "Future · 后日谈与未来" },
 ] as const;

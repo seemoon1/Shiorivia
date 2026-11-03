@@ -167,7 +167,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                   {providers.map((provider) => (
                     <div key={provider.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
                       <div className="min-w-0">
-                        <p className="font-semibold">{provider.label} {activeProvider === provider.id && <span className="ml-1 text-[10px] text-emerald-600">{t("settings.active")}</span>}</p>
+                        <p className="font-semibold">{provider.label} {provider.id === "fal" && <span className="ml-2 text-[10px] font-normal text-[#71917d]">IMAGE ONLY</span>} {provider.id !== "fal" && activeProvider === provider.id && <span className="ml-1 text-[10px] text-emerald-600">{t("settings.active")}</span>}</p>
                         <p className="mt-1 text-xs text-slate-400">{provider.configured ? t("settings.configured") : t("settings.unconfigured")}{" · "}{provider.custom ? t("settings.custom") : t("settings.default")}</p>
                       </div>
                       {provider.custom && <div className="flex shrink-0 gap-2 text-[11px] text-slate-600"><label className="flex items-center gap-1"><input type="checkbox" checked={capabilityFor(provider.id, providerCapabilities).llm} onChange={e => onProviderCapabilitiesChange(provider.id, { llm: e.target.checked })}/>LLM</label><label className="flex items-center gap-1"><input type="checkbox" checked={capabilityFor(provider.id, providerCapabilities).image} onChange={e => onProviderCapabilitiesChange(provider.id, { image: e.target.checked })}/>生图</label></div>}
@@ -186,16 +186,18 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                   <p className="text-xs font-semibold tracking-widest text-[#4b705e]">IMAGE STUDIO · 生图设置</p>
                   <label className="block text-xs text-slate-600">图像供应商<select value={imageSettings.provider} onChange={e => onImageSettingsChange({provider: e.target.value})} className="mt-1 block w-full rounded-lg border bg-white p-2 text-sm">
                     <option value="comfyui">ComfyUI · Local</option>
-                    {falConfigured && <option value="fal">fal.ai</option>}
+                    {falConfigured && !disabledProviders.includes("fal") && <option value="fal">fal.ai</option>}
                     {providers.filter(p => p.configured && (p.id === 'google' || p.id === 'openrouter' || (p.custom && capabilityFor(p.id, providerCapabilities).image))).map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select></label>
-                  <label className="block text-xs text-slate-600">模型 ID / ComfyUI Checkpoint 名称<input value={imageSettings.model} onChange={e => onImageSettingsChange({model:e.target.value})} placeholder="输入生图模型 ID 或 .safetensors 文件名" className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
+                  <label className="block text-xs text-slate-600">{imageSettings.provider === "comfyui" ? "模板 Checkpoint（可选；自定义工作流以 ComfyUI 为准）" : "生图模型 ID"}<input value={imageSettings.model} onChange={e => onImageSettingsChange({model:e.target.value})} placeholder={imageSettings.provider === "comfyui" ? "可留空，使用 ComfyUI 工作流的模型" : "请输入供应商模型 ID"} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
+                  {imageSettings.provider !== "comfyui" && <div className="space-y-3">
                   <label className="block text-xs text-slate-600">正面风格提示词<textarea rows={2} value={imageSettings.positive} onChange={e => onImageSettingsChange({positive:e.target.value})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
                   <label className="block text-xs text-slate-600">负面提示词<textarea rows={2} value={imageSettings.negative} onChange={e => onImageSettingsChange({negative:e.target.value})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {([['width','宽度'],['height','高度'],['steps','步数'],['cfg','CFG']] as const).map(([key,label]) => <label key={key} className="text-xs text-slate-600">{label}<input type="number" min={1} max={2048} value={imageSettings[key]} onChange={e => onImageSettingsChange({[key]:Number(e.target.value)})} className="mt-1 w-full rounded-lg border bg-white p-2 text-sm"/></label>)}
                   </div>
-                  <p className="text-[11px] leading-5 text-slate-500">ComfyUI 默认只注入场景描述；自定义工作流使用 data_storage/comfyui-workflow.json，正负面和模型名由你掌控。</p>
+                  </div>}
+                  <p className="text-[11px] leading-5 text-slate-500">ComfyUI 从 API 工作流读取模型、CLIP、KSampler 和尺寸；Shiorivia 只填入 {{SHIORIVIA_SCENE}}。保存至 data_storage/comfyui-workflow.json。</p>
                 </div>
               </section>
             )}

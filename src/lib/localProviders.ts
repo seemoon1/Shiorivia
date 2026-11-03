@@ -1,5 +1,5 @@
 /** Safe, browser-readable provider metadata. Never put API credentials here. */
-export type LocalProviderId = "deepseek" | "openrouter" | "google" | `custom_${1 | 2 | 3 | 4}`;
+export type LocalProviderId = "deepseek" | "openrouter" | "google" | "fal" | `custom_${1 | 2 | 3 | 4}`;
 export type LocalModel = { id: string; name: string };
 export type LocalModelGroup = { groupName: string; models: LocalModel[] };
 export type PublicLocalProvider = {
@@ -13,6 +13,7 @@ export const DEFAULT_LOCAL_PROVIDERS: PublicLocalProvider[] = [
   { id: "deepseek", label: "DeepSeek", configured: false, custom: false },
   { id: "openrouter", label: "OpenRouter", configured: false, custom: false },
   { id: "google", label: "Google", configured: false, custom: false },
+  { id: "fal", label: "fal.ai", configured: false, custom: false },
 ];
 
 // Safe fallbacks while offline or before the provider's live /models request completes.
@@ -41,7 +42,7 @@ export function defaultModelForProvider(id: string): string {
 /** Custom providers take priority. Only four provider buttons are visible at once. */
 export function getVisibleLocalProviders(providers: PublicLocalProvider[], disabled: string[]): PublicLocalProvider[] {
   return [...providers]
-    .filter((p) => p.configured && !disabled.includes(p.id))
+    .filter((p) => p.id !== "fal" && p.configured && !disabled.includes(p.id))
     .sort((a, b) => Number(b.custom) - Number(a.custom))
     .slice(0, 4);
 }

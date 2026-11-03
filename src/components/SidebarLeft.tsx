@@ -249,57 +249,6 @@ export const SidebarLeft = ({
                         )}
                     </div>
 
-                    <div className="p-3 border-t border-gray-100 bg-gray-50/30">
-                        <div className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">System Control</div>
-                        <div className="flex flex-col gap-1.5">
-                            <button onClick={async () => {
-                                if (!useWebSearch) { 
-                                    if (await checkEnv('tavily')) toggleWebSearch();
-                                } else {
-                                    toggleWebSearch(); 
-                                }
-                            }} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold border transition-all ${useWebSearch ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-white text-gray-400'}`}>
-                                <div className="flex items-center gap-2"><Globe size={14} /><span>Web Search</span></div>
-                                <span className="text-[9px]">{useWebSearch ? 'ON' : 'OFF'}</span>
-                            </button>
-
-                            <button onClick={async () => {
-                                if (!useImageGen) {
-                                    if (await checkEnv('sd')) toggleImageGen();
-                                } else {
-                                    toggleImageGen();
-                                }
-                            }} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold border transition-all ${useImageGen ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-white text-gray-400'}`}>
-                                <div className="flex items-center gap-2"><ImageIcon size={14} /><span>Visualizer</span></div>
-                                <span className="text-[9px]">{useImageGen ? 'ON' : 'OFF'}</span>
-                            </button>
-
-                            <button onClick={async () => {
-                                if (!useTTS) {
-                                    if (await checkEnv('tts')) toggleTTS();
-                                } else {
-                                    toggleTTS();
-                                }
-                            }} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold border transition-all ${useTTS ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white text-gray-400'}`}>
-                                <div className="flex items-center gap-2"><Mic size={14} /><span>Voice Module</span></div>
-                                <span className="text-[9px]">{useTTS ? 'ACTIVE' : 'OFF'}</span>
-                            </button>
-
-                            <button onClick={async () => {
-                                if (!useMusicControl) {
-                                    if (await checkEnv('music')) toggleMusicControl();
-                                } else {
-                                    toggleMusicControl();
-                                }
-                            }} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold border transition-all ${useMusicControl ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white text-gray-400'}`}>
-                                <div className="flex items-center gap-2">
-                                    <Disc size={14} />
-                                    <span>Auto DJ</span>
-                                </div>
-                                <span className="text-[9px]">{useMusicControl ? 'ON' : 'OFF'}</span>
-                            </button>
-                        </div>
-                    </div>
 
                     <div className="p-3">
                         <div className="flex justify-between items-center mb-2">

@@ -601,6 +601,7 @@ export default function Home() {
                 dbChars={allChars}
                 stopGeneration={engine.stopGeneration}
                 handleRegenerate={engine.handleRegenerate}
+                onGenerateDraw={engine.generateDraw} imageSettings={config.imageSettings} debugMode={ui.debugMode} useImageGen={config.imageGen} showToast={ui.showToast}
                 setIsGlobalGenerating={setIsGlobalGenerating}
                 onImageGenerated={async (base64: string, meta: any) => {
                     const res = await fetch("/api/upload", {
@@ -818,6 +819,7 @@ export default function Home() {
 
                     handleSend={engine.handleSend} stopGeneration={engine.stopGeneration}
                     handleRegenerate={engine.handleRegenerate} handleDeleteMessage={engine.handleDeleteMessage}
+                    onGenerateDraw={engine.generateDraw} imageSettings={config.imageSettings} useImageGen={config.imageGen}
                     handleCopy={(t: string, i: number) => {
                         navigator.clipboard.writeText(t);
                         setCopiedIndex(i); 

@@ -3,6 +3,7 @@ import { CHARACTERS, Session } from "../types";
 import { formatLocalMemoryEntries, parseLocalMemoryEntries, LOCAL_STM_SLOTS } from "../lib/localMemory";
 import { calculateNewStats } from "../lib/emotionalEngine";
 import { uploadImageToCloud } from "../lib/cloudUtils";
+import { buildDrawRequest } from "../lib/drawRequest";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
 import { useLanguage } from "../context/LanguageContext";
 import { asChartaPromptData } from "../lib/charta";
@@ -194,7 +195,7 @@ export const useChatEngine = ({
 
             const drawCmd = parseDrawTag(currentText);
             
-            if (drawCmd && drawCmd.trigger && config.imageGen) {
+            if (false && drawCmd && drawCmd.trigger && config.imageGen) { // Legacy auto-render path disabled; requests require user confirmation.
                 const targetDrawTag = `<draw>${currentText.match(/<draw>([\s\S]*?)<\/draw>/)?.[1] || ""}</draw>`;
 
                 (async () => {
@@ -301,7 +302,7 @@ export const useChatEngine = ({
                         capturedState.character = [{ ...aiSuggestedRaw, ...finalStats }];
                     }
 
-                    if (capturedState.imageGen?.trigger && config.imageGen) {
+                    if (false && capturedState.imageGen?.trigger && config.imageGen) { // No automatic rendering from legacy game_state.
                         setIsGlobalGenerating(true);
                         showToast("🎨 Visualizer: Rendering...");
                         
@@ -335,6 +336,18 @@ export const useChatEngine = ({
                             } catch (e) { console.error(e); }
                             finally { setIsGlobalGenerating(false); }
                         })();
+                    }
+
+                    if (capturedState.imageGen?.trigger && config.imageGen && !/<draw>[\s\S]*?<\/draw>/.test(currentText)) {
+                        const image = capturedState.imageGen;
+                        const instruction = {
+                            charId: image.charId || activeCharacterId,
+                            outfitId: image.outfitId || manualOutfitId || 'default',
+                            description: [image.emotion, image.description].filter(Boolean).join(', '),
+                        };
+                        currentText += `
+
+<draw>${JSON.stringify(instruction)}</draw>`;
                     }
 
                     if (capturedState.music?.trigger && capturedState.music?.trackId && setTrackId) {
@@ -429,6 +442,47 @@ export const useChatEngine = ({
         }
     };
 
+    // A draw request is executed ONLY after a user click and explicit confirmation.
+    const generateDraw = async (messageIndex: number): Promise<void> => {
+        if (!config.imageGen) throw new Error('请先在设置中启用生图功能');
+        if (isLoading || !currentSession) throw new Error('请等待当前回复完成');
+        const message = currentSession.messages[messageIndex];
+        if (!message || message.role !== 'assistant' || typeof message.content !== 'string') throw new Error('找不到待生成的插图');
+        const match = message.content.match(/<draw>[\s\S]*?<\/draw>/);
+        if (!match) throw new Error('该插图已经生成或已被移除');
+        const payload = buildDrawRequest(message.content, {
+            activeCharacterId: message.characterId || activeCharacterId,
+            manualOutfitId,
+            characters: [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.name || c.id }))],
+            charStatus: currentSession.charStatus,
+            settings: config.imageSettings,
+        });
+        if (!payload) throw new Error('插图提示词无效');
+        setIsGlobalGenerating(true);
+        try {
+            const response = await fetch('/api/draw', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success || !result.image) throw new Error(result.error || `生图服务返回 HTTP ${response.status}`);
+            const url = await uploadImageToCloud(result.image, result.meta);
+            if (!url) throw new Error('图片已生成，但保存到本地画廊失败');
+            const originalTag = match[0];
+            const completedTag = originalTag.replace('<draw>', '<draw_log>').replace('</draw>', '</draw_log>');
+            setSessions((prev: any) => prev.map((s: any) => s.id !== currentSessionId ? s : ({
+                ...s,
+                messages: s.messages.map((m: any, index: number) => index !== messageIndex ||
+                  typeof m.content !== 'string' || !m.content.includes(originalTag) ? m : ({
+                    ...m, content: m.content.replace(originalTag, `${completedTag}\n\n![Generated](${url})`),
+                  })),
+            })));
+            showToast('🎨 插图已保存');
+        } finally {
+            setIsGlobalGenerating(false);
+        }
+    };
+
     const handleRegenerate = (idx: number) => {
         if (!currentSession) return;
         if (idx === currentSession.messages.length - 1) {
@@ -461,6 +515,7 @@ export const useChatEngine = ({
         stopGeneration,
         handleRegenerate,
         handleDeleteMessage,
-        handleRepoUpdate
+        handleRepoUpdate,
+        generateDraw
     };
 };
