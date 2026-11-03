@@ -17,6 +17,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Local Edition: relative Open Graph assets resolve against the local server.
+  metadataBase: new URL("http://localhost:3000"),
   title: "Shiorivia",
   description: "Shiorivia — a local-first, customizable AI story and chat experience.",
   manifest: "/manifest.json",

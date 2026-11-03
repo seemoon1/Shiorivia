@@ -66,6 +66,7 @@ export default function Home() {
     const [showMemoryVault, setShowMemoryVault] = useState(false);
 
     useEffect(() => {
+        if (process.env.NEXT_PUBLIC_ENABLE_LOCAL_LIVE2D !== "true") return;
         console.log("🔍 [Page Debug] Current Char:", activeCharacterId);
         console.log("🔍 [Page Debug] Live2D Config:", LOCAL_LIVE2D_CONFIG);
         
@@ -428,6 +429,8 @@ export default function Home() {
         : (currentSession?.live2dCharId || activeCharacterId); 
 
     const effectiveConfig = useMemo(() => {
+        // Live2D is on hold; an empty config is expected, not a missing asset error.
+        if (process.env.NEXT_PUBLIC_ENABLE_LOCAL_LIVE2D !== "true") return null;
         const rawConfig = LOCAL_LIVE2D_CONFIG as Record<string, any>;
         
         if (rawConfig[stageCharId]) {

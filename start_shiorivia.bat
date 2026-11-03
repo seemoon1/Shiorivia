@@ -75,7 +75,7 @@ echo.
 
 :: Start Next.js first. A child PowerShell waits for a successful HTTP response;
 :: opening a browser before the listener exists caused ERR_CONNECTION_REFUSED.
-start "" /b powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$url='http://127.0.0.1:3000'; for($i=0;$i -lt 120;$i++){ try { $r=Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ Start-Process $url; exit 0 } } catch {} ; Start-Sleep -Seconds 1 }; Write-Host '[WARN] Server readiness timed out; see launcher output.'"
+start "" /b powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$url='http://127.0.0.1:3000'; for($i=0;$i -lt 120;$i++){ try { $r=Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ Start-Process 'http://localhost:3000'; exit 0 } } catch {} ; Start-Sleep -Seconds 1 }; Write-Host '[WARN] Server readiness timed out; see launcher output.'"
 call npm run dev
 
 :: 如果运行到这里，说明服务器崩溃了
