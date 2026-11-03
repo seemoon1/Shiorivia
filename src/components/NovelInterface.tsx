@@ -23,6 +23,7 @@ import { characterDisplayName } from "../lib/characterNames";
 import { localText } from "../lib/i18nLocal";
 import { isUntitledNovel } from "../lib/sessionTitles";
 import { deepText } from "../lib/i18nDeep";
+import { IllustratedImage, ImageLightbox } from "./IllustrationImage";
 
 const THEMES = {
     sage: {
@@ -69,7 +70,7 @@ const PRESETS = [
         { name: "梦境 (Fantasy)", scenario: "漂浮在空中的花园", action: "探险 & 寻找出口", style: "奇幻, 唯美, 意识流" },
     ];
 
-const NovelContent = ({ content, onOptionClick, theme }: any) => {
+const NovelContent = ({ content, onOptionClick, onImageOpen, theme }: any) => {
     let clean = cleanDrawTag(content) 
         .replace(/<meta.*?\/>/g, "")
         .replace(/<audio>.*?<\/audio>/g, "")
@@ -91,13 +92,8 @@ const NovelContent = ({ content, onOptionClick, theme }: any) => {
                 if (imgMatch) {
                     const src = imgMatch[2];
                     return (
-                        <span key={i} className="block my-6 w-full flex justify-center animate-fade-in">
-                            <img
-                                src={src}
-                                alt="Illustration"
-                                className="max-w-full md:max-w-[85%] rounded-lg shadow-lg border border-white/10 transition-transform hover:scale-[1.01] duration-500"
-                                loading="lazy"
-                            />
+                        <span key={i} className="my-6 flex w-full justify-center animate-fade-in">
+                            <IllustratedImage src={src} alt={imgMatch[1] || "小说插图"} onOpen={onImageOpen} />
                         </span>
                     );
                 }
@@ -213,6 +209,7 @@ export const NovelInterface = ({
 
     const [dynamicBg, setDynamicBg] = useState<string | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
     const confirmNovelDraw = async (index: number) => {
@@ -494,6 +491,7 @@ export const NovelInterface = ({
                 </div>
 
                 <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} /></div>
+                <ImageLightbox src={previewImage} onClose={() => setPreviewImage(null)} />
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth pb-32">
                     <div className="max-w-3xl mx-auto space-y-16">
@@ -505,7 +503,7 @@ export const NovelInterface = ({
                                 <div key={i} id={`chapter-${i}`} className="animate-fade-in-up">
                                     <div className="flex items-center gap-4 mb-8 opacity-30 justify-center"><div className={`h-px ${theme.text} w-12`}></div><span className="font-mono text-xs tracking-widest uppercase">{title}</span><div className={`h-px ${theme.text} w-12`}></div></div>
                                     <div className={`prose ${theme.prose} prose-lg md:prose-xl leading-loose ${theme.text} font-serif whitespace-pre-wrap`}>
-                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} theme={theme} />
+                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} />
 
                                         {parseDrawTag(msg.content)?.trigger && (
                                             <button type="button" disabled={drawingIndex !== null || isLoading}

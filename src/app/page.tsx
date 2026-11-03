@@ -713,8 +713,6 @@ export default function Home() {
 
                 <SidebarLeft
                     isOpen={ui.leftSidebarOpen} onClose={() => ui.setLeftSidebarOpen(false)}
-                    showModelPanel={ui.showModelPanel} setShowModelPanel={ui.setShowModelPanel}
-                    showChatPanel={ui.showChatPanel} setShowChatPanel={ui.setShowChatPanel}
 
                     expandedGroups={Array.isArray(config.expandedGroups) ? config.expandedGroups : []}
                     setExpandedGroups={(action: any) => {

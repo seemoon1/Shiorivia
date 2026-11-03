@@ -22,6 +22,7 @@ import { useMusic } from "../context/MusicContext";
 import ReactMarkdown from "react-markdown";
 import { smartColorize } from "../lib/textFormatter";
 import { cleanDrawTag } from "../lib/parseDraw";
+import { IllustratedImage, ImageLightbox } from "./IllustrationImage";
 
 const DrawPlaceholder = ({ onGenerate, busy, disabled }: {
     onGenerate: () => void; busy: boolean; disabled: boolean;
@@ -34,7 +35,7 @@ const DrawPlaceholder = ({ onGenerate, busy, disabled }: {
     </button>
 );
 
-const renderContent = (text: string) => {
+const renderContent = (text: string, onOpenImage: (src: string) => void) => {
     if (!text) return null;
     let workingText = cleanDrawTag(text);
 
@@ -68,14 +69,7 @@ const renderContent = (text: string) => {
                                                     const imgMatch = subPart.match(/!\[(.*?)\]\((.*?)\)/);
                                                     if (imgMatch) {
                                                         const url = imgMatch[2];
-                                                        return (
-                                                            <img
-                                                                key={k} src={url} alt="generated"
-                                                                className="max-w-full rounded-lg my-2 shadow-sm border border-black/5 cursor-pointer hover:opacity-90 transition-opacity"
-                                                                style={{ maxHeight: '400px' }}
-                                                                onClick={() => window.open(url, '_blank')} 
-                                                            />
-                                                        );
+                                                        return <IllustratedImage key={k} src={url} alt={imgMatch[1] || "插图"} onOpen={onOpenImage} className="my-2" />;
                                                     }
                                                     return <span key={k}>{subPart}</span>;
                                                 })}
@@ -91,11 +85,7 @@ const renderContent = (text: string) => {
                 {extraImages.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {extraImages.map((url, idx) => (
-                            <img
-                                key={idx} src={url}
-                                className="h-32 rounded-lg border shadow-sm object-cover cursor-pointer"
-                                onClick={() => window.open(url, '_blank')}
-                            />
+                            <IllustratedImage key={idx} src={url} alt="画廊图片" onOpen={onOpenImage} compact />
                         ))}
                     </div>
                 )}
@@ -284,6 +274,7 @@ export const ChatInterface = ({
 
     const [showWardrobe, setShowWardrobe] = useState(false);
     const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const confirmDraw = async (index: number) => {
         if (drawingIndex !== null) return;
         if (!useImageGen) { showToast('请先在设置中启用生图功能'); return; }
@@ -647,13 +638,13 @@ export const ChatInterface = ({
 
                             <div className="flex flex-col gap-1.5 max-w-[85%] items-start w-full">
 
-                                {files.length > 0 && <div className="flex gap-2 justify-end w-full flex-wrap">{files.map((f: any, idx: number) => <img key={idx} src={f} className="h-32 rounded border shadow-sm object-cover" />)}</div>}
+                                {files.length > 0 && <div className="flex gap-2 justify-end w-full flex-wrap">{files.map((f: any, idx: number) => <IllustratedImage key={idx} src={f} alt="附加图片" compact onOpen={setPreviewImage} />)}</div>}
 
                                 {thought && currentSession.memoryMode === 'infinite' && <ThinkingBlock thought={thought} />}
 
                                 {answer && (msg.role !== 'assistant' || Boolean(cleanDrawTag(answer).trim())) && (
                                     <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm w-fit ${msg.role === 'user' ? 'bg-slate-800 text-white rounded-br-none ml-auto' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'}`}>
-                                        {msg.role === 'assistant' ? renderContent(answer) : <div className="whitespace-pre-wrap">{answer}</div>}
+                                        {msg.role === 'assistant' ? renderContent(answer, setPreviewImage) : <div className="whitespace-pre-wrap">{answer}</div>}
                                         {msg.role === 'assistant' && msg.modelName && <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-1.5 text-[9px] font-bold tracking-wider opacity-40 uppercase"><Cpu size={10} /> {msg.modelName.split('/').pop()}</div>}
                                     </div>
                                 )}
@@ -771,6 +762,7 @@ export const ChatInterface = ({
                 {selectedFile && <div className="text-xs text-gray-400 mt-1 ml-2 flex items-center gap-2">{selectedFile.type === 'text' ? <FileText size={12} /> : <Paperclip size={12} />} <span>{selectedFile.name}</span><button onClick={() => setSelectedFile(null)} className="text-red-400">×</button></div>}
             </div>
 
+            <ImageLightbox src={previewImage} onClose={() => setPreviewImage(null)} />
             <MusicPlayerModal isOpen={showFullPlayer} onClose={() => setShowFullPlayer(false)}
             />
         </div>

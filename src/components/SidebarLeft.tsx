@@ -2,12 +2,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    PanelLeftClose, Package, LayoutList, ChevronDown, ChevronRight,
+    PanelLeftClose, Package, ChevronDown, ChevronRight,
     FolderPlus, Plus, Search, Folder, Trash2, Download, Upload,
     Globe, Image as ImageIcon,
     ListChecks, CheckSquare, Square, Sparkles, Terminal, Disc,
     HardDrive, AlertTriangle, Mic,
-    RefreshCw, Check
+    RefreshCw, Check, X
 } from "lucide-react";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
 import { useLanguage } from "../context/LanguageContext";
@@ -64,8 +64,6 @@ const checkEnv = async (feature: 'openrouter' | 'google' | 'tavily' | 'sd' | 'tt
 
 export const SidebarLeft = ({
     isOpen, onClose,
-    showModelPanel, setShowModelPanel,
-    showChatPanel, setShowChatPanel,
     expandedGroups, setExpandedGroups,
     selectedModel, setSelectedModel,
     customModelId, setCustomModelId,
@@ -100,6 +98,33 @@ export const SidebarLeft = ({
     const [showDebug, setShowDebug] = useState(false);
     const [modelGroups, setModelGroups] = useState<LocalModelGroup[]>(fallbackModelGroups(apiProvider));
     const [catalogSource, setCatalogSource] = useState("fallback");
+    // Persisted only in this browser, with IDs isolated by provider.
+    const [savedModels, setSavedModels] = useState<Record<string, string[]>>({});
+    useEffect(() => {
+        try {
+            const parsed: unknown = JSON.parse(window.localStorage.getItem("shiorivia_saved_models_v1") || "{}");
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+            const clean: Record<string, string[]> = {};
+            for (const [provider, ids] of Object.entries(parsed)) {
+                if (Array.isArray(ids)) clean[provider] = ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0 && id.length <= 200).slice(0, 80);
+            }
+            setSavedModels(clean);
+        } catch { /* An invalid local entry must not break the model selector. */ }
+    }, []);
+    const persistSavedModels = (next: Record<string, string[]>) => {
+        setSavedModels(next);
+        try { window.localStorage.setItem("shiorivia_saved_models_v1", JSON.stringify(next)); } catch {}
+    };
+    const saveCustomModel = () => {
+        const id = String(customModelId || "").trim();
+        if (!apiProvider || !id || id.length > 200) return;
+        const existing = savedModels[apiProvider] || [];
+        if (existing.includes(id)) return;
+        persistSavedModels({ ...savedModels, [apiProvider]: [...existing, id] });
+    };
+    const forgetCustomModel = (id: string) => {
+        persistSavedModels({ ...savedModels, [apiProvider]: (savedModels[apiProvider] || []).filter(item => item !== id) });
+    };
     useEffect(() => {
         let active = true;
         setModelGroups(fallbackModelGroups(apiProvider));
@@ -133,17 +158,12 @@ export const SidebarLeft = ({
                             <img src="/shiorivia-app-icon.png" alt="" width={24} height={24} className="h-6 w-6 rounded-md" />
                             <span className="text-xs uppercase tracking-widest">Shiorivia</span>
                         </div>
-                        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                            <button onClick={onClose} className="p-1.5 rounded text-gray-400 hover:text-gray-600" title="Hide Sidebar"><PanelLeftClose size={14} /></button>
-                            <div className="w-px h-3 bg-gray-300 mx-1"></div>
-                            <button onClick={() => setShowModelPanel(!showModelPanel)} className={`p-1.5 rounded transition-colors ${showModelPanel ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}><Package size={14} /></button>
-                            <button onClick={() => setShowChatPanel(!showChatPanel)} className={`p-1.5 rounded transition-colors ${showChatPanel ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-400'}`}><LayoutList size={14} /></button>
-                        </div>
+                        <button onClick={onClose} className="rounded-lg bg-[#f4f6f2] p-2 text-[#76877c] transition hover:bg-[#e7ede6] hover:text-[#456c56]" title="收起左侧栏" aria-label="收起左侧栏"><PanelLeftClose size={15} /></button>
                     </div>
 
                     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                        {showModelPanel && (
-                            <div className={`p-2 overflow-y-auto scrollbar-thin ${showChatPanel ? 'max-h-[35%]' : 'h-full'}`}>
+                            <div className="h-[42%] min-h-[160px] shrink-0 overflow-y-auto border-b border-[#e6e9e2] bg-[#fbfcfa] p-3 scrollbar-thin">
+                                <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-[#728578]"><span>Models · 模型</span><Package size={13} /></div>
 
                                 <div className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 text-xs font-bold">
                                     {(providers as PublicLocalProvider[]).map((p) => (
@@ -174,12 +194,29 @@ export const SidebarLeft = ({
                                     </div>
                                 ))}
 
-                                <input value={customModelId} onChange={(e: any) => setCustomModelId(e.target.value)} placeholder="Custom Model ID" className="w-full mt-2 text-xs border rounded px-2 py-1 bg-gray-50 outline-none" />
+                                <div className="mt-3 border-t border-[#e1e8df] pt-3">
+                                    <div className="mb-2 flex items-center justify-between text-[10px] text-[#6f8175]"><span className="font-semibold tracking-wide">自定义模型</span><span>当前供应商</span></div>
+                                    <div className="flex gap-1.5">
+                                        <input aria-label="自定义模型 ID" value={customModelId} onChange={(e: any) => setCustomModelId(e.target.value)} placeholder="输入模型 ID" className="min-w-0 flex-1 rounded-lg border border-[#dfe7df] bg-white px-2 py-1.5 text-xs outline-none focus:border-[#8ba897]" />
+                                        <button type="button" onClick={saveCustomModel} disabled={!apiProvider || !String(customModelId || "").trim() || String(customModelId).length > 200 || (savedModels[apiProvider] || []).includes(String(customModelId).trim())}
+                                            className="shrink-0 rounded-lg border border-[#bcd2c1] bg-[#e8f1e9] px-2.5 py-1.5 text-[11px] font-medium text-[#456c55] transition hover:bg-[#d9e9dc] disabled:opacity-40">保存</button>
+                                    </div>
+                                    {(savedModels[apiProvider] || []).length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {(savedModels[apiProvider] || []).map(id => (
+                                                <div key={id} className={`flex items-center gap-1 rounded-lg px-1.5 py-1 ${customModelId === id ? 'bg-[#e9f2e9]' : 'hover:bg-white'}`}>
+                                                    <button type="button" onClick={() => setCustomModelId(id)} title={id} className="flex min-w-0 flex-1 items-center gap-2 text-left text-[11px] text-[#60756a]">
+                                                        <span className="min-w-0 flex-1 truncate">{id}</span>
+                                                        <span className="shrink-0 rounded border border-[#d5e1d7] px-1 py-0.5 text-[9px] text-[#829987]">自定义</span>
+                                                    </button>
+                                                    <button type="button" onClick={() => forgetCustomModel(id)} title={`移除保存的模型 ${id}`} aria-label={`移除保存的模型 ${id}`} className="rounded p-1 text-[#b5bdb7] hover:bg-[#f9e9e5] hover:text-[#aa6857]"><X size={12} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
-
-                        {showChatPanel && (
-                            <div className="flex-1 flex flex-col min-h-0 p-2">
+                            <div className="flex-1 flex flex-col min-h-0 bg-white p-2">
                                 <div className="flex justify-between items-center mb-2 px-1">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase">Explorer · {deepText(locale, "explorer.title")}</span>
                                     <div className="flex gap-1">
@@ -246,7 +283,6 @@ export const SidebarLeft = ({
                                     ))}
                                 </div>
                             </div>
-                        )}
                     </div>
 
 
