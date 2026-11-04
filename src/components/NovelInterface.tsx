@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { CHARACTERS, type NovelDraft } from "../types";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
+import { useSavedModels } from "../hooks/useSavedModels";
 import { NovelArchiveActions } from "./NovelArchiveActions";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModal";
@@ -186,6 +187,8 @@ export const NovelInterface = ({
         return () => { alive = false; };
     }, [provider]);
     const availableModels = (providerModels.length ? providerModels : fallbackModelGroups(provider || "")).flatMap(g => g.models);
+    const { savedModels, saveModel, forgetModel } = useSavedModels();
+    const savedIds = savedModels[provider] || [];
     const [scenario, setScenario] = useState("午后的红茶店"); 
     const [action, setAction] = useState("谈心");
     const [style, setStyle] = useState("温馨, 治愈, 心理描写细腻, 2000字");
@@ -490,7 +493,7 @@ export const NovelInterface = ({
                     </div>
                 </div>
 
-                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} /></div>
+                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} accentColor={themeMode === "sage" ? "#527966" : "#c59a54"} /></div>
                 <ImageLightbox src={previewImage} onClose={() => setPreviewImage(null)} />
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth pb-32">
@@ -609,11 +612,16 @@ export const NovelInterface = ({
                                             {providers.map((p: PublicLocalProvider) => <option key={p.id} value={p.id}>{p.label}</option>)}
                                             {!providers.some((p: PublicLocalProvider) => p.id === provider) && <option value={provider}>{provider || "未配置供应商"}</option>}
                                         </select>
-                                        <select aria-label="小说模型" value={availableModels.some(m => m.id === selectedModel) ? selectedModel : ""} onChange={e => onModelChange(e.target.value)} className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`}>
+                                        <select aria-label="小说模型" value={customModelId && savedIds.includes(customModelId) ? `saved:${customModelId}` : (!customModelId && availableModels.some(m => m.id === selectedModel) ? selectedModel : "")} onChange={e => e.target.value.startsWith("saved:") ? onCustomModelChange(e.target.value.slice(6)) : onModelChange(e.target.value)} className={`w-full ${theme.bg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`}>
                                             <option value="">{deepText(locale, "novel.manual")}</option>
                                             {availableModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                            {savedIds.map(id => <option key={`saved:${id}`} value={`saved:${id}`}>{id} · 自定义</option>)}
                                         </select>
-                                        <input aria-label="小说自定义模型 ID" value={customModelId || ""} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className={`w-full ${theme.inputBg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`} />
+                                        <div className="flex gap-2">
+                                            <input aria-label="小说自定义模型 ID" value={customModelId || ""} onChange={e => onCustomModelChange(e.target.value)} placeholder="Custom Model ID（可选）" className={`min-w-0 flex-1 ${theme.inputBg} border ${theme.border} rounded-lg px-3 py-2 text-xs ${theme.text} outline-none ${theme.focus}`} />
+                                            <button type="button" onClick={() => saveModel(provider, customModelId || "")} disabled={!customModelId?.trim() || savedIds.includes(customModelId.trim())} className="rounded-lg border border-[#bda77c] px-3 text-xs text-[#a48b5c] disabled:opacity-40">保存</button>
+                                        </div>
+                                        {savedIds.length > 0 && <div className="flex flex-wrap gap-2">{savedIds.map(id => <span key={id} className={`inline-flex items-center gap-1 rounded-lg border ${theme.border} px-2 py-1 text-[10px] ${theme.text}`}><button type="button" onClick={() => onCustomModelChange(id)}>{id} · 自定义</button><button type="button" onClick={() => forgetModel(provider, id)} aria-label={`移除 ${id}`} className="ml-1 opacity-60 hover:opacity-100">×</button></span>)}</div>}
                                         <p className={`text-[10px] ${theme.text} opacity-50`}>{deepText(locale, "novel.current")}：{activeModel || deepText(locale, "novel.manual")} · {deepText(locale, "novel.sync")}</p>
                                     </div>
 

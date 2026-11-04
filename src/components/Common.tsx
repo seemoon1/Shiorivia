@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, ChevronUp, ChevronDown, MessageSquare, MoreHorizontal, Edit2, CornerDownRight, Folder, Trash2,
-  Moon, Terminal
+  Sparkles, ChevronUp, ChevronDown, MoreHorizontal, Edit2, CornerDownRight, Folder, Trash2,
+  BookMarked, BookOpen, MessageCircle, Code2
 } from "lucide-react";
 
 export const ThinkingBlock = ({ thought }: { thought: string }) => {
@@ -23,14 +23,10 @@ export const ThinkingBlock = ({ thought }: { thought: string }) => {
 
 export const SessionItem = ({ session, isActive, isEditing, tempTitle, showMenu, folders, onSelect, onEditStart, onEditSave, onDelete, onMenuToggle, onMoveTo, setTempTitle, props }: any) => (
   <div className={`relative group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs transition-colors ${isActive ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`} onClick={onSelect}>
-    {session.memoryMode === 'novel' ? (
-      <Moon size={14} className="text-purple-500 shrink-0" /> 
-    ) : session.memoryMode === 'infinite' ? (
-      <Terminal size={14} className="text-blue-500 shrink-0" /> 
-    ) : (
-      <MessageSquare size={14} className="..." /> 
-    )}
-    <MessageSquare size={14} className={isActive ? "text-emerald-500" : "text-gray-300"} />
+    {session.memoryMode === 'novel' ? <BookMarked size={15} className="shrink-0 text-[#b49760]" /> :
+      session.memoryMode === 'sliding' ? <BookOpen size={15} className="shrink-0 text-[#c07c98]" /> :
+      session.memoryMode === 'infinite' ? <Code2 size={15} className="shrink-0 text-[#607d9b]" /> :
+      <MessageCircle size={15} className="shrink-0 text-[#70987f]" />}
     {isEditing ? (
       <input autoFocus className="flex-1 bg-white border border-emerald-300 rounded px-1 py-0.5 outline-none min-w-0" value={tempTitle} onChange={e => setTempTitle(e.target.value)} onBlur={onEditSave} onKeyDown={e => e.key === 'Enter' && onEditSave()} onClick={e => e.stopPropagation()} />
     ) : <span className="flex-1 truncate">{session.title}</span>}

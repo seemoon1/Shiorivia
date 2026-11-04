@@ -7,11 +7,13 @@ import { useState, useEffect } from "react";
 export const MiniPlayer = ({
     onExpand,
     rightSidebarOpen,
-    themeMode = 'light'
+    themeMode = 'light',
+    accentColor
 }: {
     onExpand: () => void,
     rightSidebarOpen?: boolean,
-    themeMode?: 'light' | 'dark' | 'paper'
+    themeMode?: 'light' | 'dark' | 'paper',
+    accentColor?: string
 }) => {
     const { isPlaying, togglePlay, currentTrack, playNext, playPrev, progress, duration } = useMusic();
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -47,7 +49,7 @@ export const MiniPlayer = ({
                     exit={{ opacity: 0, y: -20 }}
                     className={`w-full backdrop-blur-md border-b shadow-sm relative overflow-hidden group z-10 ${containerStyle}`}
                 >
-                    <div className={`absolute top-0 left-0 h-0.5 z-10 transition-all duration-300 ${progressColor}`} style={{ width: `${percent}%` }}></div>
+                    <div className={`absolute top-0 left-0 h-0.5 z-10 transition-all duration-300 ${progressColor}`} style={{ width: `${percent}%`, backgroundColor: accentColor || undefined }}></div>
 
                     <div className="flex items-center justify-between p-2 px-4 gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={onExpand}>
@@ -64,7 +66,7 @@ export const MiniPlayer = ({
                         </div>
                         <div className="flex items-center gap-3">
                             <button onClick={playPrev} className="hover:opacity-60 transition-opacity"><SkipBack size={16} /></button>
-                            <button onClick={togglePlay} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${playBtnStyle}`}>
+                            <button onClick={togglePlay} style={{ color: accentColor || undefined }} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${playBtnStyle}`}>
                                 {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
                             </button>
                             <button onClick={playNext} className="hover:opacity-60 transition-opacity"><SkipForward size={16} /></button>
@@ -100,15 +102,15 @@ export const MiniPlayer = ({
                     {isMobile ? (
                         <div className="flex items-center gap-3 bg-black text-white px-4 py-2.5 rounded-full shadow-2xl border border-white/10 min-w-[140px] justify-center">
                             <div className="flex gap-0.5 items-end h-3">
-                                <motion.div animate={{ height: isPlaying ? [4, 10, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-rose-500 rounded-full" />
-                                <motion.div animate={{ height: isPlaying ? [4, 14, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.7 }} className="w-1 bg-rose-500 rounded-full" />
-                                <motion.div animate={{ height: isPlaying ? [4, 8, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-rose-500 rounded-full" />
+                                <motion.div animate={{ height: isPlaying ? [4, 10, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.5 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
+                                <motion.div animate={{ height: isPlaying ? [4, 14, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.7 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
+                                <motion.div animate={{ height: isPlaying ? [4, 8, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.6 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
                             </div>
                             <span className="text-xs font-bold truncate max-w-[120px]">{currentTrack.name}</span>
                         </div>
                     ) : (
                         <div className={`flex items-center gap-2 backdrop-blur-md border px-3 py-1.5 rounded-full shadow-lg text-xs font-bold hover:scale-105 transition-all ${containerStyle}`}>
-                            <Music size={14} className={isPlaying ? "animate-spin-slow" : ""} />
+                            <Music size={14} style={{ color: accentColor || undefined }} className={isPlaying ? "animate-spin-slow" : ""} />
                             <span>Now Playing</span>
                             <ChevronDown size={14} />
                         </div>

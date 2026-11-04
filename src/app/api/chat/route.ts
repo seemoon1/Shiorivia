@@ -10,6 +10,7 @@ import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
 import { BGM_LIBRARY } from "../../../data/bgm_library";
+import { readLocalMusic } from "../../../lib/localMusicServer";
 
 export const runtime = "nodejs";
 
@@ -90,30 +91,19 @@ The JSON structure must be:
 `;
 
 function buildMusicMenu() {
-  const liveTracks = BGM_LIBRARY.filter((t) => t.category === "band")
-    .map((t) => `- "${t.name}" (ID: ${t.id}) [Artist: ${t.artist}]`)
-    .join("\n");
-
-  const bgmTracks = BGM_LIBRARY.filter((t) => t.category === "bgm")
-    .map((t) => `- ${t.id}`)
-    .join("\n");
-
+  // Never inject local paths, lyrics, internal IDs, or song files into model context.
+  const tracks = [...BGM_LIBRARY, ...readLocalMusic()]
+    .map(({ name, artist }) => ({ name: String(name).replace(/[<>\r\n]/g, ' ').slice(0, 120), artist: String(artist).replace(/[<>\r\n]/g, ' ').slice(0, 120) }))
+    .slice(0, 160);
+  if (!tracks.length) return '';
+  const choices = tracks.map(t => `- ${JSON.stringify(t.name)} — ${JSON.stringify(t.artist)}`).join('\n');
   return `
-=== 🎵 MUSIC CONTROL PROTOCOL ===
-[Instruction]: You are also a DJ. You control the background music based on the plot.
-[Output]: Fill the "music" field in JSON (Story Mode) or <audio> tag (Novel Mode).
-  - "trackId": The ID of the song.
-  - "force": true.
-
-[PRIORITY RULES]:
-1. **LIVE PERFORMANCE (Highest)**: If the plot involves singing/performing, MUST pick a song from [LIVE LIST].
-2. **ATMOSPHERE (Lowest)**: If no Live, pick a BGM from [BGM LIST].
-
-[LIVE LIST]:
-${liveTracks}
-
-[BGM LIST]:
-${bgmTracks}
+=== MUSIC CONTROL ===
+Select only a listed song using its exact title and artist. Do not invent tracks.
+Story JSON: "music": {"trigger": true, "name": "Song Title", "artist": "Artist"}.
+Novel: <audio>{"name":"Song Title","artist":"Artist"}</audio>.
+Song catalog (title — artist only):
+${choices}
 `;
 }
 

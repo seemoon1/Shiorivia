@@ -42,3 +42,6 @@ next-env.d.ts
 !/public/gallery/.keep
 # Local development patches
 /*.patch
+# User-owned audio is never distributed or tracked in Git.
+/music/*
+!/music/.gitkeep

@@ -10,6 +10,7 @@ import {
     RefreshCw, Check, X
 } from "lucide-react";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
+import { useSavedModels } from "../hooks/useSavedModels";
 import { useLanguage } from "../context/LanguageContext";
 import { localText } from "../lib/i18nLocal";
 import { SessionItem } from "./Common";
@@ -98,33 +99,9 @@ export const SidebarLeft = ({
     const [showDebug, setShowDebug] = useState(false);
     const [modelGroups, setModelGroups] = useState<LocalModelGroup[]>(fallbackModelGroups(apiProvider));
     const [catalogSource, setCatalogSource] = useState("fallback");
-    // Persisted only in this browser, with IDs isolated by provider.
-    const [savedModels, setSavedModels] = useState<Record<string, string[]>>({});
-    useEffect(() => {
-        try {
-            const parsed: unknown = JSON.parse(window.localStorage.getItem("shiorivia_saved_models_v1") || "{}");
-            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
-            const clean: Record<string, string[]> = {};
-            for (const [provider, ids] of Object.entries(parsed)) {
-                if (Array.isArray(ids)) clean[provider] = ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0 && id.length <= 200).slice(0, 80);
-            }
-            setSavedModels(clean);
-        } catch { /* An invalid local entry must not break the model selector. */ }
-    }, []);
-    const persistSavedModels = (next: Record<string, string[]>) => {
-        setSavedModels(next);
-        try { window.localStorage.setItem("shiorivia_saved_models_v1", JSON.stringify(next)); } catch {}
-    };
-    const saveCustomModel = () => {
-        const id = String(customModelId || "").trim();
-        if (!apiProvider || !id || id.length > 200) return;
-        const existing = savedModels[apiProvider] || [];
-        if (existing.includes(id)) return;
-        persistSavedModels({ ...savedModels, [apiProvider]: [...existing, id] });
-    };
-    const forgetCustomModel = (id: string) => {
-        persistSavedModels({ ...savedModels, [apiProvider]: (savedModels[apiProvider] || []).filter(item => item !== id) });
-    };
+    const { savedModels, saveModel, forgetModel } = useSavedModels();
+    const saveCustomModel = () => saveModel(apiProvider, String(customModelId || ""));
+    const forgetCustomModel = (id: string) => forgetModel(apiProvider, id);
     useEffect(() => {
         let active = true;
         setModelGroups(fallbackModelGroups(apiProvider));

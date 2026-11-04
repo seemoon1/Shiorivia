@@ -15,7 +15,6 @@ import { buildDrawRequest } from "../lib/drawRequest";
 import { CHARACTERS } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
-import { WardrobeModal } from "./WardrobeModal";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModal";
 import { useMusic } from "../context/MusicContext"; 
@@ -272,7 +271,6 @@ export const ChatInterface = ({
     const [showFullPlayer, setShowFullPlayer] = useState(false);
     const { isPlaying } = useMusic();
 
-    const [showWardrobe, setShowWardrobe] = useState(false);
     const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const confirmDraw = async (index: number) => {
@@ -372,19 +370,6 @@ export const ChatInterface = ({
 
             {currentSession?.memoryMode === 'chat' && (
                 <>
-                    {!isMobile && (
-                        <div className="relative">
-                            <button onClick={() => setShowWardrobe(v => !v)} title="角色服装"
-                                className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-700">
-                                <Shirt size={15} /> Outfit
-                            </button>
-                            <WardrobeModal
-                                isOpen={showWardrobe} onClose={() => setShowWardrobe(false)}
-                                charName={currentCharacter.name} outfits={outfits}
-                                currentOutfit={currentOutfitId} onSelect={(id: string) => setManualOutfitId(id)}
-                            />
-                        </div>
-                    )}
                     <button onClick={() => setShowLocalWorld(true)} title="会话世界书" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100"><StickyNote size={16} /> <span className={isMobile ? 'inline' : 'hidden lg:inline'}>Session World</span></button>
                     <button onClick={() => setShowGlobalWorld(true)} title="全局设定" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100"><BookOpen size={16} /> <span className={isMobile ? 'inline' : 'hidden lg:inline'}>Global</span></button>
                 </>
@@ -393,32 +378,6 @@ export const ChatInterface = ({
             {currentSession?.memoryMode === 'infinite' && (
                 <>
                     <button onClick={toggleCodeRepo} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border bg-slate-800 text-blue-400 hover:bg-slate-700 shadow-sm ${isMobile ? 'w-full justify-center' : ''}`}><Terminal size={16} /> <span className={isMobile ? "inline" : "hidden md:inline"}>IDE</span></button>
-                    {!isMobile && (
-                        <div className="relative">
-
-                            <button
-                                onClick={() => setShowWardrobe(prev => !prev)}
-                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition-all
-                                        ${showWardrobe
-                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-100 ring-offset-1' // 激活状态：加个 ring 更明显
-                                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'} // 平时状态
-                                     `}
-                                title="Toggle Fitting Room"
-                            >
-                                <Shirt size={16} />
-                                <span className="hidden lg:inline">Outfit</span>
-                            </button>
-
-                            <WardrobeModal
-                                isOpen={showWardrobe}
-                                onClose={() => setShowWardrobe(false)}
-                                charName={currentCharacter.name}
-                                outfits={outfits}
-                                currentOutfit={currentOutfitId}
-                                onSelect={(id: string) => setManualOutfitId(id)}
-                            />
-                        </div>
-                    )}
                     <button onClick={() => setShowGlobalWorld(true)} className={`p-1.5 hover:bg-gray-100 rounded text-gray-500 flex items-center gap-1 text-xs ${isMobile ? 'w-full justify-center' : ''}`}><ClipboardList size={16} /> <span className={isMobile ? "inline" : "hidden md:inline"}>Guide</span></button>
                 </>
             )}
@@ -589,7 +548,9 @@ export const ChatInterface = ({
             <div className="z-10">
                 <MiniPlayer
                     onExpand={() => setShowFullPlayer(true)}
-                    rightSidebarOpen={rightSidebarOpen} 
+                    rightSidebarOpen={rightSidebarOpen}
+                    themeMode={currentSession?.memoryMode === "infinite" ? "dark" : "light"}
+                    accentColor={currentSession?.memoryMode === "sliding" ? "#c07c98" : currentSession?.memoryMode === "infinite" ? "#607d9b" : currentCharacter.hex}
                 />
             </div>
 

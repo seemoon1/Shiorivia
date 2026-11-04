@@ -276,7 +276,8 @@ export const useChatEngine = ({
             if (audioMatch) {
                 try {
                     const audioData = JSON.parse(audioMatch[1]);
-                    if (audioData.trackId && setTrackId) setTrackId(audioData.trackId);
+                    if (setTrackId && (audioData.name || audioData.trackId))
+                        setTrackId(audioData.name || audioData.trackId, audioData.artist);
                     currentText = currentText.replace(audioRegex, "");
                 } catch(e) { console.error("Audio Parse Error", e); }
             }
@@ -350,8 +351,8 @@ export const useChatEngine = ({
 <draw>${JSON.stringify(instruction)}</draw>`;
                     }
 
-                    if (capturedState.music?.trigger && capturedState.music?.trackId && setTrackId) {
-                        setTimeout(() => setTrackId(capturedState.music.trackId), 500);
+                    if (capturedState.music?.trigger && (capturedState.music?.name || capturedState.music?.trackId) && setTrackId) {
+                        setTimeout(() => setTrackId(capturedState.music.name || capturedState.music.trackId, capturedState.music.artist), 500);
                     }
 
                 } catch (e) { console.error("Game State Error", e); }
