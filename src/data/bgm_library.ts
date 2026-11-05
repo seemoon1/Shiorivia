@@ -1,6 +1,8 @@
 export type BGMTrack = {
   id: string; name: string; artist: string; src: string; 
   cover?: string; lrc?: string; is_bgm: boolean; category: 'band' | 'solo' | 'bgm';
+  /** Subfolders under project-root music/, with their original hierarchy. */
+  playlistPath?: string[];
   groups?: string[]; 
 };
 

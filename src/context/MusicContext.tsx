@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { BGM_LIBRARY, BGMTrack } from "../data/bgm_library";
+import { inPlaylist } from "../lib/musicPlaylists";
 
 type MusicContextType = {
   isPlaying: boolean;
@@ -17,6 +18,9 @@ type MusicContextType = {
   playNext: () => void;
   playPrev: () => void;
   playQueue: BGMTrack[];
+  allTracks: BGMTrack[];
+  selectedPlaylist: string | null;
+  selectPlaylist: (key: string | null) => void;
   activeTab: 'band' | 'solo';
   setActiveTab: (t: 'band' | 'solo') => void;
   refreshLibrary: () => Promise<void>;
@@ -34,6 +38,7 @@ export const MusicProvider = ({ children }: { children: React.ReactNode }) => {
   const [playMode, setPlayMode] = useState<'sequence' | 'reverse' | 'loop' | 'shuffle'>('sequence');
   const [activeTab, setActiveTab] = useState<'band' | 'solo'>('solo');
   const [localTracks, setLocalTracks] = useState<BGMTrack[]>([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const refreshLibrary = useCallback(async () => {
     const res = await fetch('/api/local/music', { cache: 'no-store' });
     if (!res.ok) throw new Error('Unable to load the local music index');
@@ -51,14 +56,18 @@ export const MusicProvider = ({ children }: { children: React.ReactNode }) => {
       || allTracks.find(t => t.name === id && (!artist || t.artist === artist));
     if (found) setCurrentTrackId(found.id);
   }, [allTracks]);
+  const selectPlaylist = useCallback((key: string | null) => {
+    setSelectedPlaylist(key);
+    const matches = allTracks.filter(track => inPlaylist(track, key));
+    if (matches.length && !matches.some(track => track.id === currentTrackId))
+      setCurrentTrackId(matches[0].id);
+  }, [allTracks, currentTrackId]);
   const playQueue = useMemo(() => {
-      let queue = [...allTracks];
+      const queue = allTracks.filter(track => inPlaylist(track, selectedPlaylist));
       if (playMode === 'reverse') queue.reverse();
-      if (playMode === 'shuffle') {
-          queue = queue.sort(() => Math.random() - 0.5);
-      }
+      if (playMode === 'shuffle') queue.sort(() => Math.random() - 0.5);
       return queue;
-  }, [allTracks, playMode]);
+  }, [allTracks, playMode, selectedPlaylist]);
 
   useEffect(() => {
     if (!audioRef.current || !currentTrack) return;
@@ -118,7 +127,8 @@ export const MusicProvider = ({ children }: { children: React.ReactNode }) => {
         isPlaying, togglePlay, currentTrack, setTrackId,
         progress, duration, audioRef, volume, setVolume,
         playMode, setPlayMode, playNext, playPrev, playQueue,
-        activeTab, setActiveTab, refreshLibrary
+        activeTab, setActiveTab, refreshLibrary,
+        allTracks, selectedPlaylist, selectPlaylist
     }}>
         <audio 
             ref={audioRef} 

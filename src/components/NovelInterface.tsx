@@ -12,7 +12,7 @@ import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } f
 import { useSavedModels } from "../hooks/useSavedModels";
 import { NovelArchiveActions } from "./NovelArchiveActions";
 import { MiniPlayer } from "./MiniPlayer";
-import { MusicPlayerModal } from "./MusicPlayerModal";
+import { MusicPlayerModal } from "./MusicPlayerModalV2";
 import { useMusic } from "../context/MusicContext";
 import { smartColorize } from "../lib/textFormatter";
 import { parseDrawTag } from "../lib/parseDraw";
@@ -493,7 +493,7 @@ export const NovelInterface = ({
                     </div>
                 </div>
 
-                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "light" : "paper"} accentColor={themeMode === "sage" ? "#527966" : "#c59a54"} /></div>
+                <div className="z-10"><MiniPlayer onExpand={() => setShowFullPlayer(true)} rightSidebarOpen={rightOpen} themeMode={themeMode === "sage" ? "sage" : "paper"} /></div>
                 <ImageLightbox src={previewImage} onClose={() => setPreviewImage(null)} />
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth pb-32">

@@ -16,7 +16,7 @@ import { CHARACTERS } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { MiniPlayer } from "./MiniPlayer";
-import { MusicPlayerModal } from "./MusicPlayerModal";
+import { MusicPlayerModal } from "./MusicPlayerModalV2";
 import { useMusic } from "../context/MusicContext"; 
 import ReactMarkdown from "react-markdown";
 import { smartColorize } from "../lib/textFormatter";
@@ -549,8 +549,7 @@ export const ChatInterface = ({
                 <MiniPlayer
                     onExpand={() => setShowFullPlayer(true)}
                     rightSidebarOpen={rightSidebarOpen}
-                    themeMode={currentSession?.memoryMode === "infinite" ? "dark" : "light"}
-                    accentColor={currentSession?.memoryMode === "sliding" ? "#c07c98" : currentSession?.memoryMode === "infinite" ? "#607d9b" : currentCharacter.hex}
+                    themeMode="light"
                 />
             </div>
 

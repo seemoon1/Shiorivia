@@ -11,6 +11,8 @@ import { capabilityFor } from "../lib/imageSettings";
 import { useLanguage } from "../context/LanguageContext";
 import { LANGUAGE_OPTIONS, type Locale } from "../lib/locale";
 
+import { useMusic } from "../context/MusicContext";
+
 export type SettingKey = "webSearch" | "imageGen" | "tts" | "musicControl";
 export type StoryTheme = "sky" | "sage" | "rose";
 
@@ -84,6 +86,21 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
 
 export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, engineeringTransitionEnabled, onToggleEngineeringTransition, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
+  const { refreshLibrary, allTracks } = useMusic();
+  const [scanningMusic, setScanningMusic] = useState(false);
+  const [scanNotice, setScanNotice] = useState("");
+  const scanMusic = async () => {
+    if (scanningMusic || !window.confirm("扫描 Shiorivia/music/ 中的音乐与同名 .lrc？\n这会更新本地曲库索引，不会移动或修改音乐文件。")) return;
+    setScanningMusic(true); setScanNotice("");
+    try {
+      const response = await fetch("/api/local/music", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "音乐扫描失败");
+      await refreshLibrary();
+      setScanNotice(`已扫描 ${result.count} 首歌曲，歌单已更新。`);
+    } catch (error) { setScanNotice(error instanceof Error ? error.message : "音乐扫描失败"); }
+    finally { setScanningMusic(false); }
+  };
   const { t, locale, setLocale } = useLanguage();
 
   useEffect(() => {
@@ -209,6 +226,12 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <SectionTitle>{t("settings.voiceAndMusic")}</SectionTitle>
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-400"><Mic size={18}/><span>{t("settings.tts")} · 开发中 / In development</span></div>
                 <SwitchRow title={t("settings.autoDJ")} description={t("settings.autoDJ.description")} checked={values.musicControl} onClick={() => onToggle("musicControl")} icon={Music2} />
+                <div className="mt-6 rounded-2xl border border-[#dfE8df] bg-white p-5">
+                  <div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-semibold text-[#345b48]">本地音乐 · 扫描曲库</h3><p className="mt-2 text-xs leading-6 text-slate-500">扫描项目根目录 music/ 中的歌曲与同名歌词。子文件夹自动成为歌单与子歌单，重复扫描更新配置。</p></div><Music2 size={19} className="shrink-0 text-[#8ca58f]"/></div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" disabled={scanningMusic} onClick={() => void scanMusic()} className="rounded-xl border border-[#bed1c2] bg-[#edf5ef] px-4 py-2 text-xs font-semibold text-[#416952] transition hover:bg-[#e1eee4] disabled:opacity-50">{scanningMusic ? "扫描中…" : "扫描本地音乐"}</button><span className="text-xs text-slate-400">当前曲库：{allTracks.filter(track => track.id.startsWith("local_")).length} 首本地歌曲</span></div>
+                  {scanNotice && <p role="status" className="mt-3 text-xs leading-6 text-[#607866]">{scanNotice}</p>}
+                  <p className="mt-3 text-[11px] leading-5 text-slate-400">建议采用「歌手 - 歌名」命名；冷门或较新的歌曲可能不被 AI 熟悉。封面提取失败时使用默认唱片。</p>
+                </div>
               </section>
             )}
 

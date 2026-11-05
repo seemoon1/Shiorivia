@@ -7,13 +7,11 @@ import { useState, useEffect } from "react";
 export const MiniPlayer = ({
     onExpand,
     rightSidebarOpen,
-    themeMode = 'light',
-    accentColor
+    themeMode = 'light'
 }: {
     onExpand: () => void,
     rightSidebarOpen?: boolean,
-    themeMode?: 'light' | 'dark' | 'paper',
-    accentColor?: string
+    themeMode?: 'light' | 'sage' | 'paper'
 }) => {
     const { isPlaying, togglePlay, currentTrack, playNext, playPrev, progress, duration } = useMusic();
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -27,17 +25,14 @@ export const MiniPlayer = ({
 
     const percent = duration > 0 ? (progress / duration) * 100 : 0;
 
-    let containerStyle = "bg-white/80 border-gray-200 text-gray-800";
-    if (themeMode === 'dark') containerStyle = "bg-[#1a1a20]/90 border-white/10 text-slate-300";
-    if (themeMode === 'paper') containerStyle = "bg-[#f5eecf]/90 border-[#d0c8a0] text-[#5c5546]";
-
-    let playBtnStyle = "bg-gray-100 text-rose-500 hover:bg-rose-50";
-    if (themeMode === 'dark') playBtnStyle = "bg-white/10 text-white hover:bg-white/20";
-    if (themeMode === 'paper') playBtnStyle = "bg-[#d0c8a0] text-[#2c2518] hover:bg-[#c0b890]";
-
-    let progressColor = "bg-rose-500";
-    if (themeMode === 'dark') progressColor = "bg-purple-500";
-    if (themeMode === 'paper') progressColor = "bg-[#d97706]";
+    // All main modes share a quiet white surface; only Tela adopts its page palette.
+    const containerStyle = themeMode === 'sage' ? "bg-[#edf3eb]/95 border-[#c3d7c7] text-[#4c6857]"
+      : themeMode === 'paper' ? "bg-[#f8efd9]/95 border-[#dfd0b0] text-[#725e43]"
+      : "bg-white/95 border-slate-200 text-slate-700";
+    const playBtnStyle = themeMode === 'sage' ? "bg-[#d7e6d8] text-[#4b725a] hover:bg-[#c7dccb]"
+      : themeMode === 'paper' ? "bg-[#eaddc1] text-[#806747] hover:bg-[#ded0b1]"
+      : "bg-[#edf2ef] text-[#557a66] hover:bg-[#e1ebe5]";
+    const progressColor = themeMode === 'sage' ? "bg-[#779983]" : themeMode === 'paper' ? "bg-[#c0a06d]" : "bg-[#91ad9c]";
 
     return (
         <AnimatePresence mode="wait">
@@ -49,7 +44,7 @@ export const MiniPlayer = ({
                     exit={{ opacity: 0, y: -20 }}
                     className={`w-full backdrop-blur-md border-b shadow-sm relative overflow-hidden group z-10 ${containerStyle}`}
                 >
-                    <div className={`absolute top-0 left-0 h-0.5 z-10 transition-all duration-300 ${progressColor}`} style={{ width: `${percent}%`, backgroundColor: accentColor || undefined }}></div>
+                    <div className={`absolute top-0 left-0 h-0.5 z-10 transition-all duration-300 ${progressColor}`} style={{ width: `${percent}%` }}></div>
 
                     <div className="flex items-center justify-between p-2 px-4 gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={onExpand}>
@@ -59,14 +54,14 @@ export const MiniPlayer = ({
                             <div className="flex flex-col overflow-hidden">
                                 <div className="text-xs font-bold truncate flex items-center gap-1 opacity-90">
                                     {currentTrack.name}
-                                    <span className={`text-[9px] font-normal px-1 rounded border opacity-70 ${themeMode === 'paper' ? 'border-[#5c5546] text-[#5c5546]' : 'border-current text-current'}`}>{currentTrack.category === 'band' ? 'LIVE' : 'SOLO'}</span>
+                                    <span className="rounded border border-current/20 px-1 text-[9px] font-normal opacity-60">MUSIC</span>
                                 </div>
                                 <div className="text-[10px] truncate opacity-60">{currentTrack.artist}</div>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <button onClick={playPrev} className="hover:opacity-60 transition-opacity"><SkipBack size={16} /></button>
-                            <button onClick={togglePlay} style={{ color: accentColor || undefined }} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${playBtnStyle}`}>
+                            <button onClick={togglePlay} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${playBtnStyle}`}>
                                 {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
                             </button>
                             <button onClick={playNext} className="hover:opacity-60 transition-opacity"><SkipForward size={16} /></button>
@@ -100,17 +95,17 @@ export const MiniPlayer = ({
                     onClick={() => setIsCollapsed(false)}
                 >
                     {isMobile ? (
-                        <div className="flex items-center gap-3 bg-black text-white px-4 py-2.5 rounded-full shadow-2xl border border-white/10 min-w-[140px] justify-center">
+                        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-full shadow-xl min-w-[140px] justify-center ${containerStyle}`}>
                             <div className="flex gap-0.5 items-end h-3">
-                                <motion.div animate={{ height: isPlaying ? [4, 10, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.5 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
-                                <motion.div animate={{ height: isPlaying ? [4, 14, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.7 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
-                                <motion.div animate={{ height: isPlaying ? [4, 8, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.6 }} style={{ backgroundColor: accentColor || undefined }} className="w-1 bg-rose-500 rounded-full" />
+                                <motion.div animate={{ height: isPlaying ? [4, 10, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.5 }} className={`w-1 ${progressColor} rounded-full`} />
+                                <motion.div animate={{ height: isPlaying ? [4, 14, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.7 }} className={`w-1 ${progressColor} rounded-full`} />
+                                <motion.div animate={{ height: isPlaying ? [4, 8, 4] : 4 }} transition={{ repeat: Infinity, duration: 0.6 }} className={`w-1 ${progressColor} rounded-full`} />
                             </div>
                             <span className="text-xs font-bold truncate max-w-[120px]">{currentTrack.name}</span>
                         </div>
                     ) : (
                         <div className={`flex items-center gap-2 backdrop-blur-md border px-3 py-1.5 rounded-full shadow-lg text-xs font-bold hover:scale-105 transition-all ${containerStyle}`}>
-                            <Music size={14} style={{ color: accentColor || undefined }} className={isPlaying ? "animate-spin-slow" : ""} />
+                            <Music size={14} className={isPlaying ? "animate-spin-slow" : ""} />
                             <span>Now Playing</span>
                             <ChevronDown size={14} />
                         </div>
