@@ -48,8 +48,8 @@ export const MiniPlayer = ({
 
                     <div className="flex items-center justify-between p-2 px-4 gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={onExpand}>
-                            <div className={`w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0 border border-current/10 ${isPlaying ? 'animate-spin-slow' : ''}`} style={{ animationDuration: '5s' }}>
-                                {currentTrack.cover ? <img src={currentTrack.cover} className="w-full h-full rounded-full object-cover opacity-80" /> : <Disc size={16} className="text-white/50" />}
+                            <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#182b3a] bg-[#111e2b] ring-1 ring-[#c9ae7b]/80 shadow-sm ${isPlaying ? 'animate-spin-slow' : ''}`} style={{ animationDuration: '6s' }}>
+                                {currentTrack.cover ? <><img src={currentTrack.cover} alt="" className="h-full w-full rounded-full object-cover"/><span aria-hidden="true" className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e6d1a5] shadow"/></> : <Disc size={16} className="text-[#d3be93]" />}
                             </div>
                             <div className="flex flex-col overflow-hidden">
                                 <div className="text-xs font-bold truncate flex items-center gap-1 opacity-90">

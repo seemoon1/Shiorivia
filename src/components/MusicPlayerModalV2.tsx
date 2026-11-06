@@ -78,9 +78,11 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
     const box = lyricBox.current;
     const active = box.querySelector<HTMLElement>(`[data-lyric-index="${lineIndex}"]`);
     if (!active) return;
-    const target = active.offsetTop - box.offsetTop - box.clientHeight * 0.37;
-    box.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
-  }, [lineIndex, isOpen]);
+    // offsetTop and the lyric pane can have different offset parents. Use
+    // viewport-relative coordinates, then scroll only this pane (not the dialog).
+    const lineTop = active.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    box.scrollTo({ top: Math.max(0, lineTop - box.clientHeight * 0.35), behavior: "smooth" });
+  }, [lineIndex, isOpen, lyrics]);
 
   const folders = useMemo(() => musicFolderTree(allTracks), [allTracks]);
   const playingArtwork = Boolean(currentTrack?.cover);
@@ -97,16 +99,18 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
       <header className="relative z-10 flex shrink-0 items-center justify-between border-b border-[#d1b982]/20 px-5 py-4 md:px-10">
         <button type="button" onClick={onClose} aria-label="关闭播放器" className="rounded-xl border border-[#c6b187]/30 p-2 text-[#e0cfb2] transition hover:bg-white/10"><ChevronDown size={21}/></button>
         <div className="text-center"><p className="text-[10px] font-semibold tracking-[0.3em] text-[#ccb887]">SHIORIVIA / MUSIC</p><p className="mt-1 max-w-[55vw] truncate font-serif text-sm text-[#ead9b8]">Where stories find their way.</p></div>
-        <button type="button" onClick={() => setShowLibrary(p => !p)} aria-label="打开歌单与播放列表" aria-expanded={showLibrary} className="rounded-xl border border-[#c6b187]/30 p-2 text-[#e0cfb2] transition hover:bg-white/10"><ListMusic size={21}/></button>
+        <span aria-hidden="true" className="h-9 w-9"/>
       </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-5 py-3 md:flex-row md:gap-10 md:px-10 lg:gap-16">
-        <section className={`relative flex min-h-0 w-full items-center justify-center md:w-[47%] ${showMobileLyrics ? "hidden md:flex" : "flex"}`} onClick={() => { if (window.innerWidth < 768) setShowMobileLyrics(true); }}>
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-5 py-3 md:flex-row md:gap-10 md:px-10 lg:gap-16">
+        <section className={`relative flex h-full min-h-0 w-full items-center justify-center md:w-[47%] ${showMobileLyrics ? "hidden md:flex" : "flex"}`} onClick={() => { if (window.innerWidth < 768) setShowMobileLyrics(true); }}>
           <div className="relative aspect-square w-[min(73vw,400px)] max-h-[48vh] max-w-[48vh] md:w-[min(40vw,430px)] md:max-h-[60vh] md:max-w-[60vh]">
             <div className="absolute inset-0 rounded-full border-[8px] border-[#c2a978] bg-[#080e16] shadow-[0_20px_65px_rgba(0,0,0,0.55),inset_0_0_0_2px_rgba(241,224,187,0.24)] md:border-[10px]">
-              <div className={`absolute inset-[2%] flex items-center justify-center overflow-hidden rounded-full bg-[repeating-radial-gradient(circle,#101720_0px,#0b121b_3px,#1b2530_4px,#101720_6px)] ${isPlaying && playingArtwork ? "animate-spin-slow" : ""}`} style={{ animationDuration: "9s" }}>
+              {/* The grooves are rotationally symmetric: keep the large gradient
+                  stationary and animate only the small center artwork layer. */}
+              <div className="absolute inset-[2%] flex items-center justify-center overflow-hidden rounded-full bg-[repeating-radial-gradient(circle,#101720_0px,#0b121b_3px,#1b2530_4px,#101720_6px)]">
                 <div className="absolute inset-[6%] rounded-full border border-[#d4c09a]/10"/>
-                <div className="relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)]">
+                <div className={`relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)] ${playingArtwork ? "animate-spin-slow transform-gpu will-change-transform" : ""}`} style={playingArtwork ? { animationDuration: "12s", animationPlayState: isPlaying ? "running" : "paused" } : undefined}>
                   {currentTrack?.cover ? <img src={currentTrack.cover} alt="音乐封面" className="h-full w-full object-cover"/> : <span className="flex flex-col items-center gap-1 text-center"><Music2 size={25}/><span className="text-[7px] font-bold tracking-widest">SHIORIVIA</span></span>}
                 </div>
                 <div className="absolute left-1/2 top-1/2 z-20 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#263c54] shadow"/>
@@ -119,10 +123,10 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
             </div>
           </div>
         </section>
-        <section className={`flex min-h-0 w-full max-w-xl flex-1 flex-col md:max-w-[48%] ${!showMobileLyrics ? "hidden md:flex" : "flex"}`}>
+        <section className={`flex h-full max-h-full min-h-0 w-full max-w-xl flex-1 flex-col overflow-hidden md:max-w-[48%] ${!showMobileLyrics ? "hidden md:flex" : "flex"}`}>
           <div className="shrink-0 pb-4"><h2 className="truncate font-serif text-xl font-semibold text-[#ebd8ad] md:text-2xl">{currentTrack?.name || "Shiorivia"}</h2><p className="mt-1 truncate text-sm text-[#9bafc2]">{currentTrack?.artist || "Music Library"}</p></div>
-          <div ref={lyricBox} className="relative min-h-0 flex-1 overflow-y-auto pr-4 scrollbar-thin" style={{ maskImage: "linear-gradient(to bottom,transparent,black 9%,black 89%,transparent)" }}>
-            {lyrics.length ? <div className="space-y-1 py-[23vh] text-left">
+          <div ref={lyricBox} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-4 scrollbar-thin" style={{ maskImage: "linear-gradient(to bottom,transparent,black 6%,black 92%,transparent)" }}>
+            {lyrics.length ? <div className="space-y-1 pb-[35%] pt-8 text-left">
               {lyrics.map((line, index) => <button type="button" key={`${index}-${line.time}`} data-lyric-index={index} onClick={() => { if (audioRef.current) audioRef.current.currentTime = line.time; }} className={`relative block w-full border-l-2 py-2 pl-4 pr-2 text-left transition-all duration-300 ${index === lineIndex ? "border-[#d9bc7f] text-[#f3dfb8]" : "border-transparent text-[#8796a7] hover:text-[#bbc8d6]"}`}>
                 <span className={`block text-sm leading-8 md:text-lg ${index === lineIndex ? "font-semibold" : "font-normal"}`}>{line.text}</span>
                 {line.translation && <span className="mt-1 block text-xs leading-6 text-[#aebbc9]">{line.translation}</span>}
@@ -138,7 +142,7 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
         <div className="mx-auto mt-4 flex max-w-5xl items-center justify-between gap-3">
           <button type="button" onClick={toggleMode} aria-label={`播放模式：${playMode}`} className="rounded-lg p-2 text-[#b5c1cc] hover:bg-white/10">{modeIcon}</button>
           <div className="flex items-center gap-5 md:gap-9"><button type="button" onClick={playPrev} aria-label="上一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipBack size={25}/></button><button type="button" onClick={togglePlay} aria-label={isPlaying ? "暂停" : "播放"} className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e5d2aa] text-[#223951] transition-transform hover:scale-105 md:h-14 md:w-14">{isPlaying ? <Pause size={23} fill="currentColor"/> : <Play size={23} fill="currentColor" className="ml-1"/>}</button><button type="button" onClick={playNext} aria-label="下一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipForward size={25}/></button></div>
-          <div className="flex items-center gap-2"><Volume2 size={16} className="hidden text-[#a9b9c8] sm:block"/><input aria-label="音量" type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))} className="hidden w-20 accent-[#c9ae7b] sm:block"/><button type="button" onClick={() => setShowLibrary(p => !p)} aria-label="歌单与播放列表" className="rounded-lg p-2 text-[#d7c29c] hover:bg-white/10"><ListMusic size={22}/></button></div>
+          <div className="flex items-center gap-2"><Volume2 size={16} className="hidden text-[#a9b9c8] sm:block"/><input aria-label="音量" aria-valuetext={`${Math.round(volume * 100)}%`} type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))} className="hidden w-20 accent-[#c9ae7b] sm:block"/><span aria-live="off" className="hidden w-9 text-right text-[11px] tabular-nums text-[#cbb993] sm:inline-block">{Math.round(volume * 100)}%</span><button type="button" onClick={() => setShowLibrary(p => !p)} aria-label="歌单与播放列表" aria-expanded={showLibrary} className="relative left-2 rounded-lg p-2 text-[#d7c29c] hover:bg-white/10 md:left-5"><ListMusic size={22}/></button></div>
         </div>
       </footer>
 
