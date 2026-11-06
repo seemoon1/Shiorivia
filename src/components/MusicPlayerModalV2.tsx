@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDownUp, ChevronDown, ChevronRight, Disc3, ListMusic, Music2, Pause, Play, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, X, FolderClosed, PlayCircle } from "lucide-react";
 import { useMusic } from "../context/MusicContext";
@@ -32,6 +32,48 @@ function PlaylistTree({ folders, selected, onSelect, depth = 0 }: {
     </div>)}
   </div>;
 }
+
+const VinylRecord = memo(function VinylRecord({ cover, isPlaying }: {
+  cover?: string; isPlaying: boolean;
+}) {
+  return (
+    <div className="relative aspect-square w-[min(73vw,400px)] max-h-[48vh] max-w-[48vh] md:w-[min(40vw,430px)] md:max-h-[60vh] md:max-w-[60vh]">
+      <div className="absolute inset-0 rounded-full border-[8px] border-[#c2a978] bg-[#080e16] shadow-[0_20px_65px_rgba(0,0,0,0.55),inset_0_0_0_2px_rgba(241,224,187,0.24)] md:border-[10px]">
+        {/* The grooves are rotationally symmetric: keep the large gradient
+            stationary and animate only the small center artwork layer. */}
+        <div className="absolute inset-[2%] flex items-center justify-center overflow-hidden rounded-full bg-[repeating-radial-gradient(circle,#101720_0px,#0b121b_3px,#1b2530_4px,#101720_6px)]">
+          <div className="absolute inset-[6%] rounded-full border border-[#d4c09a]/10"/>
+          <div className={`relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)] ${Boolean(cover) ? "animate-spin-slow transform-gpu will-change-transform" : ""}`} style={Boolean(cover) ? { animationDuration: "12s", animationPlayState: isPlaying ? "running" : "paused" } : undefined}>
+            {cover ? <img src={cover} alt="音乐封面" className="h-full w-full object-cover"/> : <span className="flex flex-col items-center gap-1 text-center"><Music2 size={25}/><span className="text-[7px] font-bold tracking-widest">SHIORIVIA</span></span>}
+          </div>
+          <div className="absolute left-1/2 top-1/2 z-20 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#263c54] shadow"/>
+        </div>
+      </div>
+      <div className={`pointer-events-none absolute -right-[5%] -top-[7%] z-20 h-[54%] w-[20%] origin-[50%_5%] transition-transform duration-700 ${isPlaying ? "rotate-[8deg]" : "-rotate-[15deg]"}`}>
+        <div className="absolute left-1/2 top-0 h-7 w-7 -translate-x-1/2 rounded-full border-[5px] border-[#ac9062] bg-[#ead4a2] shadow-lg"/>
+        <div className="absolute left-1/2 top-5 h-[78%] w-[9px] -translate-x-1/2 -rotate-[15deg] rounded-full border border-[#93774d] bg-gradient-to-r from-[#b79a6b] to-[#f2dfb7] shadow-md"/>
+        <div className="absolute bottom-[1%] left-[14%] h-9 w-5 rotate-[20deg] rounded-sm border border-[#97784d] bg-[#e8d4a6] shadow-md"/>
+      </div>
+    </div>
+  );
+});
+
+// The lyrics list can contain hundreds of nodes. Keep it out of frequent
+// playback-progress reconciliation; only update when the active line changes.
+const LyricLines = memo(function LyricLines({ lyrics, lineIndex, audioRef }: {
+  lyrics: LyricLine[]; lineIndex: number; audioRef: RefObject<HTMLAudioElement | null>;
+}) {
+  return (
+    <>
+            {lyrics.length ? <div className="space-y-1 pb-[35%] pt-8 text-left">
+              {lyrics.map((line, index) => <button type="button" key={`${index}-${line.time}`} data-lyric-index={index} onClick={() => { if (audioRef.current) audioRef.current.currentTime = line.time; }} className={`relative block w-full border-l-2 py-2 pl-4 pr-2 text-left transition-all duration-300 ${index === lineIndex ? "border-[#d9bc7f] text-[#f3dfb8]" : "border-transparent text-[#8796a7] hover:text-[#bbc8d6]"}`}>
+                <span className={`block text-sm leading-8 md:text-lg ${index === lineIndex ? "font-semibold" : "font-normal"}`}>{line.text}</span>
+                {line.translation && <span className="mt-1 block text-xs leading-6 text-[#aebbc9]">{line.translation}</span>}
+              </button>)}
+            </div> : <div className="flex h-full min-h-48 items-center gap-3 text-sm text-[#8ea3b6]"><Disc3 size={20} className="text-[#c3a879]"/> 暂无歌词 · Instrumental</div>}
+    </>
+  );
+});
 
 export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const music = useMusic();
@@ -85,7 +127,6 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
   }, [lineIndex, isOpen, lyrics]);
 
   const folders = useMemo(() => musicFolderTree(allTracks), [allTracks]);
-  const playingArtwork = Boolean(currentTrack?.cover);
   const pct = duration > 0 ? Math.min(100, progress / duration * 100) : 0;
   const modes = ["sequence", "reverse", "loop", "shuffle"] as const;
   const toggleMode = () => setPlayMode(modes[(modes.indexOf(playMode) + 1) % modes.length]);
@@ -104,34 +145,12 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-5 py-3 md:flex-row md:gap-10 md:px-10 lg:gap-16">
         <section className={`relative flex h-full min-h-0 w-full items-center justify-center md:w-[47%] ${showMobileLyrics ? "hidden md:flex" : "flex"}`} onClick={() => { if (window.innerWidth < 768) setShowMobileLyrics(true); }}>
-          <div className="relative aspect-square w-[min(73vw,400px)] max-h-[48vh] max-w-[48vh] md:w-[min(40vw,430px)] md:max-h-[60vh] md:max-w-[60vh]">
-            <div className="absolute inset-0 rounded-full border-[8px] border-[#c2a978] bg-[#080e16] shadow-[0_20px_65px_rgba(0,0,0,0.55),inset_0_0_0_2px_rgba(241,224,187,0.24)] md:border-[10px]">
-              {/* The grooves are rotationally symmetric: keep the large gradient
-                  stationary and animate only the small center artwork layer. */}
-              <div className="absolute inset-[2%] flex items-center justify-center overflow-hidden rounded-full bg-[repeating-radial-gradient(circle,#101720_0px,#0b121b_3px,#1b2530_4px,#101720_6px)]">
-                <div className="absolute inset-[6%] rounded-full border border-[#d4c09a]/10"/>
-                <div className={`relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)] ${playingArtwork ? "animate-spin-slow transform-gpu will-change-transform" : ""}`} style={playingArtwork ? { animationDuration: "12s", animationPlayState: isPlaying ? "running" : "paused" } : undefined}>
-                  {currentTrack?.cover ? <img src={currentTrack.cover} alt="音乐封面" className="h-full w-full object-cover"/> : <span className="flex flex-col items-center gap-1 text-center"><Music2 size={25}/><span className="text-[7px] font-bold tracking-widest">SHIORIVIA</span></span>}
-                </div>
-                <div className="absolute left-1/2 top-1/2 z-20 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#263c54] shadow"/>
-              </div>
-            </div>
-            <div className={`pointer-events-none absolute -right-[5%] -top-[7%] z-20 h-[54%] w-[20%] origin-[50%_5%] transition-transform duration-700 ${isPlaying ? "rotate-[8deg]" : "-rotate-[15deg]"}`}>
-              <div className="absolute left-1/2 top-0 h-7 w-7 -translate-x-1/2 rounded-full border-[5px] border-[#ac9062] bg-[#ead4a2] shadow-lg"/>
-              <div className="absolute left-1/2 top-5 h-[78%] w-[9px] -translate-x-1/2 -rotate-[15deg] rounded-full border border-[#93774d] bg-gradient-to-r from-[#b79a6b] to-[#f2dfb7] shadow-md"/>
-              <div className="absolute bottom-[1%] left-[14%] h-9 w-5 rotate-[20deg] rounded-sm border border-[#97784d] bg-[#e8d4a6] shadow-md"/>
-            </div>
-          </div>
+          <VinylRecord cover={currentTrack?.cover} isPlaying={isPlaying}/>
         </section>
         <section className={`flex h-full max-h-full min-h-0 w-full max-w-xl flex-1 flex-col overflow-hidden md:max-w-[48%] ${!showMobileLyrics ? "hidden md:flex" : "flex"}`}>
-          <div className="shrink-0 pb-4"><h2 className="truncate font-serif text-xl font-semibold text-[#ebd8ad] md:text-2xl">{currentTrack?.name || "Shiorivia"}</h2><p className="mt-1 truncate text-sm text-[#9bafc2]">{currentTrack?.artist || "Music Library"}</p></div>
-          <div ref={lyricBox} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-4 scrollbar-thin" style={{ maskImage: "linear-gradient(to bottom,transparent,black 6%,black 92%,transparent)" }}>
-            {lyrics.length ? <div className="space-y-1 pb-[35%] pt-8 text-left">
-              {lyrics.map((line, index) => <button type="button" key={`${index}-${line.time}`} data-lyric-index={index} onClick={() => { if (audioRef.current) audioRef.current.currentTime = line.time; }} className={`relative block w-full border-l-2 py-2 pl-4 pr-2 text-left transition-all duration-300 ${index === lineIndex ? "border-[#d9bc7f] text-[#f3dfb8]" : "border-transparent text-[#8796a7] hover:text-[#bbc8d6]"}`}>
-                <span className={`block text-sm leading-8 md:text-lg ${index === lineIndex ? "font-semibold" : "font-normal"}`}>{line.text}</span>
-                {line.translation && <span className="mt-1 block text-xs leading-6 text-[#aebbc9]">{line.translation}</span>}
-              </button>)}
-            </div> : <div className="flex h-full min-h-48 items-center gap-3 text-sm text-[#8ea3b6]"><Disc3 size={20} className="text-[#c3a879]"/> 暂无歌词 · Instrumental</div>}
+          <div className="shrink-0 pb-4 pt-5 md:pt-7"><h2 className="truncate font-serif text-xl font-semibold text-[#ebd8ad] md:text-2xl">{currentTrack?.name || "Shiorivia"}</h2><p className="mt-1 truncate text-sm text-[#9bafc2]">{currentTrack?.artist || "Music Library"}</p></div>
+          <div ref={lyricBox} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-4 scrollbar-thin">
+            <LyricLines lyrics={lyrics} lineIndex={lineIndex} audioRef={audioRef}/>
           </div>
           {showMobileLyrics && <button type="button" onClick={() => setShowMobileLyrics(false)} className="mt-2 self-start text-xs text-[#d5be93] md:hidden">返回唱片</button>}
         </section>
