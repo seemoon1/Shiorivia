@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDownUp, ChevronDown, ChevronRight, Disc3, ListMusic, Music2, Pause, Play, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, X, FolderClosed, PlayCircle } from "lucide-react";
+import { ArrowRight, ArrowDownUp, ChevronDown, ChevronRight, Disc3, ListMusic, Music2, Pause, Play, Repeat1, Shuffle, SkipBack, SkipForward, Volume2, X, FolderClosed, PlayCircle } from "lucide-react";
 import { useMusic } from "../context/MusicContext";
 import { musicFolderTree, type MusicFolder } from "../lib/musicPlaylists";
 import { parseLrc, type LyricLine } from "../lib/lrcParser";
@@ -115,7 +115,7 @@ const LyricLines = memo(function LyricLines({ lyrics, lineIndex, audioRef }: {
 }) {
   return (
     <>
-            {lyrics.length ? <div className="space-y-1 pb-[35%] pt-8 text-left">
+            {lyrics.length ? <div className="space-y-1 pb-10 pt-1 text-left">
               {lyrics.map((line, index) => <button type="button" key={`${index}-${line.time}`} data-lyric-index={index} onClick={() => { if (audioRef.current) audioRef.current.currentTime = line.time; }} className={`relative block w-full border-l-2 py-2 pl-4 pr-2 text-left transition-all duration-300 ${index === lineIndex ? "border-[#d9bc7f] text-[#f3dfb8]" : "border-transparent text-[#8796a7] hover:text-[#bbc8d6]"}`}>
                 <span className={`block text-sm leading-8 md:text-lg ${index === lineIndex ? "font-semibold" : "font-normal"}`}>{line.text}</span>
                 {line.translation && <span className="mt-1 block text-xs leading-6 text-[#aebbc9]">{line.translation}</span>}
@@ -151,6 +151,7 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
   useEffect(() => {
     let alive = true;
     setLyrics([]);
+    if (lyricBox.current) lyricBox.current.scrollTop = 0;
     if (!currentTrack?.lrc) return;
     fetch(currentTrack.lrc)
       .then(response => response.ok ? response.text() : Promise.reject(new Error("No lyrics")))
@@ -180,7 +181,10 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
   const pct = duration > 0 ? Math.min(100, progress / duration * 100) : 0;
   const modes = ["sequence", "reverse", "loop", "shuffle"] as const;
   const toggleMode = () => setPlayMode(modes[(modes.indexOf(playMode) + 1) % modes.length]);
-  const modeIcon = playMode === "reverse" ? <ArrowDownUp size={18}/> : playMode === "loop" ? <Repeat1 size={18}/> : playMode === "shuffle" ? <Shuffle size={18}/> : <ListMusic size={18}/>;
+  const modeNames: Record<typeof playMode, string> = {
+    sequence: "顺序播放", reverse: "逆序播放", loop: "单曲循环", shuffle: "随机播放",
+  };
+  const modeIcon = playMode === "reverse" ? <ArrowDownUp size={18}/> : playMode === "loop" ? <Repeat1 size={18}/> : playMode === "shuffle" ? <Shuffle size={18}/> : <ArrowRight size={19}/>;
 
   return <AnimatePresence>
     {isOpen && <motion.div role="dialog" aria-modal="true" aria-label="Shiorivia 音乐播放器"
@@ -199,7 +203,7 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
         </section>
         <section className={`flex h-full max-h-full min-h-0 w-full max-w-xl flex-1 flex-col overflow-hidden md:max-w-[48%] ${!showMobileLyrics ? "hidden md:flex" : "flex"}`}>
           <div className="shrink-0 pb-4 pt-5 md:pt-7"><h2 className="truncate font-serif text-xl font-semibold text-[#ebd8ad] md:text-2xl">{currentTrack?.name || "Shiorivia"}</h2><p className="mt-1 truncate text-sm text-[#9bafc2]">{currentTrack?.artist || "Music Library"}</p></div>
-          <div ref={lyricBox} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pr-4 scrollbar-thin">
+          <div ref={lyricBox} className="relative mb-5 mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-4 scrollbar-thin md:mb-8 md:mt-8">
             <LyricLines lyrics={lyrics} lineIndex={lineIndex} audioRef={audioRef}/>
           </div>
           {showMobileLyrics && <button type="button" onClick={() => setShowMobileLyrics(false)} className="mt-2 self-start text-xs text-[#d5be93] md:hidden">返回唱片</button>}
@@ -208,10 +212,10 @@ export function MusicPlayerModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
       <footer className="relative z-20 shrink-0 border-t border-[#d0b784]/20 bg-[#0c1b2c]/95 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 md:px-12">
         <div className="mx-auto flex max-w-5xl items-center gap-3 text-[11px] text-[#96a9ba]"><span>{seconds(progress)}</span><div className="relative h-1 flex-1 rounded-full bg-[#d9c39b]/15"><div className="h-full rounded-full bg-[#c6aa79]" style={{ width: `${pct}%` }}/><input aria-label="歌曲进度" type="range" min={0} max={duration || 1} step={0.1} value={Math.min(progress, duration || 1)} onChange={e => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value); }} className="absolute inset-x-0 -top-3 h-7 w-full cursor-pointer opacity-0"/></div><span>{seconds(duration)}</span></div>
-        <div className="mx-auto mt-4 flex max-w-5xl items-center justify-between gap-3">
-          <button type="button" onClick={toggleMode} aria-label={`播放模式：${playMode}`} className="rounded-lg p-2 text-[#b5c1cc] hover:bg-white/10">{modeIcon}</button>
-          <div className="flex items-center gap-5 md:gap-9"><button type="button" onClick={playPrev} aria-label="上一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipBack size={25}/></button><button type="button" onClick={togglePlay} aria-label={isPlaying ? "暂停" : "播放"} className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e5d2aa] text-[#223951] transition-transform hover:scale-105 md:h-14 md:w-14">{isPlaying ? <Pause size={23} fill="currentColor"/> : <Play size={23} fill="currentColor" className="ml-1"/>}</button><button type="button" onClick={playNext} aria-label="下一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipForward size={25}/></button></div>
-          <div className="flex items-center gap-2"><Volume2 size={16} className="hidden text-[#a9b9c8] sm:block"/><input aria-label="音量" aria-valuetext={`${Math.round(volume * 100)}%`} type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))} className="hidden w-20 accent-[#c9ae7b] sm:block"/><span aria-live="off" className="hidden w-9 text-right text-[11px] tabular-nums text-[#cbb993] sm:inline-block">{Math.round(volume * 100)}%</span><button type="button" onClick={() => setShowLibrary(p => !p)} aria-label="歌单与播放列表" aria-expanded={showLibrary} className="relative left-2 rounded-lg p-2 text-[#d7c29c] hover:bg-white/10 md:left-5"><ListMusic size={22}/></button></div>
+        <div className="mx-auto mt-4 grid max-w-5xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+          <button type="button" onClick={toggleMode} aria-label={`播放模式：${modeNames[playMode]}`} title={modeNames[playMode]} className="rounded-lg p-2 text-[#b5c1cc] hover:bg-white/10">{modeIcon}</button>
+          <div className="flex items-center justify-self-center gap-5 md:gap-9"><button type="button" onClick={playPrev} aria-label="上一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipBack size={25}/></button><button type="button" onClick={togglePlay} aria-label={isPlaying ? "暂停" : "播放"} className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e5d2aa] text-[#223951] transition-transform hover:scale-105 md:h-14 md:w-14">{isPlaying ? <Pause size={23} fill="currentColor"/> : <Play size={23} fill="currentColor" className="ml-1"/>}</button><button type="button" onClick={playNext} aria-label="下一首" className="text-[#c6d0d9] hover:text-[#f0d8a8]"><SkipForward size={25}/></button></div>
+          <div className="flex min-w-0 items-center justify-self-end gap-2"><Volume2 size={16} className="hidden text-[#a9b9c8] sm:block"/><input aria-label="音量" aria-valuetext={`${Math.round(volume * 100)}%`} type="range" min={0} max={1} step={0.01} value={volume} onChange={e => setVolume(Number(e.target.value))} className="hidden w-20 accent-[#c9ae7b] sm:block"/><span aria-live="off" className="hidden w-9 text-right text-[11px] tabular-nums text-[#cbb993] sm:inline-block">{Math.round(volume * 100)}%</span><button type="button" onClick={() => setShowLibrary(p => !p)} aria-label="歌单与播放列表" aria-expanded={showLibrary} className="relative left-2 rounded-lg p-2 text-[#d7c29c] hover:bg-white/10 md:left-5"><ListMusic size={22}/></button></div>
         </div>
       </footer>
 
