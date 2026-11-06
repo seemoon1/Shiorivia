@@ -63,20 +63,30 @@ echo    - Dependencies installed.
 :: 4. Config files are tracked in src/data (no auto-generator needed).
 echo [4/5] Configuration ready.
 
-:: 5. 启动服务
+:: 5. 每次启动前构建正式版，构建失败时不要打开浏览器。
 echo.
-echo [5/5] Starting Neural Link...
+echo [5/5] Building Shiorivia for production...
+call npm run build
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Production build failed. The server was not started.
+    echo Please check the build errors above.
+    pause
+    exit /b 1
+)
+
 echo.
+echo    Production build complete. Starting Neural Link...
 echo ==================================================
 echo    Access: http://localhost:3000
-echo    Status: STARTING...
+echo    Status: STARTING (production)...
 echo ==================================================
 echo.
 
-:: Start Next.js first. A child PowerShell waits for a successful HTTP response;
-:: opening a browser before the listener exists caused ERR_CONNECTION_REFUSED.
+:: The build has succeeded. Start a browser only after the production server is ready.
+:: Opening a browser before the listener exists caused ERR_CONNECTION_REFUSED.
 start "" /b powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$url='http://127.0.0.1:3000'; for($i=0;$i -lt 120;$i++){ try { $r=Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ Start-Process 'http://localhost:3000'; exit 0 } } catch {} ; Start-Sleep -Seconds 1 }; Write-Host '[WARN] Server readiness timed out; see launcher output.'"
-call npm run dev
+call npm run start
 
 :: 如果运行到这里，说明服务器崩溃了
 echo.
