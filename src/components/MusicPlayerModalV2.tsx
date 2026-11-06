@@ -76,7 +76,8 @@ const VinylRecord = memo(function VinylRecord({ cover, isPlaying }: {
     };
   }, [cover]);
 
-  const imageUrl = thumbnail?.cover === cover ? thumbnail.url
+  const imageUrl = !cover ? null
+    : thumbnail && thumbnail.cover === cover ? thumbnail.url
     : fallbackCover === cover ? cover : null;
 
   return (
