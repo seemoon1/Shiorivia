@@ -36,15 +36,64 @@ function PlaylistTree({ folders, selected, onSelect, depth = 0 }: {
 const VinylRecord = memo(function VinylRecord({ cover, isPlaying }: {
   cover?: string; isPlaying: boolean;
 }) {
+  // Album art can be thousands of pixels across, even though the record label
+  // only renders at ~150 CSS pixels. Decode once and animate a 256px texture.
+  // This also avoids rotating a clipped element with borders and shadows.
+  const [thumbnail, setThumbnail] = useState<{ cover: string; url: string } | null>(null);
+  const [fallbackCover, setFallbackCover] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cover) return;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    void (async () => {
+      try {
+        const response = await fetch(cover, { signal: controller.signal });
+        if (!response.ok) throw new Error("Unable to load artwork");
+        const bitmap = await createImageBitmap(await response.blob());
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { bitmap.close(); throw new Error("Canvas unavailable"); }
+        const side = Math.min(bitmap.width, bitmap.height);
+        ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 256, 256);
+        bitmap.close();
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(value => value ? resolve(value) : reject(new Error("Artwork resize failed")), "image/webp", 0.85);
+        });
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setThumbnail({ cover, url: objectUrl });
+      } catch {
+        // A remote cover may disallow fetch/CORS. Keep the original playable.
+        if (!controller.signal.aborted) setFallbackCover(cover);
+      }
+    })();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [cover]);
+
+  const imageUrl = thumbnail?.cover === cover ? thumbnail.url
+    : fallbackCover === cover ? cover : null;
+
   return (
     <div className="relative aspect-square w-[min(73vw,400px)] max-h-[48vh] max-w-[48vh] md:w-[min(40vw,430px)] md:max-h-[60vh] md:max-w-[60vh]">
-      <div className="absolute inset-0 rounded-full border-[8px] border-[#c2a978] bg-[#080e16] shadow-[0_20px_65px_rgba(0,0,0,0.55),inset_0_0_0_2px_rgba(241,224,187,0.24)] md:border-[10px]">
-        {/* The grooves are rotationally symmetric: keep the large gradient
-            stationary and animate only the small center artwork layer. */}
+      <div className="absolute inset-0 rounded-full border-[8px] border-[#c2a978] bg-[#080e16] shadow-[0_20px_65px_rgba(4,12,25,0.55)] md:border-[10px]">
+        {/* The intricate vinyl grooves, gold frame and stylus remain stationary. */}
         <div className="absolute inset-[2%] flex items-center justify-center overflow-hidden rounded-full bg-[repeating-radial-gradient(circle,#101720_0px,#0b121b_3px,#1b2530_4px,#101720_6px)]">
           <div className="absolute inset-[6%] rounded-full border border-[#d4c09a]/10"/>
-          <div className={`relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)] ${Boolean(cover) ? "animate-spin-slow transform-gpu will-change-transform" : ""}`} style={Boolean(cover) ? { animationDuration: "12s", animationPlayState: isPlaying ? "running" : "paused" } : undefined}>
-            {cover ? <img src={cover} alt="音乐封面" className="h-full w-full object-cover"/> : <span className="flex flex-col items-center gap-1 text-center"><Music2 size={25}/><span className="text-[7px] font-bold tracking-widest">SHIORIVIA</span></span>}
+          {/* Static circular clip/frame; only the plain image is compositor-animated. */}
+          <div className="relative z-10 flex h-[36%] w-[36%] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#c8b17f] bg-[#d8c79f] text-[#334961] shadow-[0_0_0_5px_rgba(0,0,0,0.6)]">
+            {imageUrl ? (
+              <img src={imageUrl} alt="音乐封面" decoding="async"
+                className="block h-full w-full object-cover animate-spin-slow"
+                style={{ animationDuration: "7s", animationPlayState: isPlaying ? "running" : "paused", willChange: "transform", backfaceVisibility: "hidden" }}/>
+            ) : (
+              <span className="flex flex-col items-center gap-1 text-center"><Music2 size={25}/><span className="text-[7px] font-bold tracking-widest">SHIORIVIA</span></span>
+            )}
           </div>
           <div className="absolute left-1/2 top-1/2 z-20 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#263c54] shadow"/>
         </div>
