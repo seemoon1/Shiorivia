@@ -36,6 +36,7 @@ import { defaultSessionTitle, sessionGreeting } from "../lib/sessionTitles";
 import { characterDisplayName } from "../lib/characterNames";
 import { useChatEngine } from "../hooks/useChatEngine";
 import { useChartaSelves } from "../hooks/useChartaSelves";
+import { useChartaWorlds } from "../hooks/useChartaWorlds";
 import { useChartaCharacters } from "../hooks/useChartaCharacters";
 import { toChartaCharConfig, nameForCharta } from "../lib/charta";
 import { ChartaInterface } from "../components/ChartaInterface";
@@ -85,6 +86,8 @@ export default function Home() {
     };
     const cloud = useLocalFileSync(isGlobalGenerating, ui.showToast, syncPreferences);
     const selfLibrary = useChartaSelves();
+    const worldLibrary = useChartaWorlds();
+    const [chartaInitialSection, setChartaInitialSection] = useState<"characters" | "self" | "worlds">("characters");
     const charta = useChartaCharacters();
     const allChars = useMemo(() => [...CHAR_DATA, ...charta.characters.map(char => toChartaCharConfig(char, locale))], [charta.characters, locale]);
 
@@ -488,7 +491,7 @@ export default function Home() {
     );
 
     if (showCharta && cloud.initLoaded) {
-        return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove} selfLibrary={selfLibrary}
+        return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove} selfLibrary={selfLibrary} worldLibrary={worldLibrary} initialSection={chartaInitialSection}
             loaded={charta.loaded} storageError={charta.error}
             usedIds={cloud.sessions.flatMap(s => [s.characterId, ...((s.limeGroups || []).flatMap(g => g.members))])}
             onExit={() => setShowCharta(false)} />;
@@ -498,7 +501,7 @@ export default function Home() {
             <>
                 <ModeHub
                     onEnter={enterMode}
-                    onOpenCharta={() => setShowCharta(true)}
+                    onOpenCharta={() => { setChartaInitialSection("characters"); setShowCharta(true); }}
                     onResume={() => { if (cloud.initLoaded) setShowModeHub(false); }}
                     onOpenSettings={() => setShowSettingsCenter(true)}
                     hasSession={Boolean(currentSession)}
@@ -881,6 +884,8 @@ export default function Home() {
                 <SidebarRight
                     isOpen={ui.rightSidebarOpen} onClose={() => ui.setRightSidebarOpen(false)}
                     activeStorySelf={selfLibrary.activeSelf}
+                    worlds={worldLibrary.worlds} setInput={engine.setInput}
+                    onOpenChartaWorld={() => { setChartaInitialSection("worlds"); setShowCharta(true); }}
                     storySelf={currentSession?.storySelfSnapshot || selfLibrary.selves.find(self => self.id === currentSession?.storySelfId) || null}
                     onStoryRoleChange={changeStoryRole} onStoryPovChange={changeStoryPov}
                     currentCharacter={dynamicCharacter} currentSession={currentSession}

@@ -1,4 +1,5 @@
 import type { ChartaSelf } from "./lib/chartaSelf";
+import type { StoryWorldline } from "./lib/storyWorldline";
 
 export type Message = { 
   role: string; 
@@ -116,6 +117,8 @@ export type Session = {
   /** Observer POV can be chosen once after the first story round, before the next send. */
   storyPovId?: string | null;
   storyPovLocked?: boolean;
+  /** Worldline snapshot is bound to a story session; legacy timeline remains compatible. */
+  storyWorldline?: StoryWorldline;
   sceneCastIds?: string[];
   // A single LIME session holds its own private/group conversations.
   /** Legacy persisted key; retained for all VIAE local backups. */

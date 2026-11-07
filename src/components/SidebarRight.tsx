@@ -6,7 +6,8 @@ import { CHAR_DATA } from "../data/char_config";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { SuggestionModal } from "./Modals";
-import { TimelinePanel } from "./TimelinePanel";
+import { StoryWorldlineModal } from "./StoryWorldlineModal";
+import { describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
 import { selfName } from "../lib/chartaSelf";
 import { MemoryPreviewButton } from "./MemoryVaultModal";
 
@@ -25,7 +26,8 @@ const SidebarRightComponent = ({
     onCharSwitch,
     dbChars,
     currentBgmId, setBgmId,
-    activeStorySelf, storySelf, onStoryRoleChange, onStoryPovChange
+    activeStorySelf, storySelf, onStoryRoleChange, onStoryPovChange,
+    worlds = [], setInput, onOpenChartaWorld
 }: any) => {
 
     const isStoryMode = currentSession?.memoryMode === 'sliding';
@@ -40,6 +42,7 @@ const SidebarRightComponent = ({
 
     const [pageIndex, setPageIndex] = useState(0);
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, text: string }>({ isOpen: false, text: "" });
+    const [worldlineOpen, setWorldlineOpen] = useState(false);
 
     useEffect(() => {
         if (pageIndex >= charList.length) setPageIndex(0);
@@ -64,12 +67,13 @@ const SidebarRightComponent = ({
         || "#9ca3af"
     ) : "#9ca3af";
 
-    const handleTimelineUpdate = (newData: any) => {
+    const handleWorldlineUpdate = (next: StoryWorldline) => {
         if (!setSessions || !currentSessionId) return;
         setSessions((prev: any) => prev.map((s: any) =>
-            s.id === currentSessionId ? { ...s, timeline: newData } : s
+            s.id === currentSessionId ? { ...s, storyWorldline: next } : s
         ));
     };
+    const viewpointColor = (dbChars?.length ? dbChars : CHAR_DATA).find((char: any) => char.id === currentSession?.storyPovId)?.hex || "#637e6e";
 
     const StatBar = ({ label, value, color, max = 100, icon: Icon }: any) => {
         let difficultyColor = "bg-gray-200"; 
@@ -101,18 +105,17 @@ const SidebarRightComponent = ({
     };
 
     const SuggestionItem = ({ type, content, colorBg, colorText, colorBorder, icon }: any) => (
-        <div
-            onClick={() => setConfirmModal({ isOpen: true, text: content })}
-            className={`group relative p-2.5 rounded border ${colorBg} ${colorBorder} ${colorText} text-xs cursor-pointer transition-all hover:brightness-95 hover:shadow-sm active:scale-[0.98]`}
-        >
-            <div className="font-bold flex items-center justify-between mb-1.5">
+        <div className={`group relative p-2.5 rounded border ${colorBg} ${colorBorder} ${colorText} text-xs transition-all hover:shadow-sm`}>
+            <div className="font-bold flex items-start justify-between gap-2 mb-1.5">
                 <span className="flex items-center gap-1">{icon} {type}</span>
-                <Send size={10} className="opacity-0 group-hover:opacity-50" />
+                <button type="button" disabled={!String(content || "").trim()} onClick={() => setConfirmModal({ isOpen: true, text: String(content) })}
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-current/20 bg-white/60 px-2 py-1 text-[9px] font-medium hover:bg-white disabled:opacity-40"
+                    title="确认后填入发送框，可以继续编辑"><Send size={10} /> 填入发送文本框</button>
             </div>
             <div className="leading-relaxed opacity-90">{content}</div>
             <button
                 onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(content); alert("已复制"); }}
-                className="absolute top-2 right-2 p-1.5 bg-white/50 hover:bg-white rounded text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-1 right-1 p-1 bg-white/50 hover:bg-white rounded text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
             >
                 <Copy size={10} />
             </button>
@@ -154,9 +157,10 @@ const SidebarRightComponent = ({
                                     </div>
                                 )}
 
-                                {(currentSession?.timeline || prota) && (
-                                    <TimelinePanel timelineData={currentSession?.timeline} onUpdate={handleTimelineUpdate} />
-                                )}
+                                <button type="button" onClick={() => setWorldlineOpen(true)} className="w-full rounded-xl border border-emerald-100 bg-white p-3 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40">
+                                    <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-[#52745e]">✧ WORLDLINE · 世界线</span><span className="text-[10px] text-[#82988a]">打开管理 ↗</span></div>
+                                    <p className="mt-2 text-xs leading-5 text-[#6b8071]">{currentSession?.storyWorldline ? describeStoryWorldline(currentSession.storyWorldline) : currentSession?.timeline?.major ? `旧时间线：${currentSession.timeline.major} / ${currentSession.timeline.medium || "未设定"}` : "尚未设定 · 点击选择世界观与时间线"}</p>
+                                </button>
 
                                 <MemoryPreviewButton stm={currentSession?.stm} ltm={currentSession?.ltm} onOpen={onOpenMemory} tone="story" />
 
@@ -166,7 +170,7 @@ const SidebarRightComponent = ({
                                         <div className="p-3 relative z-10">
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider flex items-center gap-1"><User size={10} /> 自身状态</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : "#6A5ACD" }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
+                                                <div className="text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : viewpointColor }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
                                                 <div className="text-gray-500">Time: <span className="text-gray-800">{prota.timeDesc}</span></div>
                                                 <div className="text-gray-500 col-span-2">Env: <span className="text-gray-800">{prota.environment}</span></div>
                                                 <div className="text-gray-500 col-span-2 flex items-center gap-1"><Thermometer size={10} /> {prota.temperature} | {prota.sensation}</div>
@@ -277,8 +281,13 @@ const SidebarRightComponent = ({
                     <SuggestionModal
                         isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                         content={confirmModal.text}
-                        onConfirm={() => { handleSend(confirmModal.text); setConfirmModal({ ...confirmModal, isOpen: false }); }}
+                        mode="insert"
+                        onConfirm={() => { setInput?.(confirmModal.text); setConfirmModal({ ...confirmModal, isOpen: false }); }}
                     />
+                    <StoryWorldlineModal isOpen={worldlineOpen} value={currentSession?.storyWorldline}
+                        legacyTimeline={currentSession?.timeline} worlds={worlds}
+                        onSave={handleWorldlineUpdate} onClose={() => setWorldlineOpen(false)}
+                        onOpenCharta={onOpenChartaWorld ? () => { setWorldlineOpen(false); onOpenChartaWorld(); } : undefined}/>
                 </motion.div>
             )}
         </AnimatePresence>

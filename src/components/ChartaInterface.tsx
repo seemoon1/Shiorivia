@@ -9,6 +9,8 @@ import {
   makeChartaId, nameForCharta, parseChartaCharacter, type ChartaCharacter,
 } from "../lib/charta";
 import { ChartaSelfPanel } from "./ChartaSelfPanel";
+import { ChartaWorldPanel } from "./ChartaWorldPanel";
+import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
 
@@ -37,7 +39,7 @@ function compactImage(file: File): Promise<string> {
   });
 }
 
-export function ChartaInterface({ characters, save, remove, usedIds, onExit, loaded, storageError, selfLibrary }: {
+export function ChartaInterface({ characters, save, remove, usedIds, onExit, loaded, storageError, selfLibrary, worldLibrary, initialSection = "characters" }: {
   characters: ChartaCharacter[];
   save: (entry: ChartaCharacter) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -45,10 +47,12 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   onExit: () => void;
   loaded: boolean;
   selfLibrary: ReturnType<typeof useChartaSelves>;
+  worldLibrary: ReturnType<typeof useChartaWorlds>;
+  initialSection?: "characters" | "self" | "worlds";
   storageError: string;
 }) {
   const { locale } = useLanguage();
-  const [section, setSection] = useState<"characters" | "self">("characters");
+  const [section, setSection] = useState<"characters" | "self" | "worlds">(initialSection);
   const txt = (key: Parameters<typeof chartaText>[1]) => chartaText(locale, key);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -133,17 +137,27 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     const lang = extraLang === "other" ? customLang.trim().toLowerCase() : extraLang;
     if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,3}$/.test(lang) || lang in draft.names || Object.keys(draft.names).length >= 12) { setMessage(txt("noOther")); return; }
     update({ ...draft, names: { ...draft.names, [lang]: "" } }); setShowAdd(false); setCustomLang("");
+  };
   if (section === "self") return <main className="min-h-screen bg-[#f7f8f5] p-5 text-[#2c443a] sm:p-8">
     <div className="mx-auto max-w-7xl">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dce5dc] pb-5">
         <button type="button" onClick={onExit} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">← 返回 Shiorivia</button>
         <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.2em]">CHARTA</h1><p className="mt-1 text-xs text-[#7c9181]">SELF · 每个人都可以是 Star</p></div>
-        <button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button><button type="button" onClick={() => setSection("worlds")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs">世界观管理</button></div>
       </header>
       <ChartaSelfPanel {...selfLibrary}/>
     </div>
   </main>;
-  };
+  if (section === "worlds") return <main className="min-h-screen bg-[#f7f8f5] p-5 text-[#2c443a] sm:p-8">
+    <div className="mx-auto max-w-7xl">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dce5dc] pb-5">
+        <button type="button" onClick={onExit} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">← 返回 Shiorivia</button>
+        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.2em]">CHARTA</h1><p className="mt-1 text-xs text-[#7c9181]">WORLD · 书写自己的宇宙</p></div>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs">自设管理</button></div>
+      </header>
+      <ChartaWorldPanel {...worldLibrary}/>
+    </div>
+  </main>;
   return <main className="min-h-screen bg-[#f7f8f5] text-[#2c443a]" style={{ backgroundImage: "radial-gradient(ellipse at top right, #e8ede7, transparent 60%)" }}>
     <input ref={importRef} type="file" className="hidden" accept=".json,application/json" onChange={importFile} />
     <input ref={imageRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadImage} />
@@ -152,7 +166,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce5dc] pb-5">
         <button type="button" onClick={() => { if (!dirty || window.confirm(txt("unsaved"))) onExit(); }} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
         <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.24em]">CHARTA</h1><p className="pt-1 text-xs text-[#7c9181]">CHARTA VACUA · {txt("intro")}</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">✧ 创建自设 / 管理自设</button><button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">✧ 创建自设 / 管理自设</button><button type="button" onClick={() => setSection("worlds")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">◎ 创建世界观 / 管理世界观</button><button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button></div>
       </header>
       <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">

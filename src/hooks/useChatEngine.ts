@@ -105,6 +105,7 @@ export const useChatEngine = ({
                     stm: currentSession.stm,
                     ltm: currentSession.ltm,
                     timeline: currentSession.timeline,
+                    storyWorldline: currentSession.memoryMode === "sliding" ? currentSession.storyWorldline : undefined,
                     novelConfig: configOverride?.novelConfig, 
                     useWebSearch: config.webSearch,
                     useMusicControl: configOverride?.useMusicControl ?? config.musicControl,

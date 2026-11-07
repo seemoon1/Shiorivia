@@ -30,7 +30,7 @@ export const EditModal = ({ isOpen, onClose, content, setContent, onConfirm }: a
    </AnimatePresence>
 );
 
-export const SuggestionModal = ({ isOpen, onClose, content, onConfirm }: any) => (
+export const SuggestionModal = ({ isOpen, onClose, content, onConfirm, mode = "send" }: any) => (
    <AnimatePresence>
       {isOpen && (
          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -46,14 +46,14 @@ export const SuggestionModal = ({ isOpen, onClose, content, onConfirm }: any) =>
                      {content}
                   </div>
                   <div className="mt-4 text-xs text-gray-400">
-                     * 点击确认将直接以你的身份发送此内容。
+                     {mode === "insert" ? "* 确认后只会填入发送文本框，不会立即发送。你可以继续编辑。" : "* 点击确认将直接发送此内容。"}
                   </div>
                </div>
 
                <div className="p-4 bg-gray-50 border-t flex justify-end gap-2">
                   <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-xs font-bold">取消 / Cancel</button>
                   <button onClick={onConfirm} className="px-6 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 shadow-md flex items-center gap-2">
-                     确认发送 / Send
+                     {mode === "insert" ? "确认填入 / Insert" : "确认发送 / Send"}
                   </button>
                </div>
             </motion.div>
