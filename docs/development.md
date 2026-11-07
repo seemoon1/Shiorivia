@@ -43,9 +43,11 @@ npm run build
 
 The legacy `next.config.mjs` still suppresses some build-time TypeScript/ESLint checks; running TypeScript explicitly is important. Dependency modernization and a fuller security audit remain separate work before any public service deployment.
 
-### Debug model output / 终端输出模型原文
+### AI request and response diagnostics / AI 请求与原文调试
 
-In **Settings → Developer**, turn on **终端输出 AI 完整原文** to print each raw AI stream in the Node.js terminal (including `<thinking>` and `<game_state>` tags) after completion. Interrupted streams are marked accordingly. This is off by default and is independent of the frontend Debug Mode. These logs can contain private conversations; do not share them or run the local server on untrusted networks.
+In **Settings → Developer**, **终端输出发送给 AI 的完整请求** (above the response switch) prints the final model request before dispatch: the system instructions, selected conversation history, model and generation parameters. This includes story worldline and memory injected by the backend. For Google Gemini, it displays the actual `systemInstruction`, `startChat.history` and `sendMessageStream` arguments; OpenAI-compatible providers display Chat Completions messages and parameters. API keys are never included.
+
+**终端输出 AI 完整原文** independently logs the raw AI stream (including `<thinking>` and `<game_state>` tags) after completion; interrupted streams are marked accordingly. Both switches are off by default, apply to the Local chat API (including Via Lata state repair and VIAE), and are independent of frontend Debug Mode. Request logs may contain private conversations, story lore or attached image data: do not share terminal logs or run the local server on untrusted networks.
 
 In Via Lata, regenerating the **latest AI reply** or editing the **latest user message** restores the saved pre-turn story state before requesting another answer. This includes protagonist/cast statuses, suggestions, timeline, memories, scene settings, POV lock and the current worldline event; user-authored world/ERA/PERIOD and Charta profiles are preserved. Deleting the latest turn also rewinds its state. **Save to disk manually after deletions or edits**, because incremental auto-sync does not persist destructive changes.
 

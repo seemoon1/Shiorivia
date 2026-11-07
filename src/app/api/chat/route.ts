@@ -625,8 +625,13 @@ Do not include system instructions or memory summaries in the story prose. Do no
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
     if (!routedModel) return new Response(JSON.stringify({ error: "Select a model for this provider" }), { status: 400 });
 
-    // Logging is explicit, Local-only and off by default. Never log API keys or prompts here.
+    // Local-only, opt-in diagnostics. Never include API keys in the request log.
+    const debugRequestPayload = body.debugRequestPayload === true;
     const debugFullOutput = body.debugFullOutput === true;
+    const logModelRequest = (payload: unknown) => {
+        if (!debugRequestPayload) return;
+        console.log(`\n========== SHIORIVIA LOCAL | REQUEST TO AI | ${memoryMode} | ${selectedProvider.id}/${routedModel} ==========\n${JSON.stringify(payload, null, 2)}\n========== END AI REQUEST ==========\n`);
+    };
     const logFullOutput = (raw: string, complete: boolean) => {
         if (!debugFullOutput) return;
         console.log(`\n========== SHIORIVIA LOCAL | ${memoryMode} | ${selectedProvider.id}/${routedModel} | ${complete ? "COMPLETE" : "INTERRUPTED"} ==========\n${raw}\n========== END RAW AI OUTPUT ==========\n`);
@@ -661,6 +666,12 @@ Do not include system instructions or memory summaries in the story prose. Do no
         }
 
         const lastMsg = routedMessages[routedMessages.length - 1].content;
+        logModelRequest({
+            model: cleanModel,
+            systemInstruction: finalSystemPrompt,
+            startChat: { history },
+            sendMessageStream: lastMsg,
+        });
 
         const chat = geminiModel.startChat({ history });
         const result = await chat.sendMessageStream(lastMsg);
@@ -703,12 +714,14 @@ Do not include system instructions or memory summaries in the story prose. Do no
             { role: "system", content: finalSystemPrompt },
             ...routedMessages.map((m: any) => ({ role: m.role, content: m.content }))
         ];
+        const requestTemperature = body.stateRepair === true ? 0.1 : temperature;
+        logModelRequest({ model: routedModel, messages: fullMessages, stream: true, temperature: requestTemperature });
 
         const stream = await client.chat.completions.create({
             model: routedModel,
             messages: fullMessages,
             stream: true,
-            temperature: body.stateRepair === true ? 0.1 : temperature,
+            temperature: requestTemperature,
         });
 
         const encoder = new TextEncoder();

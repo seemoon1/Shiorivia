@@ -9,13 +9,14 @@ import { asChartaPromptData, type ChartaCharacter } from "../lib/charta";
 const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /** Viae messages live *inside* the Viae workspace; they never enter normal chat history. */
-export function useViaeEngine({ session, updateSession, provider, model, notify, customCharacters = [], terminalLogEnabled = false }: {
+export function useViaeEngine({ session, updateSession, provider, model, notify, customCharacters = [], terminalRequestLogEnabled = false, terminalLogEnabled = false }: {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
   provider: string;
   model: string;
   notify?: (message: string) => void;
   customCharacters?: ChartaCharacter[];
+  terminalRequestLogEnabled?: boolean;
   terminalLogEnabled?: boolean;
 }) {
   const { locale } = useLanguage();
@@ -71,6 +72,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify,
         body: JSON.stringify({
           // Legacy wire mode remains "lime" for compatibility with saved sessions.
           memoryMode: "lime", provider, model, uiLanguage: locale,
+          debugRequestPayload: terminalRequestLogEnabled,
           debugFullOutput: terminalLogEnabled,
           customCharacters: customCharacters.map(asChartaPromptData),
           messages: context.map(msg => ({ role: msg.role, content: msg.content, kind: msg.kind })),

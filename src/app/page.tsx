@@ -99,6 +99,7 @@ export default function Home() {
         imageGen: false,
         tts: false,
         musicControl: false,
+        terminalRequestLog: false,
         terminalLog: false,
         engineeringTransition: false,
         storyTheme: "sky" as StoryTheme,
@@ -137,6 +138,7 @@ export default function Home() {
                         : prev.imageSettings,
                     tts: false, // TTS is under development
                     musicControl: typeof saved.musicControl === "boolean" ? saved.musicControl : prev.musicControl,
+                    terminalRequestLog: saved.terminalRequestLog === true,
                     terminalLog: saved.terminalLog === true,
                     engineeringTransition: typeof saved.engineeringTransition === "boolean" ? saved.engineeringTransition : false,
                     storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
@@ -152,12 +154,12 @@ export default function Home() {
     useEffect(() => {
         if (!settingsHydrated) return;
         try {
-            const { webSearch, imageGen, tts, musicControl, terminalLog, engineeringTransition, storyTheme, imageSettings } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalLog, engineeringTransition, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
+            const { webSearch, imageGen, tts, musicControl, terminalRequestLog, terminalLog, engineeringTransition, storyTheme, imageSettings } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalRequestLog, terminalLog, engineeringTransition, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalLog, config.engineeringTransition, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalRequestLog, config.terminalLog, config.engineeringTransition, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
 
     const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders.filter(p => !p.custom || capabilityFor(p.id, providerCapabilities).llm), disabledProviders), [allProviders, disabledProviders, providerCapabilities]);
     useEffect(() => { fetch('/api/check_env').then(r => r.json()).then(d => setFalConfigured(Boolean(d.hasFal))).catch(() => {}); }, []);
@@ -519,6 +521,10 @@ export default function Home() {
                     onToggle={toggleSetting}
                     debugMode={ui.debugMode}
                     onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    terminalRequestLogEnabled={config.terminalRequestLog}
+                    onToggleTerminalRequestLog={() => setConfig(prev => ({ ...prev, terminalRequestLog: !prev.terminalRequestLog }))}
+                    terminalLogEnabled={config.terminalLog}
+                    onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
                     onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                     onTestEffect={ui.setEffect}
@@ -553,6 +559,7 @@ export default function Home() {
                     updateSession={(updater) => cloud.setSessions(prev => prev.map(s => s.id === currentSession.id ? updater(s) : s))}
                     characters={allChars}
                     customCharacters={charta.characters}
+                    terminalRequestLogEnabled={config.terminalRequestLog}
                     terminalLogEnabled={config.terminalLog}
                     onExit={() => setShowModeHub(true)}
                     onSettings={() => setShowSettingsCenter(true)}
@@ -572,6 +579,8 @@ export default function Home() {
                     onToggle={toggleSetting}
                     debugMode={ui.debugMode}
                     onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                    terminalRequestLogEnabled={config.terminalRequestLog}
+                    onToggleTerminalRequestLog={() => setConfig(prev => ({ ...prev, terminalRequestLog: !prev.terminalRequestLog }))}
                     terminalLogEnabled={config.terminalLog}
                     onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
@@ -662,6 +671,8 @@ export default function Home() {
                 onToggle={toggleSetting}
                 debugMode={ui.debugMode}
                 onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                terminalRequestLogEnabled={config.terminalRequestLog}
+                onToggleTerminalRequestLog={() => setConfig(prev => ({ ...prev, terminalRequestLog: !prev.terminalRequestLog }))}
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}
@@ -964,6 +975,8 @@ export default function Home() {
                 onToggle={toggleSetting}
                 debugMode={ui.debugMode}
                 onToggleDebug={() => ui.setDebugMode(prev => !prev)}
+                terminalRequestLogEnabled={config.terminalRequestLog}
+                onToggleTerminalRequestLog={() => setConfig(prev => ({ ...prev, terminalRequestLog: !prev.terminalRequestLog }))}
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}

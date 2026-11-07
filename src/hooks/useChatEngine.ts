@@ -154,6 +154,7 @@ export const useChatEngine = ({
                     codeRepository: currentSession.codeRepository,
                     provider: apiProvider, 
                     uiLanguage: locale,
+                    debugRequestPayload: config.terminalRequestLog === true,
                     debugFullOutput: config.terminalLog === true,
                     ...(currentSession.memoryMode === "sliding" ? {
                         storyRole,
@@ -279,6 +280,7 @@ export const useChatEngine = ({
                         body: JSON.stringify({
                             stateRepair: true, memoryMode: "sliding", model: modelToUse,
                             provider: apiProvider, uiLanguage: locale,
+                            debugRequestPayload: config.terminalRequestLog === true,
                             debugFullOutput: config.terminalLog === true,
                             storyRole, storyPovId: currentSession.storyPovId,
                             storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
