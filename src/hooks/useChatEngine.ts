@@ -8,6 +8,8 @@ import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw";
 import { useLanguage } from "../context/LanguageContext";
 import { asChartaSelfPromptData, selfName, selfGenderLabel } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
+import { parseStoryWorldline } from "../lib/storyWorldline";
+import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -43,6 +45,10 @@ export const useChatEngine = ({
     ) => {
         if (isLoading || !currentSession) return;
 
+        if (currentSession.memoryMode === "sliding" && !parseStoryWorldline(currentSession.storyWorldline)) {
+            showToast("请先打开右侧世界线，设置世界观、ERA 和 PERIOD，再开始故事。");
+            return;
+        }
         const isRegen = overrideMessages !== undefined;
         const txt = overrideInput !== undefined ? overrideInput : input.trim();
         if (!isRegen && !txt && !selectedFile) return;
@@ -54,6 +60,10 @@ export const useChatEngine = ({
             return;
         }
         const previousStoryTurns = (overrideMessages || currentSession.messages).filter((message: any) => message.role === "user").length;
+        const generationId = crypto.randomUUID();
+        const assistantMeta = currentSession.memoryMode === "sliding" ? {
+            storyStateBefore: snapshotStoryState(currentSession), storyGenerationId: generationId,
+        } : {};
 
         if (!isRegen) { setInput(""); setSelectedFile(null); }
         setIsLoading(true);
@@ -67,12 +77,12 @@ export const useChatEngine = ({
                 if (selectedFile.type === 'text') content = (txt ? txt + "\n\n" : "") + `[Attached File: ${selectedFile.name}]\n${selectedFile.url}`;
                 else content = [{ type: "text", text: txt || "File" }, { type: "image_url", image_url: { url: selectedFile.url } }];
             }
-            msgs.push({ role: "user", content, characterId: activeCharacterId });
+            msgs.push({ role: "user", content, characterId: activeCharacterId, ...(currentSession.memoryMode === "sliding" ? { storyStateBefore: snapshotStoryState(currentSession) } : {}) });
         }
 
         setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
             ...s,
-            messages: [...msgs, { role: "assistant", content: "", modelName: modelToUse, characterId: activeCharacterId }],
+            messages: [...msgs, { role: "assistant", content: "", modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta }],
             ...(s.memoryMode === "sliding" ? {
                 storyRole, storySelfId: storyRole === "participant" ? selectedSelfId : null,
                 storySelfSnapshot: storyRole === "participant" ? selectedSelf : null,
@@ -144,7 +154,7 @@ export const useChatEngine = ({
                 fullText += chunk;
 
                 setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
-                    ...s, messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse, characterId: activeCharacterId }]
+                    ...s, messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta }]
                 } : s));
             }
 
@@ -153,7 +163,7 @@ export const useChatEngine = ({
                 // Character Chat sends plain text without story/game/IDE commands.
                 setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
                     ...s,
-                    messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse, characterId: activeCharacterId }],
+                    messages: [...msgs, { role: "assistant", content: fullText, modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta }],
                     updatedAt: Date.now(),
                 } : s));
 
@@ -211,7 +221,72 @@ export const useChatEngine = ({
                 return;
             }
 
-            let currentText = fullText; 
+            // DeepSeek and other compatible gateways occasionally finish after the
+            // narrative but before the trailing structured state. Ask for ONE brief
+            // state-only extraction; do not regenerate/overwrite the story prose.
+            let storyProtocolMissing = false;
+            const existingGameBlock = fullText.match(/<game_state>([\s\S]*?)<\/game_state>/i);
+            let validGameJson = false;
+            if (existingGameBlock) {
+                try {
+                    const value = JSON.parse(existingGameBlock[1]);
+                    validGameJson = isUsableStoryProtocol(value);
+                } catch { /* A broken trailing JSON block must not be accepted. */ }
+            }
+            if (currentSession.memoryMode === "sliding" && !validGameJson) {
+                try {
+                    const repairPrompt = [
+                        "请仅根据下面已生成的故事正文恢复 <game_state> JSON，不要续写剧情。",
+                        `此前自身状态: ${JSON.stringify(currentSession.protagonist || null).slice(0, 2400)}`,
+                        `此前角色状态: ${JSON.stringify(currentSession.charStatus || []).slice(0, 4000)}`,
+                        `世界线: ${JSON.stringify(currentSession.storyWorldline)}`,
+                        `故事片段（末尾）:\n${fullText.slice(-10000)}`,
+                    ].join("\n\n");
+                    const repairResponse = await fetch("/api/chat", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            stateRepair: true, memoryMode: "sliding", model: modelToUse,
+                            provider: apiProvider, uiLanguage: locale,
+                            storyRole, storyPovId: currentSession.storyPovId,
+                            storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
+                            storyWorldline: currentSession.storyWorldline,
+                            customCharacters: customCharacters.map(asChartaPromptData),
+                            messages: [{ role: "user", content: repairPrompt }],
+                        }),
+                        signal: abortControllerRef.current?.signal,
+                    });
+                    if (!repairResponse.ok || !repairResponse.body) throw new Error("State repair unavailable");
+                    const repairReader = repairResponse.body.getReader();
+                    const repairDecoder = new TextDecoder();
+                    let repairText = "";
+                    while (repairText.length < 25000) {
+                        const { value, done } = await repairReader.read();
+                        if (done) break;
+                        repairText += repairDecoder.decode(value, { stream: true });
+                    }
+                    repairText += repairDecoder.decode();
+                    const match = repairText.match(/<game_state>([\s\S]*?)<\/game_state>/i);
+                    if (!match) throw new Error("State repair returned no game_state");
+                    const recovered = JSON.parse(match[1]);
+                    if (!isUsableStoryProtocol(recovered)) {
+                        throw new Error("State repair returned incomplete fields");
+                    }
+                    // Replace malformed completed blocks so the first-match parser sees the repaired state.
+                    const openTagIndex = fullText.toLowerCase().lastIndexOf("<game_state>");
+                    const preservedProse = existingGameBlock ? fullText.replace(existingGameBlock[0], "").trimEnd()
+                        : openTagIndex >= 0 ? fullText.slice(0, openTagIndex).trimEnd() : fullText;
+                    fullText = `${preservedProse}\n\n<game_state>${JSON.stringify(recovered)}</game_state>`;
+                } catch (error) {
+                    console.warn("Story state recovery skipped:", error);
+                }
+                const finalGameBlock = fullText.match(/<game_state>([\s\S]*?)<\/game_state>/i);
+                try {
+                    const state = finalGameBlock ? JSON.parse(finalGameBlock[1]) : null;
+                    storyProtocolMissing = !isUsableStoryProtocol(state);
+                } catch { storyProtocolMissing = true; }
+                if (storyProtocolMissing) showToast("本轮故事没有返回完整状态；已保留正文和上一轮状态，建议重试本轮。");
+            }
+            let currentText = fullText;
             let capturedState: any = null;
             let newFiles: Record<string, any> = {};
 
@@ -304,12 +379,16 @@ export const useChatEngine = ({
                 } catch(e) { console.error("Audio Parse Error", e); }
             }
 
-            const gameRegex = /<game_state>([\s\S]*?)<\/game_state>/;
+            const gameRegex = /<game_state>([\s\S]*?)<\/game_state>/i;
             const gameMatch = currentText.match(gameRegex);
             if (gameMatch) {
                 try {
-                    capturedState = JSON.parse(gameMatch[1]);
+                    const parsed = JSON.parse(gameMatch[1]);
                     currentText = currentText.replace(gameRegex, "").trim();
+                    if (currentSession.memoryMode === "sliding" && !isUsableStoryProtocol(parsed)) {
+                        throw new Error("Incomplete game_state JSON — preserve previous story state");
+                    }
+                    capturedState = parsed;
 
                     if (currentSession.memoryMode === "sliding") {
                         const catalog = [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.names?.[c.primaryLanguage] || c.id }))];
@@ -428,7 +507,7 @@ export const useChatEngine = ({
                     
                     return {
                         ...s,
-                        messages: [...msgs, { role: "assistant", content: currentText, modelName: modelToUse, characterId: activeCharacterId }],
+                        messages: [...msgs, { role: "assistant", content: currentText, modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta, storyProtocolMissing }],
                         codeRepository: updatedRepo,
                         ...(capturedState ? {
                             protagonist: capturedState.protagonist,
@@ -437,6 +516,9 @@ export const useChatEngine = ({
                             plotSuggestions: capturedState.suggestions,
                             lastDanmaku: capturedState.danmaku,
                             timeline: capturedState.timeline,
+                            ...(s.memoryMode === "sliding" && s.storyWorldline && typeof capturedState.timeline?.minor === "string" && capturedState.timeline.minor.trim()
+                                ? { storyWorldline: { ...s.storyWorldline, event: capturedState.timeline.minor.trim().slice(0, 500) } }
+                                : {}),
                             
                             currentBackground: capturedState.environment?.bgId || s.currentBackground,
                             live2dCharId: capturedState.live2d?.charId || null,
@@ -449,7 +531,7 @@ export const useChatEngine = ({
                 return s;
             }));
 
-            if (currentSession.memoryMode === 'sliding' || currentSession.memoryMode === 'novel') {
+            if ((currentSession.memoryMode === 'sliding' && !storyProtocolMissing) || currentSession.memoryMode === 'novel') {
                 const textToSummarize = currentSession.memoryMode === 'novel' ? currentText : `User: ${txt}\nAI: ${currentText}\n`;
                 const summarizeMode = currentSession.memoryMode === 'novel' ? 'novel_chapter' : 'micro';
 
@@ -464,7 +546,8 @@ export const useChatEngine = ({
                         const summaryLine = `${prefix}${microData.summary}\n`;
                         
                         setSessions((prev: any) => prev.map((s: any) => {
-                            if (s.id === currentSessionId) {
+                            if (s.id === currentSessionId && (s.memoryMode !== "sliding" ||
+                                s.messages.some((message: any) => message.storyGenerationId === generationId))) {
                                 const newStm = (s.stm || "") + summaryLine;
                                 const newCount = (s.turnCount || 0) + 1;
                                 
@@ -474,7 +557,7 @@ export const useChatEngine = ({
                                         body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro', provider: apiProvider, model: modelToUse, uiLanguage: locale })
                                     }).then(r => r.json()).then(macroData => {
                                         if (macroData.summary) {
-                                            setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));
+                                            setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId && (innerS.memoryMode !== "sliding" || innerS.messages.some((message: any) => message.storyGenerationId === generationId)) ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));
                                             showToast("✨ Memory Consolidated");
                                         }
                                     });
@@ -546,14 +629,28 @@ export const useChatEngine = ({
     };
 
     const handleDeleteMessage = (idx: number, role: string) => {
-        if (!currentSession) return;
-        if (!confirm("⚠️ Delete this message?")) return;
-        
-        let newMsgs = [...currentSession.messages];
-        if (role === 'assistant') newMsgs.splice(idx, 1);
-        else if (role === 'user') newMsgs.splice(idx, idx === newMsgs.length - 2 ? 2 : 1);
-        
-        setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? { ...s, messages: newMsgs } : s));
+        if (!currentSession || isLoading) return;
+        const oldMessages = currentSession.messages as any[];
+        const latestAssistant = role === "assistant" ? oldMessages[idx] : oldMessages[idx + 1]?.role === "assistant" ? oldMessages[idx + 1] : null;
+        const lastTurn = idx === oldMessages.length - 1 || (role === "user" && idx === oldMessages.length - 2);
+        if (currentSession.memoryMode === "sliding" && !lastTurn) {
+            showToast("故事模式目前仅支持从最后一轮向前删除，以确保状态与记忆同步回退。");
+            return;
+        }
+        if (!confirm("确定删除最后一条消息并回退故事状态与记忆吗？")) return;
+        const newMsgs = [...oldMessages];
+        if (role === "assistant") newMsgs.splice(idx, 1);
+        else if (role === "user") newMsgs.splice(idx, newMsgs[idx + 1]?.role === "assistant" ? 2 : 1);
+        setSessions((prev: any) => prev.map((s: any) => {
+            if (s.id !== currentSessionId) return s;
+            if (s.memoryMode !== "sliding") return { ...s, messages: newMsgs, updatedAt: Date.now() };
+            // The world, ERA and PERIOD belong to the user and are never rolled back.
+            // If no real user turns remain, clear every generated story state.
+            const restored = newMsgs.some((m: any) => m.role === "user")
+                ? restoreStoryState(s, latestAssistant?.storyStateBefore || (role === "user" ? oldMessages[idx]?.storyStateBefore : undefined))
+                : emptyStoryState(s);
+            return { ...restored, messages: newMsgs, updatedAt: Date.now() };
+        }));
     };
 
     const handleRepoUpdate = (newRepo: any) => {

@@ -283,7 +283,16 @@ export async function POST(req: Request) {
     let finalSystemPrompt = "";
     let finalMessages = messages;
 
-    if (memoryMode === "novel") {
+    if (body.stateRepair === true && memoryMode === "sliding") {
+      finalSystemPrompt = `You are a structured story-state extractor, not a storyteller.
+Return ONLY <game_state>{...}</game_state>, with strictly valid JSON, no thinking, narration, markdown or comments.
+Base the state ONLY on the user-provided story excerpt and previous state. Preserve established facts and plausible relations; do not fabricate new events, memories or character personalities.
+Always include all keys: protagonist, sceneCastIds (array of known cast IDs), character (array), suggestions (fun/rational/radical, plot-advancing and canon-appropriate), danmaku (array), timeline (major/medium/minor), environment, live2d, music and effect.
+Observer without chosen POV: protagonist=null and character=[]. Participant: protagonist is the supplied self. Observer with POV: protagonist is the chosen on-stage character.
+Never omit sceneCastIds or suggestions. If the narrative does not establish a detail, use null, an empty string or an empty array rather than inventing it.
+Only JSON belongs between the tags.`;
+      finalMessages = Array.isArray(messages) ? messages.slice(-1) : [];
+    } else if (memoryMode === "novel") {
       console.log("🌌 Mode: Novel Generation");
       const nc = novelConfig || {};
 
@@ -435,6 +444,7 @@ ${COLOR_INSTRUCTION}
       console.log("🌹 Mode: Story Roleplay");
       finalSystemPrompt += `${STORY_PRE_PROMPT}\n\n`;
       const selectedWorldline = parseStoryWorldline(body.storyWorldline);
+      if (!selectedWorldline) return Response.json({ error: "请先在世界线面板选择世界观、ERA 和 PERIOD" }, { status: 400 });
       const storyRole = body.storyRole === "participant" ? "participant" : "observer";
       const self = body.storySelf && typeof body.storySelf === "object" && !Array.isArray(body.storySelf)
         ? body.storySelf as Record<string, unknown> : null;
@@ -533,6 +543,12 @@ After this first story turn, the UI may let the user choose from the actual on-s
 For EVERY response, include sceneCastIds in <game_state> as an array of actual on-stage cast IDs, not a list of all available characters.
 The chosen role and POV are session-locked after the next user turn.
 [PLOT ADVANCEMENT SUGGESTIONS — THREE CLEARLY DIFFERENT DIRECTIONS]
+[IN-CHARACTER CONTINUITY GUARD — MANDATORY]
+Before writing EACH suggestion, silently verify the named character's personality, motivation, relationships, current age, knowledge, social position and real options in the selected ERA/PERIOD.
+A character cannot know future canon events, have relationships not yet formed, appear in distant places without a credible reason, or suddenly abandon their established temperament.
+Fun, rational and radical are styles of PLAUSIBLE DEVELOPMENT, not personality replacements. A shy character may make a bold choice through an emotionally credible small step, not become inexplicably flamboyant; a reserved character may be playful subtly, not act unlike themselves.
+A radical option must be consequential without requiring OOC violence, instant intimacy or an implausible confession. The user-selected canon/AU rules override stereotyped genre tropes.
+Never force characters to interact if they have not met or cannot meet in this specific period. When continuity is uncertain, choose a smaller but believable action. Never use a future-period event as an already-known fact.
 The fields suggestions.fun / suggestions.rational / suggestions.radical are THREE SPECIFIC, CONTINUATION-READY ways to ADVANCE THE NEXT SCENE, not passive commentary about existing events.
 Use concrete characters, actions, dialogue, decisions, and new complications; ground each in the current plot. Each entry should be an actionable story direction the user could paste into the chat box as a director cue.
 - fun: playful, surprising, mischievous, delightfully chaotic; introduce a humorous misunderstanding, mischievous plan or unexpected interaction, without becoming random nonsense.
@@ -559,6 +575,12 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
 `;
       }
 
+      finalSystemPrompt += `
+[FINAL OUTPUT CONTRACT — story mode]
+Complete the visible narrative first, then ALWAYS append one complete <game_state> JSON object BEFORE ending the response.
+Reserve enough output space for this tag; keep the narrative shorter if necessary. Mandatory keys: protagonist, sceneCastIds, character, suggestions, danmaku, timeline, environment, live2d, music, effect.
+Do not include system instructions or memory summaries in the story prose. Do not put <game_state> inside <thinking>. If uncertain, use null/empty values rather than omitting the tag.
+`;
       finalSystemPrompt += `\n\n[SYSTEM]: Start response with <thinking> block.`;
       finalSystemPrompt += `\n[SYSTEM WARNING]: Do NOT copy/paste previous [GALLERY] tags.`;
 
@@ -580,7 +602,7 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
 
     // Other modes keep their existing history behavior; Viae uses tagged director
     // messages and the deliberate 18-turn context prepared above.
-    const routedMessages = memoryMode === "lime" ? finalMessages : messages;
+    const routedMessages = memoryMode === "lime" || memoryMode === "sliding" ? finalMessages : messages;
     if (selectedProvider.id === 'google') {
         const genAI = new GoogleGenerativeAI(selectedProvider.apiKey);
         const cleanModel = routedModel.replace(/^google\//, "");
@@ -644,7 +666,7 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
             model: routedModel,
             messages: fullMessages,
             stream: true,
-            temperature: temperature,
+            temperature: body.stateRepair === true ? 0.1 : temperature,
         });
 
         const encoder = new TextEncoder();

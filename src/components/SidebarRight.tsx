@@ -6,7 +6,7 @@ import { CHAR_DATA } from "../data/char_config";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { SuggestionModal } from "./Modals";
-import { StoryWorldlineModal } from "./StoryWorldlineModal";
+import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
 import { selfName } from "../lib/chartaSelf";
 import { MemoryPreviewButton } from "./MemoryVaultModal";
@@ -27,7 +27,7 @@ const SidebarRightComponent = ({
     dbChars,
     currentBgmId, setBgmId,
     activeStorySelf, storySelf, onStoryRoleChange, onStoryPovChange,
-    worlds = [], setInput, onOpenChartaWorld
+    worlds = [], setInput, onOpenChartaWorld, worldlineOpenSignal = 0
 }: any) => {
 
     const isStoryMode = currentSession?.memoryMode === 'sliding';
@@ -43,6 +43,7 @@ const SidebarRightComponent = ({
     const [pageIndex, setPageIndex] = useState(0);
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, text: string }>({ isOpen: false, text: "" });
     const [worldlineOpen, setWorldlineOpen] = useState(false);
+    useEffect(() => { if (worldlineOpenSignal > 0) setWorldlineOpen(true); }, [worldlineOpenSignal]);
 
     useEffect(() => {
         if (pageIndex >= charList.length) setPageIndex(0);
@@ -157,9 +158,11 @@ const SidebarRightComponent = ({
                                     </div>
                                 )}
 
-                                <button type="button" onClick={() => setWorldlineOpen(true)} className="w-full rounded-xl border border-emerald-100 bg-white p-3 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40">
-                                    <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-[#52745e]">✧ WORLDLINE · 世界线</span><span className="text-[10px] text-[#82988a]">打开管理 ↗</span></div>
-                                    <p className="mt-2 text-xs leading-5 text-[#6b8071]">{currentSession?.storyWorldline ? describeStoryWorldline(currentSession.storyWorldline) : currentSession?.timeline?.major ? `旧时间线：${currentSession.timeline.major} / ${currentSession.timeline.medium || "未设定"}` : "尚未设定 · 点击选择世界观与时间线"}</p>
+                                <button type="button" onClick={() => setWorldlineOpen(true)} className="group relative w-full overflow-hidden rounded-2xl border border-[#6c8b79]/50 bg-[#1f3935] p-4 text-left shadow-[0_10px_25px_rgba(20,55,43,.12)] transition hover:border-[#c8b586] hover:shadow-lg">
+                                    <span aria-hidden className="pointer-events-none absolute -right-7 -top-8 h-28 w-28 rounded-full border border-[#e2c996]/40" />
+                                    <span aria-hidden className="pointer-events-none absolute right-0 top-1 h-16 w-16 rounded-full border border-[#e2c996]/20" />
+                                    <div className="relative flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-[11px] font-semibold tracking-[.15em] text-[#e5cf9d]" style={{fontFamily:'Bahnschrift,"Arial Narrow",sans-serif'}}>✧ WORLDLINE / 世界线</span><span className="text-[10px] text-[#bdd1be] group-hover:text-white">展开航图 ↗</span></div>
+                                    <p className="relative mt-2 text-[11px] leading-5 text-[#e0eadd]">{currentSession?.storyWorldline ? describeStoryWorldline(currentSession.storyWorldline) : currentSession?.timeline?.major ? `旧时间线：${currentSession.timeline.major} / ${currentSession.timeline.medium || "未设定"}` : "尚未铭刻命运 · 请先选择世界线"}</p>
                                 </button>
 
                                 <MemoryPreviewButton stm={currentSession?.stm} ltm={currentSession?.ltm} onOpen={onOpenMemory} tone="story" />
@@ -284,7 +287,7 @@ const SidebarRightComponent = ({
                         mode="insert"
                         onConfirm={() => { setInput?.(confirmModal.text); setConfirmModal({ ...confirmModal, isOpen: false }); }}
                     />
-                    <StoryWorldlineModal isOpen={worldlineOpen} value={currentSession?.storyWorldline}
+                    <StoryWorldlineFateModal isOpen={worldlineOpen} value={currentSession?.storyWorldline}
                         legacyTimeline={currentSession?.timeline} worlds={worlds}
                         onSave={handleWorldlineUpdate} onClose={() => setWorldlineOpen(false)}
                         onOpenCharta={onOpenChartaWorld ? () => { setWorldlineOpen(false); onOpenChartaWorld(); } : undefined}/>

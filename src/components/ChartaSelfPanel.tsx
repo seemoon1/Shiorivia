@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Plus, Save, Trash2 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { type ChartaGender } from "../lib/charta";
@@ -10,7 +10,7 @@ const genders: { value: ChartaGender; label: string }[] = [
   { value: "undisclosed", label: "不愿透露" }, { value: "custom", label: "自定义" },
 ];
 
-export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, removeSelf, selectSelf }: {
+export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, removeSelf, selectSelf, embedded = false, selectedId = null, requestVersion = 0, onDirtyChange, onSaved }: {
   selves: ChartaSelf[];
   activeId: string | null;
   loaded: boolean;
@@ -18,6 +18,9 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
   saveSelf: (entry: ChartaSelf) => Promise<boolean>;
   removeSelf: (id: string) => Promise<boolean>;
   selectSelf: (id: string | null) => Promise<boolean>;
+  embedded?: boolean; selectedId?: string | null; requestVersion?: number;
+  onDirtyChange?: (dirty: boolean) => void;
+  onSaved?: (id: string) => void;
 }) {
   const { locale } = useLanguage();
   const [draft, setDraft] = useState<ChartaSelf | null>(null);
@@ -26,6 +29,15 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
   const [message, setMessage] = useState("");
   const [newLanguage, setNewLanguage] = useState("en");
   const [otherLanguage, setOtherLanguage] = useState("");
+  const lastExternalRequest = useRef(0);
+  useEffect(() => {
+    if (!embedded || requestVersion === lastExternalRequest.current) return;
+    lastExternalRequest.current = requestVersion;
+    const entry = selectedId ? selves.find(self => self.id === selectedId) : null;
+    setDraft(entry ? { ...entry, names: { ...entry.names } } : selectedId ? null : newChartaSelf(locale));
+    setDirty(false); setMessage("");
+  }, [embedded, requestVersion, selectedId, selves, locale]);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const update = (value: ChartaSelf) => { setDraft(value); setDirty(true); setMessage(""); };
   const choose = (value: ChartaSelf | null) => {
     if (dirty && !window.confirm("放弃未保存的修改吗？")) return;
@@ -37,7 +49,7 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
     setBusy(true);
     try {
       const parsed = parseChartaSelf(draft);
-      if (await saveSelf(parsed)) { setDraft(parsed); setDirty(false); setMessage("已保存自设资料"); }
+      if (await saveSelf(parsed)) { setDraft(parsed); setDirty(false); setMessage("已保存自设资料"); onSaved?.(parsed.id); }
     } catch (e) { setMessage(e instanceof Error ? e.message : "保存失败"); }
     finally { setBusy(false); }
   };
@@ -56,8 +68,8 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
     }
     update({ ...draft, names: { ...draft.names, [language]: "" } }); setOtherLanguage("");
   };
-  return <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
-    <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
+  return <div className={embedded ? "min-w-0 w-full" : "mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]"}>
+    {!embedded && <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
       <div className="flex items-center justify-between text-xs font-semibold tracking-widest text-[#697e70]"><span>SELF · 自设</span><span>{selves.length}</span></div>
       <p className="mt-2 text-xs leading-6 text-[#819588]">不是故事的必然主角，而是你愿意以什么身份参与星路。</p>
       <button disabled={!loaded || busy} type="button" onClick={() => choose(newChartaSelf(locale))} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#456b57] px-3 py-3 text-sm font-medium text-white disabled:opacity-40"><Plus size={16}/>创建自设</button>
@@ -70,7 +82,7 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
         {!selves.length && <p className="py-5 text-center text-xs text-[#9aab9e]">还没有自设 · 每个人都可以是 Star</p>}
       </div>
       {activeId && <button type="button" disabled={busy} onClick={async () => { setBusy(true); await selectSelf(null); setBusy(false); }} className="mt-4 w-full text-xs text-[#8a9b90] underline">取消当前使用的自设</button>}
-    </aside>
+    </aside>}
     <section className="rounded-2xl border border-[#dce4dc] bg-white/90 p-5 shadow-sm sm:p-8">
       {!draft ? <div className="flex min-h-[440px] flex-col items-center justify-center gap-3 text-[#91a595]"><span className="font-serif text-5xl">✧</span><p className="text-sm">选择或创建一位故事参与者</p></div> : <div className="space-y-6">
         <div className="border-b border-[#edf0e9] pb-5"><span className="text-[10px] font-semibold tracking-widest text-[#799682]">CHARTA · SELF PROFILE</span><h2 className="mt-1 font-serif text-2xl">{draft.names[draft.primaryLanguage] || "未命名的星"}</h2></div>

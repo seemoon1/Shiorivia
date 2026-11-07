@@ -66,6 +66,7 @@ export default function Home() {
     const [showCharta, setShowCharta] = useState(false);
     const [showSettingsCenter, setShowSettingsCenter] = useState(false);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
+    const [worldlineOpenSignal, setWorldlineOpenSignal] = useState(0);
 
     useEffect(() => {
         if (process.env.NEXT_PUBLIC_ENABLE_LOCAL_LIVE2D !== "true") return;
@@ -819,6 +820,7 @@ export default function Home() {
                     leftSidebarOpen={ui.leftSidebarOpen} setLeftSidebarOpen={ui.setLeftSidebarOpen}
                     rightSidebarOpen={ui.rightSidebarOpen} setRightSidebarOpen={ui.setRightSidebarOpen}
                     setShowLocalWorld={ui.setShowLocalWorld} setShowGlobalWorld={ui.setShowGlobalWorld}
+                    onOpenStoryWorldline={() => { ui.setRightSidebarOpen(true); setWorldlineOpenSignal(value => value + 1); }}
                     debugMode={ui.debugMode} setDebugMode={ui.setDebugMode}
 
                     currentCharacter={dynamicCharacter} currentSession={currentSession}
@@ -884,7 +886,7 @@ export default function Home() {
                 <SidebarRight
                     isOpen={ui.rightSidebarOpen} onClose={() => ui.setRightSidebarOpen(false)}
                     activeStorySelf={selfLibrary.activeSelf}
-                    worlds={worldLibrary.worlds} setInput={engine.setInput}
+                    worlds={worldLibrary.worlds} setInput={engine.setInput} worldlineOpenSignal={worldlineOpenSignal}
                     onOpenChartaWorld={() => { setChartaInitialSection("worlds"); setShowCharta(true); }}
                     storySelf={currentSession?.storySelfSnapshot || selfLibrary.selves.find(self => self.id === currentSession?.storySelfId) || null}
                     onStoryRoleChange={changeStoryRole} onStoryPovChange={changeStoryPov}

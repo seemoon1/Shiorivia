@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import { ArrowLeft, Download, FilePlus2, Palette, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { chartaText } from "../lib/chartaText";
@@ -10,6 +10,7 @@ import {
 } from "../lib/charta";
 import { ChartaSelfPanel } from "./ChartaSelfPanel";
 import { ChartaWorldPanel } from "./ChartaWorldPanel";
+import { ChartaArchiveList } from "./ChartaArchiveList";
 import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
@@ -53,6 +54,10 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
 }) {
   const { locale } = useLanguage();
   const [section, setSection] = useState<"characters" | "self" | "worlds">(initialSection);
+  const [cabinetSelection, setCabinetSelection] = useState<{ kind: "characters" | "self" | "worlds"; id: string | null }>({ kind: initialSection, id: null });
+  const [requestVersion, setRequestVersion] = useState(0);
+  const [childDirty, setChildDirty] = useState(false);
+  const onChildDirty = useCallback((value: boolean) => setChildDirty(value), []);
   const txt = (key: Parameters<typeof chartaText>[1]) => chartaText(locale, key);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -78,7 +83,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     setBusy(true);
     try {
       const data = parseChartaCharacter(draft);
-      if (await save(data)) { setDraft(data); setDirty(false); setMessage(txt("saved")); }
+      if (await save(data)) { setDraft(data); setDirty(false); setMessage(txt("saved")); setCabinetSelection({ kind: "characters", id: data.id }); }
     } catch (e) { setMessage(e instanceof Error ? e.message : txt("required")); }
     finally { setBusy(false); }
   };
@@ -138,49 +143,43 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,3}$/.test(lang) || lang in draft.names || Object.keys(draft.names).length >= 12) { setMessage(txt("noOther")); return; }
     update({ ...draft, names: { ...draft.names, [lang]: "" } }); setShowAdd(false); setCustomLang("");
   };
-  if (section === "self") return <main className="min-h-screen bg-[#f7f8f5] p-5 text-[#2c443a] sm:p-8">
-    <div className="mx-auto max-w-7xl">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dce5dc] pb-5">
-        <button type="button" onClick={onExit} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">← 返回 Shiorivia</button>
-        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.2em]">CHARTA</h1><p className="mt-1 text-xs text-[#7c9181]">SELF · 每个人都可以是 Star</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button><button type="button" onClick={() => setSection("worlds")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs">世界观管理</button></div>
-      </header>
-      <ChartaSelfPanel {...selfLibrary}/>
-    </div>
-  </main>;
-  if (section === "worlds") return <main className="min-h-screen bg-[#f7f8f5] p-5 text-[#2c443a] sm:p-8">
-    <div className="mx-auto max-w-7xl">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dce5dc] pb-5">
-        <button type="button" onClick={onExit} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">← 返回 Shiorivia</button>
-        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.2em]">CHARTA</h1><p className="mt-1 text-xs text-[#7c9181]">WORLD · 书写自己的宇宙</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs">自设管理</button></div>
-      </header>
-      <ChartaWorldPanel {...worldLibrary}/>
-    </div>
-  </main>;
+  const chooseArchive = (kind: "characters" | "self" | "worlds", id: string | null) => {
+    if ((dirty || childDirty) && !window.confirm("有尚未保存的档案修改，确定切换吗？")) return;
+    setSection(kind); setCabinetSelection({ kind, id }); setChildDirty(false);
+    if (kind === "characters") {
+      const item = id ? characters.find(character => character.id === id) : null;
+      setDraft(item ? { ...item, names: { ...item.names } } : newDraft(locale));
+      setDirty(false);
+    } else {
+      setRequestVersion(version => version + 1);
+      setDirty(false);
+    }
+  };
+  const closeArchive = () => {
+    if ((dirty || childDirty) && !window.confirm("有尚未保存的档案修改，确定退出吗？")) return;
+    onExit();
+  };
+  // Unified archive cabinet renders the three editors in one detail pane.
   return <main className="min-h-screen bg-[#f7f8f5] text-[#2c443a]" style={{ backgroundImage: "radial-gradient(ellipse at top right, #e8ede7, transparent 60%)" }}>
     <input ref={importRef} type="file" className="hidden" accept=".json,application/json" onChange={importFile} />
     <input ref={imageRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadImage} />
     <input ref={portraitRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadStandee} />
     <div className="mx-auto max-w-7xl px-4 py-7 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce5dc] pb-5">
-        <button type="button" onClick={() => { if (!dirty || window.confirm(txt("unsaved"))) onExit(); }} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
-        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.24em]">CHARTA</h1><p className="pt-1 text-xs text-[#7c9181]">CHARTA VACUA · {txt("intro")}</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">✧ 创建自设 / 管理自设</button><button type="button" onClick={() => setSection("worlds")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">◎ 创建世界观 / 管理世界观</button><button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button></div>
+        <button type="button" onClick={closeArchive} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
+        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.16em]">CHARTA · 档案柜</h1><p className="pt-1 text-[11px] tracking-[0.22em] text-[#7c9181]">CHARACTER · SELF · WORLD</p></div>
+        <button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button>
       </header>
       <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-2"><h2 className="text-xs font-semibold tracking-widest uppercase text-[#697e70]">{txt("list")}</h2><span className="text-xs text-[#9da99d]">{characters.length}</span></div>
-          <button type="button" disabled={!loaded} onClick={start} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#456b57] px-3 py-3 text-sm font-semibold text-white transition hover:bg-[#315442] disabled:opacity-40"><Plus size={16}/>{txt("new")}</button>
-          <div className="mt-4 space-y-2">
-            {characters.length === 0 && <p className="py-6 text-center text-xs leading-6 text-[#93a397]">{txt("empty")}</p>}
-            {characters.map(c => <button type="button" key={c.id} onClick={() => select({ ...c, names: { ...c.names } })} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition ${draft?.id === c.id ? "border-[#9bbb9d] bg-[#f1f6ef]" : "border-transparent hover:border-[#e0eae0] hover:bg-[#f8faf7]"}`}>
-              <ChartaPortrait character={c} className="h-11 w-11 shrink-0 rounded-xl"/>
-              <span className="min-w-0"><span className="block truncate text-sm font-medium">{nameForCharta(c, locale)}</span><span className="block truncate text-[10px] text-[#93a397]">{c.primaryLanguage} · Charta</span></span>
-            </button>)}
-          </div>
-        </aside>
-        <section className="rounded-2xl border border-[#dce4dc] bg-white/90 p-5 shadow-sm sm:p-8">
+        <ChartaArchiveList characters={characters} selves={selfLibrary.selves} worlds={worldLibrary.worlds}
+          activeSelfId={selfLibrary.activeId} selection={cabinetSelection} locale={locale}
+          onChoose={(kind, id) => chooseArchive(kind, id)} onCreate={(kind) => chooseArchive(kind, null)}
+          onActivate={(id) => { void selfLibrary.selectSelf(id); }} />
+        {section === "self"
+          ? <ChartaSelfPanel {...selfLibrary} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "self", id })} />
+          : section === "worlds"
+            ? <ChartaWorldPanel {...worldLibrary} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "worlds", id })} />
+            : <section className="rounded-2xl border border-[#dce4dc] bg-white/90 p-5 shadow-sm sm:p-8">
           {!draft ? <div className="flex min-h-[500px] flex-col items-center justify-center gap-4 text-[#90a393]"><FilePlus2 size={44} strokeWidth={1}/><p className="text-sm">{txt("choose")}</p></div> : <div className="space-y-8">
             <div className="flex items-center gap-4 border-b border-[#edf0e9] pb-6"><ChartaPortrait character={{avatar:draft.avatar || "📜",hex:draft.hex}} className="h-20 w-20 rounded-2xl"/><div className="min-w-0"><span className="text-[10px] font-semibold tracking-widest text-[#819687]">CHARTA · CHARACTER PROFILE</span><h2 className="truncate pt-1 font-serif text-2xl">{draft.names[draft.primaryLanguage] || txt("new")}</h2><p className="text-xs text-[#97a99a]">{txt("identity")}</p></div></div>
             <div className="space-y-4"><h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">01 · {txt("identity")}</h3>
@@ -238,7 +237,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
           </div>}
           {(message || storageError) && <p role="status" className="mt-4 rounded-lg bg-[#f2f4ee] px-4 py-3 text-xs text-[#607566]">{storageError || message}</p>}
           <p className="mt-5 text-[11px] leading-6 text-[#9cab9c]">{txt("independent")}</p>
-        </section>
+        </section>}
       </div>
     </div>
   </main>;

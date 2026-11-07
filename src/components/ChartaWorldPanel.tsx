@@ -1,14 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Save, Trash2, Globe2, X } from "lucide-react";
 import { newChartaWorld, parseChartaWorld, type ChartaWorld } from "../lib/chartaWorld";
 import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 
-export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld }: ReturnType<typeof useChartaWorlds>) {
+export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld, embedded = false, selectedId = null, requestVersion = 0, onDirtyChange, onSaved }: ReturnType<typeof useChartaWorlds> & {
+  embedded?: boolean; selectedId?: string | null; requestVersion?: number; onDirtyChange?: (dirty: boolean) => void; onSaved?: (id: string) => void;
+}) {
   const [draft, setDraft] = useState<ChartaWorld | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const lastExternalRequest = useRef(0);
+  useEffect(() => {
+    if (!embedded || requestVersion === lastExternalRequest.current) return;
+    lastExternalRequest.current = requestVersion;
+    const entry = selectedId ? worlds.find(world => world.id === selectedId) : null;
+    setDraft(entry ? { ...entry, canonTimeline: entry.canonTimeline.map(stage => ({ ...stage })) } : selectedId ? null : newChartaWorld());
+    setDirty(false); setMessage("");
+  }, [embedded, requestVersion, selectedId, worlds]);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const edit = (world: ChartaWorld | null) => {
     if (dirty && !window.confirm("放弃未保存的世界观修改吗？")) return;
     setDraft(world ? { ...world, canonTimeline: world.canonTimeline.map(stage => ({ ...stage })) } : null);
@@ -20,7 +31,7 @@ export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld
     setBusy(true);
     try {
       const world = parseChartaWorld(draft);
-      if (await saveWorld(world)) { setDraft(world); setDirty(false); setMessage("世界观已保存"); }
+      if (await saveWorld(world)) { setDraft(world); setDirty(false); setMessage("世界观已保存"); onSaved?.(world.id); }
       else setMessage("保存失败，请检查字段和本地服务");
     } catch (e) { setMessage(e instanceof Error ? e.message : "保存失败"); }
     finally { setBusy(false); }
@@ -32,8 +43,8 @@ export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld
     try { if (await removeWorld(draft.id)) { setDraft(null); setDirty(false); setMessage("已删除世界观"); } }
     finally { setBusy(false); }
   };
-  return <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
-    <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
+  return <div className={embedded ? "min-w-0 w-full" : "mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]"}>
+    {!embedded && <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
       <div className="flex items-center justify-between text-xs font-semibold tracking-widest text-[#697e70]"><span>WORLD · 世界观</span><span>{worlds.length}</span></div>
       <p className="mt-2 text-xs leading-6 text-[#819588]">每条星路，都可以通往不同的世界。</p>
       <button type="button" disabled={!loaded || busy} onClick={() => edit(newChartaWorld())} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#456b57] px-3 py-3 text-sm font-medium text-white disabled:opacity-40"><Plus size={16}/>创建世界观</button>
@@ -44,7 +55,7 @@ export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld
       </div>
       {!worlds.length && <p className="py-5 text-center text-xs text-[#9aab9e]">还没有自定义世界观</p>}
       <p className="mt-4 text-[11px] leading-5 text-[#92a395]">内置 BanG Dream! 世界观无需创建，已在故事世界线中提供。</p>
-    </aside>
+    </aside>}
     <section className="rounded-2xl border border-[#dce4dc] bg-white/90 p-5 shadow-sm sm:p-8">
       {!draft ? <div className="flex min-h-[440px] flex-col items-center justify-center gap-3 text-[#91a595]"><Globe2 size={42} strokeWidth={1}/><p className="text-sm">选择或创建一个世界观</p></div> : <div className="space-y-6">
         <header className="border-b border-[#edf0e9] pb-5"><span className="text-[10px] font-semibold tracking-widest text-[#799682]">CHARTA · WORLD PROFILE</span><h2 className="mt-1 font-serif text-2xl">{draft.name || "未命名的世界"}</h2></header>

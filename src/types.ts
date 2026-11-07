@@ -1,5 +1,6 @@
 import type { ChartaSelf } from "./lib/chartaSelf";
 import type { StoryWorldline } from "./lib/storyWorldline";
+import type { StoryStateSnapshot } from "./lib/storyStateRecovery";
 
 export type Message = { 
   role: string; 
@@ -7,6 +8,10 @@ export type Message = {
   modelName?: string;
   characterId?: string; 
   voiceVariant?: string;
+  /** Saved before each completed story reply; used to undo the last turn. */
+  storyStateBefore?: StoryStateSnapshot;
+  storyGenerationId?: string;
+  storyProtocolMissing?: boolean;
 };
 
 export type CodeFile = {

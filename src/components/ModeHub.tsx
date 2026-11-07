@@ -113,8 +113,8 @@ export function ModeHub({ onEnter, onResume, onOpenSettings, onOpenCharta, hasSe
           <button type="button" disabled={loading} onClick={onOpenCharta}
             className="group flex min-h-[180px] flex-col items-start rounded-2xl border border-[#e2ded3] bg-[#fffdfa] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c7b899] hover:shadow-md disabled:opacity-50">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f1eada] text-[#8d7856]"><FilePenLine size={22}/></div>
-            <div className="mt-4 flex w-full items-baseline justify-between gap-2"><h2 className="text-lg font-bold">Charta <span className="text-xs font-normal text-slate-500">· {({ "zh-CN": "纸", "zh-TW": "紙", en: "Paper", ja: "紙", ko: "종이" } as const)[locale]}</span></h2><ArrowRight size={16} className="text-slate-300 group-hover:text-slate-600"/></div>
-            <p className="mt-2 text-xs leading-6 text-slate-500">{chartaText(locale, "intro")}</p>
+            <div className="mt-4 flex w-full items-baseline justify-between gap-2"><h2 className="text-lg font-bold">Charta <span className="text-xs font-normal text-slate-500">· {({ "zh-CN": "档案柜", "zh-TW": "檔案櫃", en: "Archive Cabinet", ja: "アーカイブ", ko: "자료 보관함" } as const)[locale]}</span></h2><ArrowRight size={16} className="text-slate-300 group-hover:text-slate-600"/></div>
+            <p className="mt-2 text-xs leading-6 text-slate-500">{chartaText(locale, "intro")} · {({ "zh-CN": "角色、自设与世界观", "zh-TW": "角色、自設與世界觀", en: "Characters, selves and worlds", ja: "キャラクター・自設・世界観", ko: "캐릭터·자작 캐릭터·세계관" } as const)[locale]}</p>
           </button>
         </section>
         <p className="mt-auto pt-10 text-center text-[11px] text-slate-400">Shiorivia · Local-first, your stories stay yours.</p>
