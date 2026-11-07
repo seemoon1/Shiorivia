@@ -543,6 +543,7 @@ Participant mode: make each suggestion an action or decision the selected self c
 Do not repeat the same event across all three styles. Avoid vague suggestions such as “看看接下来会发生什么” or “观察她的行动”.
 Keep timeline and scene environment. Never substitute the name 月/Yue unless explicitly present in a saved user self profile or established story dialogue.
 [END STORY PARTICIPATION CONTRACT]
+`;
       if (selectedWorldline) {
         finalSystemPrompt += `
 [CURRENT STORY WORLDLINE — session setting, authoritative]
@@ -557,7 +558,6 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
 [END CURRENT STORY WORLDLINE]
 `;
       }
-`;
 
       finalSystemPrompt += `\n\n[SYSTEM]: Start response with <thinking> block.`;
       finalSystemPrompt += `\n[SYSTEM WARNING]: Do NOT copy/paste previous [GALLERY] tags.`;
