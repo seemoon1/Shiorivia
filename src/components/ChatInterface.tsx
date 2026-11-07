@@ -239,7 +239,7 @@ export const ChatInterface = ({
     fileInputRef, handleFileSelect,
 
     handleSend, stopGeneration,
-    handleRegenerate, handleDeleteMessage, handleResetStoryConversation,
+    handleRegenerate, handleDeleteMessage,
     handleCopy, copiedIndex, openEditModal,
 
     voiceVariant, setVoiceVariant,
@@ -433,11 +433,6 @@ export const ChatInterface = ({
                 <div className="flex items-center gap-1 md:gap-2">
 
                     <button type="button" onClick={onOpenHub} className="rounded-full p-2 text-slate-500 transition-colors hover:bg-gray-100" title="模式导航 / Home" aria-label="打开模式导航"><House size={19} /></button>
-                    {currentSession?.memoryMode === "sliding" && (
-                        <button type="button" onClick={handleResetStoryConversation} disabled={isLoading}
-                            className="rounded-full p-2 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
-                            title="重置故事对话及全部实时状态" aria-label="重置故事对话及全部实时状态"><RotateCcw size={19} /></button>
-                    )}
                     <button type="button" onClick={onOpenMemory} className="rounded-full p-2 text-slate-500 transition-colors hover:bg-gray-100" title="Memory Vault / 记忆档案" aria-label="打开记忆档案"><Brain size={19} /></button>
 
                     <div className="relative">
@@ -730,7 +725,7 @@ export const ChatInterface = ({
                         boxShadow: isLoading ? `0 0 10px ${currentCharacter.hex}20` : 'none'
                     }}
                 >
-                    <textarea value={input} disabled={requiresWorldline} style={{ caretColor: "#64748b", WebkitTapHighlightColor: "transparent" }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!requiresWorldline) handleSend() } }} placeholder={requiresWorldline ? "请先设定世界线（WORLD / ERA / PERIOD）" : currentSession?.memoryMode === 'sliding' ? "Start your dream..." : currentSession?.memoryMode === 'chat' ? `和${currentCharacter.name}聊聊天...` : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm disabled:cursor-not-allowed disabled:bg-[#f8f6f1] disabled:text-[#9a988c]" />
+                    <textarea value={input} disabled={requiresWorldline} style={{ caretColor: currentCharacter.hex }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!requiresWorldline) handleSend() } }} placeholder={requiresWorldline ? "请先设定世界线（WORLD / ERA / PERIOD）" : currentSession?.memoryMode === 'sliding' ? "Start your dream..." : currentSession?.memoryMode === 'chat' ? `和${currentCharacter.name}聊聊天...` : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm disabled:cursor-not-allowed disabled:bg-[#f8f6f1] disabled:text-[#9a988c]" />
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,text/plain,.txt" />
                     <div className="absolute bottom-2 right-2 flex gap-1">
                         {isMultimodal && <button disabled={requiresWorldline} onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-400 hover:text-emerald-500 disabled:opacity-30"><Paperclip size={18} /></button>}

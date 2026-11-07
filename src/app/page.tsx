@@ -850,7 +850,6 @@ export default function Home() {
 
                     handleSend={engine.handleSend} stopGeneration={engine.stopGeneration}
                     handleRegenerate={engine.handleRegenerate} handleDeleteMessage={engine.handleDeleteMessage}
-                    handleResetStoryConversation={engine.handleResetStoryConversation}
                     onGenerateDraw={engine.generateDraw} imageSettings={config.imageSettings} useImageGen={config.imageGen}
                     handleCopy={(t: string, i: number) => {
                         navigator.clipboard.writeText(t);
@@ -940,7 +939,7 @@ export default function Home() {
                 onConfirm={() => {
                     if (!currentSession) return;
                     ui.setEditModal({ ...ui.editModal, isOpen: false });
-                    engine.handleSend(undefined, [...currentSession.messages.slice(0, ui.editModal.index), { role: 'user', content: ui.editModal.text }])
+                    engine.handleEditMessage(ui.editModal.index, ui.editModal.text);
                 }}
             />
 

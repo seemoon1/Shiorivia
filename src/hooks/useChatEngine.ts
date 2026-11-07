@@ -11,7 +11,7 @@ import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
-import { defaultSessionTitle, isDefaultSessionTitle } from "../lib/sessionTitles";
+import { isDefaultSessionTitle } from "../lib/sessionTitles";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -35,23 +35,6 @@ export const useChatEngine = ({
             abortControllerRef.current.abort(); 
             setIsLoading(false); 
         } 
-    };
-
-    const handleResetStoryConversation = () => {
-        if (!currentSession || isLoading || currentSession.memoryMode !== "sliding") return;
-        if (!window.confirm("确认重置当前故事对话？将清空本会话消息、自身状态、角色数值、剧情引导、事件和自动记忆；保留选定世界观、ERA/PERIOD、自设及 Charta 档案。")) return;
-        setPendingStoryRegeneration(null);
-        setInput("");
-        setSelectedFile(null);
-        setSessions((prev: Session[]) => prev.map(session => {
-            if (session.id !== currentSessionId) return session;
-            const reset = emptyStoryState(session);
-            return {
-                ...reset, messages: [], updatedAt: Date.now(),
-                ...(session.titleAutoManaged === true ? { title: defaultSessionTitle("sliding", locale) } : {}),
-            };
-        }));
-        showToast("故事对话和实时状态已重置；请手动保存以写入本地存档。");
     };
 
     const requestAutomaticTitle = (history: any[], answer: string, modelName: string, generationId: string) => {
@@ -682,6 +665,16 @@ export const useChatEngine = ({
         }
     };
 
+    // Regeneration and user edits must both restore the *whole* prior story state
+    // BEFORE a new request is dispatched. Keep the restored state in the same
+    // session update as the shortened/edited message history.
+    const rewindStoryTurn = (messages: Session["messages"], snapshot?: Session["messages"][number]["storyStateBefore"]) => {
+        setSessions((prev: Session[]) => prev.map(session => session.id === currentSessionId
+            ? { ...restoreStoryState(session, snapshot), messages, updatedAt: Date.now() }
+            : session));
+        setPendingStoryRegeneration({ sessionId: currentSessionId, messagesLength: messages.length });
+    };
+
     // This effect runs only after the previous story state AND message history have committed.
     useEffect(() => {
         if (!pendingStoryRegeneration || isLoading || !currentSession ||
@@ -709,14 +702,33 @@ export const useChatEngine = ({
             return;
         }
         const keptMessages = currentSession.messages.slice(0, idx);
+        if (keptMessages[keptMessages.length - 1]?.role !== "user") {
+            showToast("没有找到可用于重新生成的最后一条用户消息。");
+            return;
+        }
         const snapshot = target.storyStateBefore || currentSession.messages[idx - 1]?.storyStateBefore;
-        setSessions((prev: any) => prev.map((session: any) => {
-            if (session.id !== currentSessionId) return session;
-            const restored = keptMessages.some((message: any) => message.role === "user")
-                ? restoreStoryState(session, snapshot) : emptyStoryState(session);
-            return { ...restored, messages: keptMessages, updatedAt: Date.now() };
-        }));
-        setPendingStoryRegeneration({ sessionId: currentSessionId, messagesLength: keptMessages.length });
+        rewindStoryTurn(keptMessages, snapshot);
+    };
+
+    const handleEditMessage = (idx: number, revisedText: string) => {
+        if (!currentSession || isLoading) return;
+        const target = currentSession.messages[idx];
+        if (!target || target.role !== "user" || !revisedText.trim()) {
+            showToast("请输入要重新生成的用户消息。");
+            return;
+        }
+        if (currentSession.memoryMode !== "sliding") {
+            void handleSend(undefined, [...currentSession.messages.slice(0, idx), { ...target, content: revisedText }]);
+            return;
+        }
+        const trailing = currentSession.messages.slice(idx + 1);
+        if (trailing.length > 1 || (trailing.length === 1 && trailing[0].role !== "assistant")) {
+            showToast("故事模式只能修改最后一轮的用户消息，以保证故事状态正确回退。");
+            return;
+        }
+        const snapshot = target.storyStateBefore || trailing[0]?.storyStateBefore;
+        const keptMessages = [...currentSession.messages.slice(0, idx), { ...target, content: revisedText }];
+        rewindStoryTurn(keptMessages, snapshot);
     };
 
     const handleDeleteMessage = (idx: number, role: string) => {
@@ -755,8 +767,8 @@ export const useChatEngine = ({
         handleSend,
         stopGeneration,
         handleRegenerate,
+        handleEditMessage,
         handleDeleteMessage,
-        handleResetStoryConversation,
         handleRepoUpdate,
         generateDraw
     };
