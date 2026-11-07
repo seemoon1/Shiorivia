@@ -6,7 +6,7 @@ import { uploadImageToCloud } from "../lib/cloudUtils";
 import { buildDrawRequest } from "../lib/drawRequest";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
 import { useLanguage } from "../context/LanguageContext";
-import { asChartaSelfPromptData, selfName, selfGenderLabel } from "../lib/chartaSelf";
+import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
@@ -451,7 +451,6 @@ export const useChatEngine = ({
                                 capturedState.protagonist = completeStoryProtagonist({
                                     raw: capturedState.protagonist, previous: currentSession.protagonist,
                                     name: selfName(selectedSelf, locale),
-                                    gender: selfGenderLabel(selectedSelf.gender, selectedSelf.genderCustom),
                                     environment: capturedState.environment,
                                     era: currentSession.storyWorldline?.era, period: currentSession.storyWorldline?.period,
                                 });
@@ -467,13 +466,27 @@ export const useChatEngine = ({
                             }
                             const oldStats = Array.isArray(currentSession.charStatus) ? currentSession.charStatus : currentSession.charStatus ? [currentSession.charStatus] : [];
                             const newStats = Array.isArray(capturedState.character) ? capturedState.character : capturedState.character ? [capturedState.character] : [];
-                            capturedState.character = newStats.filter((stats: any) => !chosenPov || stats?.name !== chosenPov.name)
+                            // A model may echo the participant self (or observer POV) in character[].
+                            // Match both IDs and all localized self names before applying relationship scores.
+                            const ownerIdentities = storyRole === "participant" && selectedSelf
+                                ? [selectedSelf.id, ...Object.values(selectedSelf.names || {})]
+                                : chosenPov ? [chosenPov.id, chosenPov.name] : [];
+                            const normalizedIdentity = (value: unknown) => typeof value === "string"
+                                ? value.replace(/\s+/g, "").toLocaleLowerCase() : "";
+                            const excluded = new Set(ownerIdentities.map(normalizedIdentity).filter(Boolean));
+                            capturedState.character = newStats.filter((stats: any) =>
+                                stats && typeof stats === "object" &&
+                                !excluded.has(normalizedIdentity(stats.id)) &&
+                                !excluded.has(normalizedIdentity(stats.name)))
                                 .map((stats: any) => {
                                     const prev = oldStats.find((item: any) => item.name === stats.name);
                                     const damped = calculateNewStats(prev || { affection: 0, Possessiveness: 0, Obsession: 0, Intimacy: 0 }, stats);
-                                    return { ...prev, ...stats,
+                                    const updated = { ...prev, ...stats,
                                         affection: damped.affection, Possessiveness: damped.Possessiveness,
                                         Obsession: damped.Obsession, Intimacy: damped.Intimacy };
+                                    // Static biography and retired renderer fields are not relationship state.
+                                    for (const key of ["age", "gender", "environment", "timeDesc", "live2d", "effect"]) delete updated[key];
+                                    return updated;
                                 });
                         }
                     }
@@ -565,10 +578,8 @@ export const useChatEngine = ({
                                 ? { storyWorldline: { ...s.storyWorldline, event: capturedState.timeline.minor.trim().slice(0, 500) } }
                                 : {}),
                             
-                            currentBackground: capturedState.environment?.bgId || s.currentBackground,
-                            live2dCharId: capturedState.live2d?.charId || null,
-                            currentEmotion: capturedState.live2d?.motion || "idle", 
-                            
+                            // Background/Live2D state remains readable from legacy saves, but
+                            // new story replies no longer supply those retired automation fields.
                             currentOutfitId: capturedState.imageGen?.outfitId || s.currentOutfitId 
                         } : {})
                     };

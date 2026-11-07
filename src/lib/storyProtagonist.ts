@@ -15,10 +15,10 @@ const present = (...values: unknown[]): string => {
  * Reuse previous status only when it belongs to the same named person.
  */
 export function completeStoryProtagonist({
-    raw, previous, currentCharacter, environment, name, gender, era, period,
+    raw, previous, currentCharacter, environment, name, era, period,
 }: {
     raw: unknown; previous: unknown; currentCharacter?: unknown; environment?: unknown;
-    name: string; gender?: string; era?: string; period?: string;
+    name: string; era?: string; period?: string;
 }): ProtagonistState {
     const state = record(raw);
     const other = record(currentCharacter);
@@ -28,8 +28,6 @@ export function completeStoryProtagonist({
     const earlier = previousSameIdentity ? old : {};
     return {
         name: present(name, state.name),
-        age: present(state.age, earlier.age),
-        gender: present(gender, state.gender, earlier.gender),
         timeDesc: present(state.timeDesc, earlier.timeDesc, [era, period].filter(Boolean).join(" · ")),
         environment: present(state.environment, env.location, earlier.environment),
         temperature: present(state.temperature, earlier.temperature),

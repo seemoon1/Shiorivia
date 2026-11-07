@@ -22,8 +22,9 @@ export type CodeFile = {
 
 export type ProtagonistState = {
   name: string;
-  age: string;
-  gender: string;
+  /** Legacy archive fields; no longer generated for live story status. */
+  age?: string;
+  gender?: string;
   environment: string; 
   temperature: string; 
   timeDesc: string;    
