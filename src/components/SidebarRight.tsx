@@ -7,6 +7,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { SuggestionModal } from "./Modals";
 import { TimelinePanel } from "./TimelinePanel";
+import { selfName } from "../lib/chartaSelf";
 import { MemoryPreviewButton } from "./MemoryVaultModal";
 
 const SidebarRightComponent = ({
@@ -23,15 +24,18 @@ const SidebarRightComponent = ({
     onRepoUpdate, 
     onCharSwitch,
     dbChars,
-    currentBgmId, setBgmId
+    currentBgmId, setBgmId,
+    activeStorySelf, storySelf, onStoryRoleChange, onStoryPovChange
 }: any) => {
 
     const isStoryMode = currentSession?.memoryMode === 'sliding';
 
     const rawStats = currentSession?.charStatus;
-    const charList = Array.isArray(rawStats) ? rawStats : (rawStats ? [rawStats] : []);
+    const charList = isStoryMode && currentSession?.storyRole !== 'participant' && !currentSession?.storyPovId
+        ? [] : Array.isArray(rawStats) ? rawStats : (rawStats ? [rawStats] : []);
 
-    const prota = currentSession?.protagonist;
+    const prota = isStoryMode && currentSession?.storyRole !== 'participant' && !currentSession?.storyPovId
+        ? null : currentSession?.protagonist;
     const suggestions = currentSession?.plotSuggestions;
 
     const [pageIndex, setPageIndex] = useState(0);
@@ -41,6 +45,12 @@ const SidebarRightComponent = ({
         if (pageIndex >= charList.length) setPageIndex(0);
     }, [charList.length]);
 
+    const storyRole = currentSession?.storyRole === "participant" ? "participant" : "observer";
+    const storyStarted = (currentSession?.messages || []).some((m: any) => m.role === "user");
+    const possiblePovs = (currentSession?.sceneCastIds || []).flatMap((id: string) => {
+        const char = (dbChars?.length ? dbChars : CHAR_DATA).find((item: any) => item.id === id);
+        return char ? [char] : [];
+    });
     const { locale } = useLanguage();
     const currentChar = charList[pageIndex];
 
@@ -124,6 +134,18 @@ const SidebarRightComponent = ({
 
                     <div className="flex-1 overflow-y-auto scrollbar-thin">
                         {isStoryMode ? (
+                                <div className="rounded-xl border border-[#e4e8e5] bg-[#fafcf9] p-3 space-y-3">
+                                    <div className="text-[10px] font-bold tracking-widest text-[#6f8678]">故事身份 · STORY ROLE</div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <button type="button" disabled={storyStarted} onClick={() => onStoryRoleChange("observer")} className={`rounded-lg border p-2 ${storyRole === "observer" ? "border-[#7d9c8a] bg-[#e8f0e9] text-[#365943]" : "border-[#dce6dd] text-[#77887c]"} disabled:opacity-70`}>旁观模式</button>
+                                        <button type="button" disabled={storyStarted || !activeStorySelf} onClick={() => onStoryRoleChange("participant")} title={!activeStorySelf ? "先在 Charta 创建并启用自设" : ""} className={`rounded-lg border p-2 ${storyRole === "participant" ? "border-[#7d9c8a] bg-[#e8f0e9] text-[#365943]" : "border-[#dce6dd] text-[#77887c]"} disabled:opacity-50`}>参与模式</button>
+                                    </div>
+                                    {storyRole === "participant" ? <p className="text-xs leading-5 text-[#75877b]">使用身份：<span style={{ color: storySelf?.hex || "#799783" }}>{storySelf ? selfName(storySelf, locale) : "自设不存在，请新建故事"}</span></p>
+                                    : <div className="space-y-2"><p className="text-[11px] leading-5 text-[#7d8e82]">以旁观者身份开始，不预设用户姓名。第一轮故事结束后可以选定一位已出场角色的主视角。</p>
+                                        {storyStarted && <label className="block text-xs text-[#718678]">当前主视角<select value={currentSession?.storyPovId || ""} disabled={currentSession?.storyPovLocked || (currentSession?.messages || []).filter((m: any) => m.role === "user").length !== 1} onChange={e => onStoryPovChange(e.target.value)} className="mt-1 w-full rounded-lg border border-[#dce6dd] bg-white p-2 text-xs disabled:opacity-60"><option value="">尚未选择 · 第三人称旁观</option>{possiblePovs.map((char: any) => <option key={char.id} value={char.id}>{characterDisplayName(char.id, char.name, locale)}</option>)}</select></label>}
+                                        {currentSession?.storyPovLocked && <p className="flex items-center gap-1 text-[10px] text-[#a18c6f]"><Lock size={11}/>视角已在下一轮发送时锁定</p>}
+                                    </div>}
+                                </div>
                             <div className="p-3 space-y-4">
                                 {!prota && charList.length === 0 && (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-3 opacity-60">
@@ -142,9 +164,9 @@ const SidebarRightComponent = ({
                                     <div className="rounded-lg border shadow-sm relative overflow-hidden" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>
                                         <div className="absolute top-0 right-0 w-16 h-16 bg-[#E0E0FF]/30 rounded-bl-full -mr-4 -mt-4"></div>
                                         <div className="p-3 relative z-10">
-                                            <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider flex items-center gap-1"><User size={10} /> Protagonist</div>
+                                            <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider flex items-center gap-1"><User size={10} /> 自身状态</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="text-gray-500">Name: <span className="font-bold text-[#6A5ACD]">月 (Yue)</span></div>
+                                                <div className="text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : "#6A5ACD" }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
                                                 <div className="text-gray-500">Time: <span className="text-gray-800">{prota.timeDesc}</span></div>
                                                 <div className="text-gray-500 col-span-2">Env: <span className="text-gray-800">{prota.environment}</span></div>
                                                 <div className="text-gray-500 col-span-2 flex items-center gap-1"><Thermometer size={10} /> {prota.temperature} | {prota.sensation}</div>
@@ -197,7 +219,7 @@ const SidebarRightComponent = ({
 
                                 {suggestions && (
                                     <div className="space-y-3 pb-4">
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Sparkles size={10} /> Plot Guidance</div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1"><Sparkles size={10} /> {storyRole === "observer" ? "旁观引导" : "剧情指引"}</div>
                                         <SuggestionItem type="Fun / Chaos" content={suggestions.fun} colorBg="bg-yellow-50" colorBorder="border-yellow-200" colorText="text-yellow-800" icon="🤪" />
                                         <SuggestionItem type="Rational" content={suggestions.rational} colorBg="bg-blue-50" colorBorder="border-blue-200" colorText="text-blue-800" icon="🧠" />
                                         <SuggestionItem type="Radical" content={suggestions.radical} colorBg="bg-red-50" colorBorder="border-red-200" colorText="text-red-800" icon="🔥" />

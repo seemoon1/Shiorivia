@@ -6,6 +6,7 @@ import { uploadImageToCloud } from "../lib/cloudUtils";
 import { buildDrawRequest } from "../lib/drawRequest";
 import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw"; 
 import { useLanguage } from "../context/LanguageContext";
+import { asChartaSelfPromptData, selfName, selfGenderLabel } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 
 export const useChatEngine = ({
@@ -15,7 +16,7 @@ export const useChatEngine = ({
     config, 
     setTrackId, showToast, setIsGlobalGenerating,
     manualOutfitId,
-    apiProvider, customCharacters = []
+    apiProvider, customCharacters = [], customSelves = [], activeSelfId = null
 }: any) => {
     
     const { locale } = useLanguage();
@@ -45,6 +46,14 @@ export const useChatEngine = ({
         const isRegen = overrideMessages !== undefined;
         const txt = overrideInput !== undefined ? overrideInput : input.trim();
         if (!isRegen && !txt && !selectedFile) return;
+        const storyRole = currentSession.memoryMode === "sliding" && currentSession.storyRole === "participant" ? "participant" : "observer";
+        const selectedSelfId = currentSession.storySelfId || activeSelfId;
+        const selectedSelf = storyRole === "participant" ? (currentSession.storySelfSnapshot || customSelves.find((self: any) => self.id === selectedSelfId)) : null;
+        if (currentSession.memoryMode === "sliding" && storyRole === "participant" && !selectedSelf) {
+            showToast("请先在 Charta 创建并启用一个自设，再开始参与模式");
+            return;
+        }
+        const previousStoryTurns = (overrideMessages || currentSession.messages).filter((message: any) => message.role === "user").length;
 
         if (!isRegen) { setInput(""); setSelectedFile(null); }
         setIsLoading(true);
@@ -64,6 +73,11 @@ export const useChatEngine = ({
         setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
             ...s,
             messages: [...msgs, { role: "assistant", content: "", modelName: modelToUse, characterId: activeCharacterId }],
+            ...(s.memoryMode === "sliding" ? {
+                storyRole, storySelfId: storyRole === "participant" ? selectedSelfId : null,
+                storySelfSnapshot: storyRole === "participant" ? selectedSelf : null,
+                storyPovLocked: s.storyPovLocked || (!isRegen && previousStoryTurns >= 1),
+            } : {}),
             updatedAt: Date.now(),
             voiceVariant 
         } : s));
@@ -99,6 +113,13 @@ export const useChatEngine = ({
                     codeRepository: currentSession.codeRepository,
                     provider: apiProvider, 
                     uiLanguage: locale,
+                    ...(currentSession.memoryMode === "sliding" ? {
+                        storyRole,
+                        storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
+                        storyPovId: storyRole === "observer" ? currentSession.storyPovId : null,
+                        storyPovLocked: currentSession.storyPovLocked || (!isRegen && previousStoryTurns >= 1),
+                        previousProtagonist: currentSession.protagonist,
+                    } : {}),
                     customCharacters: customCharacters.map(asChartaPromptData),
                 }),
                 signal: abortControllerRef.current.signal
@@ -289,18 +310,47 @@ export const useChatEngine = ({
                     capturedState = JSON.parse(gameMatch[1]);
                     currentText = currentText.replace(gameRegex, "").trim();
 
-                    if (capturedState.character) {
-                        const currentStatsRaw = Array.isArray(currentSession.charStatus) ? currentSession.charStatus[0] : currentSession.charStatus;
-                        const currentStats = {
-                            affection: currentStatsRaw?.affection || 0,
-                            monopoly: currentStatsRaw?.monopoly || 0,
-                            yandere: currentStatsRaw?.yandere || 0,
-                            lust: currentStatsRaw?.lust || 0,
-                            ...currentStatsRaw
-                        };
-                        const aiSuggestedRaw = Array.isArray(capturedState.character) ? capturedState.character[0] : capturedState.character;
-                        const finalStats = calculateNewStats(currentStats, aiSuggestedRaw);
-                        capturedState.character = [{ ...aiSuggestedRaw, ...finalStats }];
+                    if (currentSession.memoryMode === "sliding") {
+                        const catalog = [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.names?.[c.primaryLanguage] || c.id }))];
+                        const knownCast = new Set(catalog.map(c => c.id));
+                        const rawIds = Array.isArray(capturedState.sceneCastIds)
+                            ? capturedState.sceneCastIds.filter((id: unknown) => typeof id === "string" && knownCast.has(id as string)) : [];
+                        const normalizedProse = currentText.replace(/\s+/g, "");
+                        const namedInProse = catalog.filter((c: any) => {
+                            const alternatives = [c.name, ...Object.values(customCharacters.find((item: any) => item.id === c.id)?.names || {})];
+                            return alternatives.some((name: unknown) => typeof name === "string" && name.trim().length >= 2
+                                && normalizedProse.includes(name.replace(/\s+/g, "")));
+                        }).map(c => c.id);
+                        const legacyIds = (Array.isArray(capturedState.character) ? capturedState.character : []).flatMap((s: any) => {
+                            const match = catalog.find(c => c.name === s?.name);
+                            return match ? [match.id] : [];
+                        });
+                        // Prefer an explicit on-stage list; for older models, fall back
+                        // to names actually mentioned in the visible story.
+                        capturedState.sceneCastIds = [...new Set(rawIds.length ? rawIds : namedInProse.length ? namedInProse : legacyIds)];
+                        if (storyRole === "observer" && !currentSession.storyPovId) {
+                            // No player-character status exists until a POV is selected.
+                            capturedState.protagonist = undefined;
+                            capturedState.character = undefined;
+                        } else {
+                            const chosenPov = catalog.find(c => c.id === currentSession.storyPovId);
+                            if (storyRole === "participant" && selectedSelf) {
+                                capturedState.protagonist = { ...(capturedState.protagonist || {}),
+                                    name: selfName(selectedSelf, locale), gender: selfGenderLabel(selectedSelf.gender, selectedSelf.genderCustom) };
+                            } else if (chosenPov) {
+                                capturedState.protagonist = { ...(capturedState.protagonist || {}), name: chosenPov.name };
+                            }
+                            const oldStats = Array.isArray(currentSession.charStatus) ? currentSession.charStatus : currentSession.charStatus ? [currentSession.charStatus] : [];
+                            const newStats = Array.isArray(capturedState.character) ? capturedState.character : capturedState.character ? [capturedState.character] : [];
+                            capturedState.character = newStats.filter((stats: any) => !chosenPov || stats?.name !== chosenPov.name)
+                                .map((stats: any) => {
+                                    const prev = oldStats.find((item: any) => item.name === stats.name);
+                                    const damped = calculateNewStats(prev || { affection: 0, Possessiveness: 0, Obsession: 0, Intimacy: 0 }, stats);
+                                    return { ...prev, ...stats,
+                                        affection: damped.affection, Possessiveness: damped.Possessiveness,
+                                        Obsession: damped.Obsession, Intimacy: damped.Intimacy };
+                                });
+                        }
                     }
 
                     if (false && capturedState.imageGen?.trigger && config.imageGen) { // No automatic rendering from legacy game_state.
@@ -382,6 +432,7 @@ export const useChatEngine = ({
                         ...(capturedState ? {
                             protagonist: capturedState.protagonist,
                             charStatus: capturedState.character,
+                            ...(s.memoryMode === "sliding" ? { sceneCastIds: capturedState.sceneCastIds || [] } : {}),
                             plotSuggestions: capturedState.suggestions,
                             lastDanmaku: capturedState.danmaku,
                             timeline: capturedState.timeline,

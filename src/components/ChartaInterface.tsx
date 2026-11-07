@@ -8,10 +8,12 @@ import {
   CHARTA_LANGUAGES, CHARTA_PRESET_AVATARS, decodeChartaImport, encodeChartaExport,
   makeChartaId, nameForCharta, parseChartaCharacter, type ChartaCharacter,
 } from "../lib/charta";
+import { ChartaSelfPanel } from "./ChartaSelfPanel";
+import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
 
-type Draft = { id: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; createdAt: number; updatedAt: number };
-const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", createdAt: Date.now(), updatedAt: Date.now() });
+type Draft = { id: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; gender?: "male" | "female" | "undisclosed" | "custom"; genderCustom?: string; createdAt: number; updatedAt: number };
+const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
 const colors = ["#799783", "#688ca4", "#ba8295", "#a38ebc", "#c1a276", "#4d7972", "#bd7674", "#65728d"];
 
 function compactImage(file: File): Promise<string> {
@@ -35,16 +37,18 @@ function compactImage(file: File): Promise<string> {
   });
 }
 
-export function ChartaInterface({ characters, save, remove, usedIds, onExit, loaded, storageError }: {
+export function ChartaInterface({ characters, save, remove, usedIds, onExit, loaded, storageError, selfLibrary }: {
   characters: ChartaCharacter[];
   save: (entry: ChartaCharacter) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   usedIds: string[];
   onExit: () => void;
   loaded: boolean;
+  selfLibrary: ReturnType<typeof useChartaSelves>;
   storageError: string;
 }) {
   const { locale } = useLanguage();
+  const [section, setSection] = useState<"characters" | "self">("characters");
   const txt = (key: Parameters<typeof chartaText>[1]) => chartaText(locale, key);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -129,6 +133,16 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     const lang = extraLang === "other" ? customLang.trim().toLowerCase() : extraLang;
     if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,3}$/.test(lang) || lang in draft.names || Object.keys(draft.names).length >= 12) { setMessage(txt("noOther")); return; }
     update({ ...draft, names: { ...draft.names, [lang]: "" } }); setShowAdd(false); setCustomLang("");
+  if (section === "self") return <main className="min-h-screen bg-[#f7f8f5] p-5 text-[#2c443a] sm:p-8">
+    <div className="mx-auto max-w-7xl">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dce5dc] pb-5">
+        <button type="button" onClick={onExit} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">← 返回 Shiorivia</button>
+        <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.2em]">CHARTA</h1><p className="mt-1 text-xs text-[#7c9181]">SELF · 每个人都可以是 Star</p></div>
+        <button type="button" onClick={() => setSection("characters")} className="rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs">角色管理</button>
+      </header>
+      <ChartaSelfPanel {...selfLibrary}/>
+    </div>
+  </main>;
   };
   return <main className="min-h-screen bg-[#f7f8f5] text-[#2c443a]" style={{ backgroundImage: "radial-gradient(ellipse at top right, #e8ede7, transparent 60%)" }}>
     <input ref={importRef} type="file" className="hidden" accept=".json,application/json" onChange={importFile} />
@@ -138,7 +152,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce5dc] pb-5">
         <button type="button" onClick={() => { if (!dirty || window.confirm(txt("unsaved"))) onExit(); }} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
         <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.24em]">CHARTA</h1><p className="pt-1 text-xs text-[#7c9181]">CHARTA VACUA · {txt("intro")}</p></div>
-        <button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSection("self")} className="rounded-xl border border-[#a5bfa9] bg-[#eaf2e9] px-3 py-2 text-xs text-[#42634c]">✧ 创建自设 / 管理自设</button><button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button></div>
       </header>
       <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-[#dce4dc] bg-white/85 p-4 shadow-sm">
@@ -163,6 +177,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               {primaryOther && <div className="flex flex-wrap items-end gap-2 rounded-xl border border-[#dce4dc] bg-[#f7f9f5] p-3"><label className="min-w-[160px] flex-1 text-xs">{txt("otherLanguage")}<input value={primaryLangInput} onChange={e=>setPrimaryLangInput(e.target.value)} placeholder="fr / de / es" className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"/></label><button type="button" className="rounded-lg bg-[#456b57] px-3 py-2 text-xs text-white" onClick={()=>{const lang=primaryLangInput.trim();if(!/^[a-z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}$/.test(lang)){setMessage(txt("required"));return;}update({...draft,primaryLanguage:lang,names:{...draft.names,[lang]:draft.names[lang]||""}});setPrimaryOther(false);}}>{txt("language")}</button></div>}
               {showAdd && <div className="grid items-end gap-2 rounded-xl border border-[#e1e8dc] bg-[#f7f9f5] p-3 sm:grid-cols-[1fr_1fr_auto]"><label className="text-xs">{txt("language")}<select value={extraLang} onChange={e=>setExtraLang(e.target.value)} className="mt-1 w-full rounded-lg border p-2 text-sm">{CHARTA_LANGUAGES.map(o=><option key={o.code} value={o.code}>{o.label}</option>)}</select></label>{extraLang==="other"?<input value={customLang} onChange={e=>setCustomLang(e.target.value)} placeholder={txt("otherLanguage")} className="rounded-lg border p-2 text-sm"/>:<span/>}<button type="button" onClick={addLanguage} className="rounded-lg bg-[#65876d] p-2 text-xs text-white">{txt("addName")}</button></div>}
               {Object.keys(draft.names).filter(lang=>lang!==draft.primaryLanguage).map(lang=><div key={lang} className="flex items-center gap-2"><span className="w-14 shrink-0 text-xs text-[#809587]">{lang}</span><input value={draft.names[lang]||""} onChange={e=>update({...draft,names:{...draft.names,[lang]:e.target.value}})} placeholder={txt("extraName")} maxLength={100} className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm outline-none focus:border-[#7e9f86]"/><button type="button" title="Remove" onClick={()=>{const next={...draft.names};delete next[lang];update({...draft,names:next});}}><X size={16}/></button></div>)}
+              <div className="space-y-2"><label className="block text-xs text-[#6e8472]">性别设定</label><div className="flex flex-wrap gap-2">{([ ["male","男"], ["female","女"], ["undisclosed","不愿透露"], ["custom","自定义"] ] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(draft.gender||"undisclosed")===value} onClick={()=>update({...draft,gender:value})} className={`rounded-xl border px-3 py-2 text-xs ${(draft.gender||"undisclosed")===value ? "border-[#60856a] bg-[#edf5ec] text-[#345443]" : "border-[#d8e4d8] text-[#819588]"}`}>{label}</button>)}</div>{draft.gender==="custom"&&<input maxLength={100} value={draft.genderCustom||""} onChange={e=>update({...draft,genderCustom:e.target.value})} placeholder="自定义性别设定" className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/>}</div>
               <p className="text-[11px] leading-6 text-[#8ba08f]">{txt("nameHint")}</p>
             </div>
             <div className="space-y-4">

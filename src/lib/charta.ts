@@ -13,6 +13,7 @@ export const CHARTA_LANGUAGES = [
   { code: "other", label: "Other language" },
 ] as const;
 
+export type ChartaGender = "male" | "female" | "undisclosed" | "custom";
 export type ChartaCharacter = {
   id: string;
   primaryLanguage: string;
@@ -21,6 +22,8 @@ export type ChartaCharacter = {
   avatar: string; // Emoji preset or validated, resized data:image/png/jpeg/webp
   portrait?: string; // Local-only, disk-backed full-body illustration URL
   description: string;
+  gender?: ChartaGender;
+  genderCustom?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -44,10 +47,13 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   if (!names[input.primaryLanguage] || Object.keys(names).length > 12) throw new Error("A primary name is required.");
   if (!isHex(input.hex) || !isAvatar(input.avatar)) throw new Error("A theme color and avatar are required.");
   if (typeof input.description !== "string" || input.description.length > 20000) throw new Error("Character notes exceed the limit.");
+  const gender = ["male", "female", "undisclosed", "custom"].includes(String(input.gender)) ? input.gender as ChartaGender : "undisclosed";
+  const genderCustom = typeof input.genderCustom === "string" ? input.genderCustom.trim().slice(0, 100) : "";
+  if (gender === "custom" && !genderCustom) throw new Error("A custom gender description is required.");
   const id = typeof input.id === "string" && /^charta-[a-zA-Z0-9-]{8,90}$/.test(input.id) ? input.id : makeChartaId();
   const portrait = typeof input.portrait === "string" && new RegExp(`^/api/local/charta\\?portrait=${id}&v=[0-9]{1,14}$`).test(input.portrait)
     ? input.portrait : undefined;
-  return { id, primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description,
+  return { id, primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description, gender, ...(gender === "custom" ? { genderCustom } : {}),
     createdAt: Number.isFinite(input.createdAt) ? Number(input.createdAt) : Date.now(), updatedAt: Date.now() };
 }
 
@@ -68,7 +74,7 @@ export function toChartaCharConfig(char: ChartaCharacter, locale: Locale): CharC
 }
 
 export function asChartaPromptData(char: ChartaCharacter) {
-  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, hex: char.hex };
+  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, hex: char.hex, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
 }
 
 export function decodeChartaImport(value: unknown): ChartaCharacter {

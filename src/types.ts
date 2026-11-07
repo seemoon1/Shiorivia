@@ -1,3 +1,4 @@
+import type { ChartaSelf } from "./lib/chartaSelf";
 
 export type Message = { 
   role: string; 
@@ -108,6 +109,14 @@ export type Session = {
   localWorldInfo?: string;
   
   memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat' | 'lime';
+  /** Via Lata: observer directs the story; participant enters as a saved Charta self. */
+  storyRole?: 'observer' | 'participant';
+  storySelfId?: string | null;
+  storySelfSnapshot?: ChartaSelf | null;
+  /** Observer POV can be chosen once after the first story round, before the next send. */
+  storyPovId?: string | null;
+  storyPovLocked?: boolean;
+  sceneCastIds?: string[];
   // A single LIME session holds its own private/group conversations.
   /** Legacy persisted key; retained for all VIAE local backups. */
   limeGroups?: ViaeConversation[];

@@ -35,6 +35,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { defaultSessionTitle, sessionGreeting } from "../lib/sessionTitles";
 import { characterDisplayName } from "../lib/characterNames";
 import { useChatEngine } from "../hooks/useChatEngine";
+import { useChartaSelves } from "../hooks/useChartaSelves";
 import { useChartaCharacters } from "../hooks/useChartaCharacters";
 import { toChartaCharConfig, nameForCharta } from "../lib/charta";
 import { ChartaInterface } from "../components/ChartaInterface";
@@ -83,6 +84,7 @@ export default function Home() {
         try { localStorage.setItem("shiorivia_sync_preferences_v1", JSON.stringify(next)); } catch {}
     };
     const cloud = useLocalFileSync(isGlobalGenerating, ui.showToast, syncPreferences);
+    const selfLibrary = useChartaSelves();
     const charta = useChartaCharacters();
     const allChars = useMemo(() => [...CHAR_DATA, ...charta.characters.map(char => toChartaCharConfig(char, locale))], [charta.characters, locale]);
 
@@ -212,6 +214,22 @@ export default function Home() {
     useEffect(() => {
         if (currentSession?.characterId) setActiveCharacterId(currentSession.characterId);
     }, [currentSession?.id, currentSession?.characterId]);
+    const changeStoryRole = (role: "observer" | "participant") => {
+        if (!currentSessionId || currentSession?.memoryMode !== "sliding") return;
+        if (currentSession.messages.some(message => message.role === "user")) return;
+        if (role === "participant" && !selfLibrary.activeSelf) { ui.showToast("请先在 Charta 创建并启用自设"); return; }
+        cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? {
+            ...s, storyRole: role, storySelfId: role === "participant" ? selfLibrary.activeId : null,
+             storyPovId: null, storyPovLocked: false, protagonist: undefined, charStatus: undefined, sceneCastIds: [],
+            storySelfSnapshot: role === "participant" ? selfLibrary.activeSelf : null,
+        } : s));
+    };
+    const changeStoryPov = (id: string) => {
+        if (!currentSessionId || currentSession?.memoryMode !== "sliding" || currentSession.storyRole === "participant" || currentSession.storyPovLocked) return;
+        if (currentSession.messages.filter(m => m.role === "user").length !== 1) return;
+        if (id && (!(currentSession.sceneCastIds || []).includes(id) || !allChars.some(c => c.id === id))) return;
+        cloud.setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, storyPovId: id || null, protagonist: undefined, charStatus: undefined } : s));
+    };
 
     const engine = useChatEngine({
         currentSession, currentSessionId, setSessions: cloud.setSessions,
@@ -224,6 +242,8 @@ export default function Home() {
         manualOutfitId,
         apiProvider,
         customCharacters: charta.characters,
+        customSelves: selfLibrary.selves,
+        activeSelfId: selfLibrary.activeId,
     });
 
     const fileHandler = useFileHandler({
@@ -468,7 +488,7 @@ export default function Home() {
     );
 
     if (showCharta && cloud.initLoaded) {
-        return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove}
+        return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove} selfLibrary={selfLibrary}
             loaded={charta.loaded} storageError={charta.error}
             usedIds={cloud.sessions.flatMap(s => [s.characterId, ...((s.limeGroups || []).flatMap(g => g.members))])}
             onExit={() => setShowCharta(false)} />;
@@ -860,6 +880,9 @@ export default function Home() {
 
                 <SidebarRight
                     isOpen={ui.rightSidebarOpen} onClose={() => ui.setRightSidebarOpen(false)}
+                    activeStorySelf={selfLibrary.activeSelf}
+                    storySelf={currentSession?.storySelfSnapshot || selfLibrary.selves.find(self => self.id === currentSession?.storySelfId) || null}
+                    onStoryRoleChange={changeStoryRole} onStoryPovChange={changeStoryPov}
                     currentCharacter={dynamicCharacter} currentSession={currentSession}
                     onOpenMemory={() => setShowMemoryVault(true)}
                     activeCharacterId={activeCharacterId} setActiveCharacterId={setActiveCharacterId}
