@@ -42,3 +42,9 @@ npm run build
 ```
 
 The legacy `next.config.mjs` still suppresses some build-time TypeScript/ESLint checks; running TypeScript explicitly is important. Dependency modernization and a fuller security audit remain separate work before any public service deployment.
+
+### Debug model output / 终端输出模型原文
+
+In **Settings → Developer**, turn on **终端输出 AI 完整原文** to print each raw AI stream in the Node.js terminal (including `<thinking>` and `<game_state>` tags) after completion. Interrupted streams are marked accordingly. This is off by default and is independent of the frontend Debug Mode. These logs can contain private conversations; do not share them or run the local server on untrusted networks.
+
+In Via Lata, the header reset button clears the current session's messages and generated state, including memories, POV lock, cast, timeline, suggestions, status and current worldline event. It retains user-authored world/ERA/PERIOD, self profiles and global lore. **Save to disk manually after reset**, because incremental auto-sync does not persist deletions.

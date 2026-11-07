@@ -35,7 +35,7 @@ const DrawPlaceholder = ({ onGenerate, busy, disabled }: {
     </button>
 );
 
-const renderContent = (text: string, onOpenImage: (src: string) => void) => {
+const renderContent = (text: string, onOpenImage: (src: string) => void, selfColors: Record<string, string> = {}) => {
     if (!text) return null;
     let workingText = cleanDrawTag(text);
 
@@ -55,7 +55,7 @@ const renderContent = (text: string, onOpenImage: (src: string) => void) => {
                     {segments.map((segment, i) => {
                         // Draw tags have been stripped; their pending cards render below each assistant reply.
 
-                        const textParts = smartColorize(segment);
+                        const textParts = smartColorize(segment, selfColors);
                         return (
                             <span key={i}>
                                 {textParts.map((part, j) => {
@@ -239,7 +239,7 @@ export const ChatInterface = ({
     fileInputRef, handleFileSelect,
 
     handleSend, stopGeneration,
-    handleRegenerate, handleDeleteMessage,
+    handleRegenerate, handleDeleteMessage, handleResetStoryConversation,
     handleCopy, copiedIndex, openEditModal,
 
     voiceVariant, setVoiceVariant,
@@ -269,6 +269,10 @@ export const ChatInterface = ({
 
     const { locale } = useLanguage();
     const requiresWorldline = currentSession?.memoryMode === "sliding" && !parseStoryWorldline(currentSession.storyWorldline);
+    const savedSelf = currentSession?.memoryMode === "sliding" && currentSession.storyRole === "participant"
+        ? currentSession.storySelfSnapshot : null;
+    const selfColors: Record<string, string> = savedSelf?.hex && savedSelf?.names
+        ? Object.fromEntries(Object.values(savedSelf.names).map(name => [String(name), savedSelf.hex])) : {};
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [showFullPlayer, setShowFullPlayer] = useState(false);
     const { isPlaying } = useMusic();
@@ -429,6 +433,11 @@ export const ChatInterface = ({
                 <div className="flex items-center gap-1 md:gap-2">
 
                     <button type="button" onClick={onOpenHub} className="rounded-full p-2 text-slate-500 transition-colors hover:bg-gray-100" title="模式导航 / Home" aria-label="打开模式导航"><House size={19} /></button>
+                    {currentSession?.memoryMode === "sliding" && (
+                        <button type="button" onClick={handleResetStoryConversation} disabled={isLoading}
+                            className="rounded-full p-2 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
+                            title="重置故事对话及全部实时状态" aria-label="重置故事对话及全部实时状态"><RotateCcw size={19} /></button>
+                    )}
                     <button type="button" onClick={onOpenMemory} className="rounded-full p-2 text-slate-500 transition-colors hover:bg-gray-100" title="Memory Vault / 记忆档案" aria-label="打开记忆档案"><Brain size={19} /></button>
 
                     <div className="relative">
@@ -606,7 +615,7 @@ export const ChatInterface = ({
 
                                 {answer && (msg.role !== 'assistant' || Boolean(cleanDrawTag(answer).trim())) && (
                                     <div className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed shadow-sm w-fit ${msg.role === 'user' ? 'bg-slate-800 text-white rounded-br-none ml-auto' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'}`}>
-                                        {msg.role === 'assistant' ? renderContent(answer, setPreviewImage) : <div className="whitespace-pre-wrap">{answer}</div>}
+                                        {msg.role === 'assistant' ? renderContent(answer, setPreviewImage, selfColors) : <div className="whitespace-pre-wrap">{answer}</div>}
                                         {msg.role === 'assistant' && msg.modelName && <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-1.5 text-[9px] font-bold tracking-wider opacity-40 uppercase"><Cpu size={10} /> {msg.modelName.split('/').pop()}</div>}
                                     </div>
                                 )}
@@ -721,7 +730,7 @@ export const ChatInterface = ({
                         boxShadow: isLoading ? `0 0 10px ${currentCharacter.hex}20` : 'none'
                     }}
                 >
-                    <textarea value={input} disabled={requiresWorldline} style={{ caretColor: currentCharacter.hex }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!requiresWorldline) handleSend() } }} placeholder={requiresWorldline ? "请先设定世界线（WORLD / ERA / PERIOD）" : currentSession?.memoryMode === 'sliding' ? "Start your dream..." : currentSession?.memoryMode === 'chat' ? `和${currentCharacter.name}聊聊天...` : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm disabled:cursor-not-allowed disabled:bg-[#f8f6f1] disabled:text-[#9a988c]" />
+                    <textarea value={input} disabled={requiresWorldline} style={{ caretColor: "#64748b", WebkitTapHighlightColor: "transparent" }} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!requiresWorldline) handleSend() } }} placeholder={requiresWorldline ? "请先设定世界线（WORLD / ERA / PERIOD）" : currentSession?.memoryMode === 'sliding' ? "Start your dream..." : currentSession?.memoryMode === 'chat' ? `和${currentCharacter.name}聊聊天...` : `Speak to ${currentCharacter.name}...`} className="w-full bg-transparent border-none outline-none py-3 pl-4 pr-20 resize-none min-h-[50px] max-h-32 text-sm disabled:cursor-not-allowed disabled:bg-[#f8f6f1] disabled:text-[#9a988c]" />
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,text/plain,.txt" />
                     <div className="absolute bottom-2 right-2 flex gap-1">
                         {isMultimodal && <button disabled={requiresWorldline} onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-400 hover:text-emerald-500 disabled:opacity-30"><Paperclip size={18} /></button>}

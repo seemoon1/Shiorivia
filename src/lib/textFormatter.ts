@@ -14,11 +14,16 @@ CHAR_DATA.forEach(char => {
 COLOR_MAP["User"] = "#6A5ACD"; 
 COLOR_MAP["Me"] = "#6A5ACD";
 
-export const smartColorize = (text: string) => {
+export const smartColorize = (text: string, extraColors: Record<string, string> = {}) => {
     if (!text) return [];
 
-    const sortedKeys = Object.keys(COLOR_MAP).sort((a, b) => b.length - a.length);
-    const nameRegex = new RegExp(`^(${sortedKeys.join('|')})[：:]\\s*(.*)`, 'gm');
+    const colorMap = { ...COLOR_MAP };
+    for (const [name, color] of Object.entries(extraColors)) {
+        if (name.trim() && /^#[0-9a-fA-F]{6}$/.test(color)) colorMap[name] = color;
+    }
+    const sortedKeys = Object.keys(colorMap).sort((a, b) => b.length - a.length);
+    const escapedKeys = sortedKeys.map(key => key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const nameRegex = new RegExp(`^(${escapedKeys.join('|')})[：:]\\s*(.*)`, 'gm');
     
     let processedText = text.replace(nameRegex, (match, name, content) => {
         return `{{${name}|${content}}}`;
@@ -43,8 +48,8 @@ export const smartColorize = (text: string) => {
             if (/^#?[0-9a-fA-F]{6}$/.test(key)) {
                 finalColor = key.startsWith('#') ? key : '#' + key;
             }
-            else if (COLOR_MAP[key]) {
-                finalColor = COLOR_MAP[key];
+            else if (colorMap[key]) {
+                finalColor = colorMap[key];
             }
             else {
                 finalColor = "#666"; 

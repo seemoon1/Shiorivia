@@ -11,7 +11,7 @@ import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
-import { isDefaultSessionTitle } from "../lib/sessionTitles";
+import { defaultSessionTitle, isDefaultSessionTitle } from "../lib/sessionTitles";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -35,6 +35,23 @@ export const useChatEngine = ({
             abortControllerRef.current.abort(); 
             setIsLoading(false); 
         } 
+    };
+
+    const handleResetStoryConversation = () => {
+        if (!currentSession || isLoading || currentSession.memoryMode !== "sliding") return;
+        if (!window.confirm("确认重置当前故事对话？将清空本会话消息、自身状态、角色数值、剧情引导、事件和自动记忆；保留选定世界观、ERA/PERIOD、自设及 Charta 档案。")) return;
+        setPendingStoryRegeneration(null);
+        setInput("");
+        setSelectedFile(null);
+        setSessions((prev: Session[]) => prev.map(session => {
+            if (session.id !== currentSessionId) return session;
+            const reset = emptyStoryState(session);
+            return {
+                ...reset, messages: [], updatedAt: Date.now(),
+                ...(session.titleAutoManaged === true ? { title: defaultSessionTitle("sliding", locale) } : {}),
+            };
+        }));
+        showToast("故事对话和实时状态已重置；请手动保存以写入本地存档。");
     };
 
     const requestAutomaticTitle = (history: any[], answer: string, modelName: string, generationId: string) => {
@@ -154,6 +171,7 @@ export const useChatEngine = ({
                     codeRepository: currentSession.codeRepository,
                     provider: apiProvider, 
                     uiLanguage: locale,
+                    debugFullOutput: config.terminalLog === true,
                     ...(currentSession.memoryMode === "sliding" ? {
                         storyRole,
                         storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
@@ -278,6 +296,7 @@ export const useChatEngine = ({
                         body: JSON.stringify({
                             stateRepair: true, memoryMode: "sliding", model: modelToUse,
                             provider: apiProvider, uiLanguage: locale,
+                            debugFullOutput: config.terminalLog === true,
                             storyRole, storyPovId: currentSession.storyPovId,
                             storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
                             storyWorldline: currentSession.storyWorldline,
@@ -737,6 +756,7 @@ export const useChatEngine = ({
         stopGeneration,
         handleRegenerate,
         handleDeleteMessage,
+        handleResetStoryConversation,
         handleRepoUpdate,
         generateDraw
     };

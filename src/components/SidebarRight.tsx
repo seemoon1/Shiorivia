@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, Sparkles, Radio, ChevronLeft, Send, Copy, Lock, Check, Brain, Activity, Moon, Ghost, Bot, ToggleLeft, ToggleRight, X } from "lucide-react";
+import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, Sparkles, Radio, ChevronLeft, Send, Copy, Lock, Check, Brain, Moon, Ghost, Bot, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { CHAR_DATA } from "../data/char_config";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
@@ -161,8 +161,6 @@ const SidebarRightComponent = ({
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider flex items-center gap-1"><User size={10} /> 自身状态</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs leading-5">
                                                 <div className="col-span-2 text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : viewpointColor }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
-                                                <div className="text-gray-500">Age: <span className="text-gray-800">{prota.age || "—"}</span></div>
-                                                <div className="text-gray-500">Gender: <span className="text-gray-800">{prota.gender || "—"}</span></div>
                                                 <div className="col-span-2 text-gray-500">Time: <span className="text-gray-800">{prota.timeDesc || "—"}</span></div>
                                                 <div className="col-span-2 text-gray-500">Env: <span className="text-gray-800">{prota.environment || "—"}</span></div>
                                                 <div className="col-span-2 text-gray-500">Outfit: <span className="text-gray-800">{prota.clothing || "—"}</span></div>
@@ -201,14 +199,6 @@ const SidebarRightComponent = ({
                                                 )}
                                                 <div><div className="font-bold text-gray-400 flex items-center gap-1 mb-0.5"><Shirt size={10} /> Clothing:</div><div className="leading-relaxed pl-1">{currentChar.clothing}</div></div>
                                                 <div><div className="font-bold text-gray-400 flex items-center gap-1 mb-0.5"><Footprints size={10} /> Legs/Shoes:</div><div className="leading-relaxed pl-1">{currentChar.shoes} {currentChar.legState}</div></div>
-                                                <div>
-                                                    <div className="font-bold text-gray-400 flex items-center gap-1 mb-0.5">
-                                                        <Activity size={10} /> Deep Link:
-                                                    </div>
-                                                    <div className="font-mono text-purple-600 pl-1">
-                                                        {currentChar.bondDepth || "0"}
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
