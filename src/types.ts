@@ -127,7 +127,11 @@ export type Session = {
   storyPovLocked?: boolean;
   /** Worldline snapshot is bound to a story session; legacy timeline remains compatible. */
   storyWorldline?: StoryWorldline;
+  /** Characters currently on stage, as described by the model. */
   sceneCastIds?: string[];
+  /** Full character profiles to supply to the model on the NEXT turn. */
+  storyNextCastIds?: string[];
+  storyAllowCrossWorld?: boolean;
   // A single LIME session holds its own private/group conversations.
   /** Legacy persisted key; retained for all VIAE local backups. */
   limeGroups?: ViaeConversation[];

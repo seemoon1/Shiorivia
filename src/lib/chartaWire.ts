@@ -15,10 +15,11 @@ export function chartaWireCharacters(value: unknown, uiLanguage: unknown) {
     const primary = typeof item.primaryLanguage === "string" && names[item.primaryLanguage] ? item.primaryLanguage : Object.keys(names)[0];
     if (!primary) return [];
     const hex = typeof item.hex === "string" && /^#[a-fA-F0-9]{6}$/.test(item.hex) ? item.hex : "#799783";
+    const worldId = typeof item.worldId === "string" && /^(?:bang-dream|world-[a-zA-Z0-9-]{8,90})$/.test(item.worldId) ? item.worldId : null;
     const description = typeof item.description === "string" ? item.description.slice(0, 12000) : "";
     const gender = ["male", "female", "undisclosed", "custom"].includes(String(item.gender)) ? String(item.gender) : "undisclosed";
     const genderCustom = typeof item.genderCustom === "string" ? item.genderCustom.slice(0, 100) : "";
-    return [{ id:item.id, name: names[language] || names[primary], names, sub: "Charta", hex, keys: Object.values(names), description, gender, genderCustom }];
+    return [{ id:item.id, name: names[language] || names[primary], names, sub: "Charta", hex, keys: Object.values(names), worldId, description, gender, genderCustom }];
   });
 }
 

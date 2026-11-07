@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, Sparkles, Radio, ChevronLeft, Send, Copy, Lock, Check, Brain, Moon, Ghost, Bot, ToggleLeft, ToggleRight, X } from "lucide-react";
+import { ChevronRight, User, Heart, Zap, Skull, Thermometer, Shirt, Footprints, Sparkles, ChevronLeft, Send, Copy, Lock, Check, Brain, Moon, Ghost, Bot, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { CHAR_DATA } from "../data/char_config";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
+import { StoryCastPicker } from "./StoryCastPicker";
 import { describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
 import { selfName } from "../lib/chartaSelf";
 
@@ -26,7 +27,7 @@ const SidebarRightComponent = ({
     dbChars,
     currentBgmId, setBgmId,
     activeStorySelf, storySelf, onStoryRoleChange, onStoryPovChange,
-    worlds = [], setInput, onOpenChartaWorld, worldlineOpenSignal = 0
+    worlds = [], customCharacters = [], isGenerating = false, setInput, onOpenChartaWorld, worldlineOpenSignal = 0
 }: any) => {
 
     const isStoryMode = currentSession?.memoryMode === 'sliding';
@@ -70,7 +71,16 @@ const SidebarRightComponent = ({
     const handleWorldlineUpdate = (next: StoryWorldline) => {
         if (!setSessions || !currentSessionId) return;
         setSessions((prev: any) => prev.map((s: any) =>
-            s.id === currentSessionId ? { ...s, storyWorldline: next } : s
+            s.id === currentSessionId ? {
+                ...s, storyWorldline: next,
+                ...(s.storyWorldline?.worldId !== next.worldId ? { storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [] } : {}),
+            } : s
+        ));
+    };
+    const handleCastSelection = (ids: string[], allowCrossWorld: boolean) => {
+        if (!setSessions || !currentSessionId || isGenerating) return;
+        setSessions((prev: any) => prev.map((s: any) =>
+            s.id === currentSessionId ? { ...s, storyNextCastIds: ids, storyAllowCrossWorld: allowCrossWorld, updatedAt: Date.now() } : s
         ));
     };
     const viewpointColor = (dbChars?.length ? dbChars : CHAR_DATA).find((char: any) => char.id === currentSession?.storyPovId)?.hex || "#637e6e";
@@ -139,12 +149,6 @@ const SidebarRightComponent = ({
                                         {currentSession?.storyPovLocked && <p className="flex items-center gap-1 text-[10px] text-[#a18c6f]"><Lock size={11}/>视角已在下一轮发送时锁定</p>}
                                     </div>}
                                 </div>
-                                {!prota && charList.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-3 opacity-60">
-                                        <Radio size={40} className="animate-pulse" />
-                                        <div className="text-xs font-mono text-center">WAITING FOR<br />NEURAL LINK...</div>
-                                    </div>
-                                )}
 
                                 <button type="button" onClick={() => setWorldlineOpen(true)} className="group relative w-full overflow-hidden rounded-2xl border border-[#6c8b79]/50 bg-[#1f3935] p-4 text-left shadow-[0_10px_25px_rgba(20,55,43,.12)] transition hover:border-[#c8b586] hover:shadow-lg">
                                     <span aria-hidden className="pointer-events-none absolute -right-7 -top-8 h-28 w-28 rounded-full border border-[#e2c996]/40" />
@@ -152,7 +156,9 @@ const SidebarRightComponent = ({
                                     <div className="relative flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-[11px] font-semibold tracking-[.15em] text-[#e5cf9d]" style={{fontFamily:'Bahnschrift,"Arial Narrow",sans-serif'}}>✧ WORLDLINE / 世界线</span><span className="text-[10px] text-[#bdd1be] group-hover:text-white">展开航图 ↗</span></div>
                                     <p className="relative mt-2 text-[11px] leading-5 text-[#e0eadd]">{currentSession?.storyWorldline ? describeStoryWorldline(currentSession.storyWorldline) : currentSession?.timeline?.major ? `旧时间线：${currentSession.timeline.major} / ${currentSession.timeline.medium || "未设定"}` : "尚未铭刻命运 · 请先选择世界线"}</p>
                                 </button>
-
+                                {currentSession && <StoryCastPicker key={currentSession.id} session={currentSession}
+                                    worlds={worlds} customCharacters={customCharacters} busy={isGenerating}
+                                    onApply={handleCastSelection} />}
 
                                 {prota && (
                                     <div className="rounded-lg border shadow-sm relative overflow-hidden" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>

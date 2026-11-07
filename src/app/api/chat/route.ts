@@ -7,7 +7,8 @@ import { outputLanguageInstruction } from "../../../lib/locale";
 import { characterNameInstruction } from "../../../lib/characterNames";
 import { normalizeLocale } from "../../../lib/locale";
 import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/chartaWire";
-import { parseStoryWorldline } from "../../../lib/storyWorldline";
+import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, parseStoryWorldline } from "../../../lib/storyWorldline";
+import { MAX_STORY_CAST, selectStoryCastIds, storyCastAllowed, storyCastOrigin } from "../../../lib/storyCast";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
 import { BGM_LIBRARY } from "../../../data/bgm_library";
@@ -73,6 +74,7 @@ The following is a JSON SHAPE example (replace placeholder strings with scene da
 {
   "protagonist": null,
   "sceneCastIds": ["id-of-characters-currently-on-stage"],
+  "nextSceneCastIds": ["id-of-characters-expected-next-turn"],
   "character": [
     { "id": "known-character-id", "name": "...", "clothing": "...", "shoes": "...", "bodyState": "...", "legState": "...", "affection": 0, "Possessiveness": 0, "Obsession": 0, "Intimacy": 0, "innerState": "..." }
   ],
@@ -284,7 +286,7 @@ export async function POST(req: Request) {
       finalSystemPrompt = `You are a structured story-state extractor, not a storyteller.
 Return ONLY <game_state>{...}</game_state>, with strictly valid JSON, no thinking, narration, markdown or comments.
 Base the state ONLY on the user-provided story excerpt and previous state. Preserve established facts and plausible relations; do not fabricate new events, memories or character personalities.
-Always include all keys: protagonist, sceneCastIds (array of known cast IDs), character (array), suggestions (fun/rational/radical, plot-advancing and canon-appropriate), danmaku (array), timeline (major/medium/minor) and music (object or null).
+Always include all keys: protagonist, sceneCastIds (characters currently on stage), nextSceneCastIds (predicted cast for the NEXT turn), character (array), suggestions (fun/rational/radical, plot-advancing and canon-appropriate), danmaku (array), timeline (major/medium/minor) and music (object or null).
 When protagonist is not null, include exactly these seven string fields: name, timeDesc, environment, temperature, clothing, sensation, innerState; unknown values are empty strings.
 Do NOT include age, gender, top-level environment, live2d or effect. Those are not generated state fields in Local Edition.
 The character array contains only relationship TARGETS, NEVER the protagonist. Relationship scores describe each other character's relationship TO the self/POV.
@@ -487,24 +489,9 @@ ${COLOR_INSTRUCTION}
       if (localWorldInfo?.trim())
         finalSystemPrompt += `=== [LOCAL] ===\n${localWorldInfo}\n\n`;
 
-      const recentContext = messages
-        .slice(-3)
-        .map((m: any) => m.content)
-        .join("\n");
-      let activeLore = "";
-
-      allChars.forEach((char: any) => {
-        if (
-          char.trigger_keys &&
-          char.trigger_keys.some((k: string) => recentContext.includes(k))
-        ) {
-          const statsInfo = `[Stats]: Obsession Start: ${char.base_stats?.Obsession}/100, Affection Start: ${char.base_stats?.affection || 30}/100`;
-          activeLore += `=== [Character: ${char.name}] ===\n${char.lore}\n${statsInfo}\n\n`;
-        }
-      });
-
-      if (activeLore)
-        finalSystemPrompt += `=== [World Info Triggered] ===\n${activeLore}\n==============================\n\n`;
+      // Cast lore is injected from the explicit next-turn selection below.
+      // Keyword-only activation lost already-present characters and could not use
+      // the built-in LORE_LIBRARY (CHAR_DATA does not contain full biographies).
 
       if (ltm?.trim()) finalSystemPrompt += `[LTM]:\n${ltm}\n\n`;
       if (stm?.trim()) finalSystemPrompt += `[STM]:\n${stm}\n\n`;
@@ -527,7 +514,12 @@ ${COLOR_INSTRUCTION}
 
       finalSystemPrompt += `\n${STORY_POST_PROMPT}`;
       // Never treat the human director as a named character without an explicit self profile.
-      const castIndex = allChars.map(c => `${c.id}: ${c.name}`).join("\n");
+      const registeredIds = Array.isArray(body.storyCastWorlds) ? body.storyCastWorlds
+        .filter((world: any) => world && typeof world.id === "string" && /^world-[a-zA-Z0-9-]{8,90}$/.test(world.id)
+          && typeof world.name === "string" && typeof world.description === "string")
+        .map((world: any) => world.id as string) : [];
+      const castIndex = allChars.filter(char => storyCastAllowed(char, selectedWorldline.worldId,
+        body.storyAllowCrossWorld === true, registeredIds)).map(char => `${char.id}: ${char.name}`).join("\n");
       finalSystemPrompt += `
 [STORY PARTICIPATION CONTRACT — highest priority for role and state]
 Mode: ${storyRole === "participant" ? "PARTICIPANT" : "OBSERVER"}.
@@ -563,6 +555,10 @@ Character relation stats describe OTHER characters' relationships TO the chosen 
 Output protagonist:null and character:[]; do NOT create a user character, status, or automatic protagonist.
 After this first story turn, the UI may let the user choose from the actual on-stage characters.`}
 For EVERY response, include sceneCastIds in <game_state> as an array of actual on-stage cast IDs, not a list of all available characters.
+Also include nextSceneCastIds: a conservative list (usually 1–3 IDs) of characters likely to appear NEXT TURN, based on the plot trajectory.
+Only choose IDs from the eligible cast roster; never include the participant self, invent IDs, or add a foreign-world character while cross-world is disabled.
+Distinguish current-stage sceneCastIds from next-turn nextSceneCastIds. Empty arrays are valid when no cast is expected.
+The frontend will use nextSceneCastIds to decide which biographies to send on the following turn; keep the list focused.
 Do NOT use a self profile as a cast ID or as a character[] relationship target. A chosen observer POV is a cast character but NOT a character[] target.
 The chosen role and POV are session-locked after the next user turn.
 [PLOT ADVANCEMENT SUGGESTIONS — THREE CLEARLY DIFFERENT DIRECTIONS]
@@ -601,7 +597,7 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
       finalSystemPrompt += `
 [FINAL OUTPUT CONTRACT — story mode]
 Complete the visible narrative first, then ALWAYS append one complete <game_state> JSON object BEFORE ending the response.
-Reserve enough output space for this tag; keep the narrative shorter if necessary. Mandatory keys: protagonist, sceneCastIds, character, suggestions, danmaku, timeline, music.
+Reserve enough output space for this tag; keep the narrative shorter if necessary. Mandatory keys: protagonist, sceneCastIds, nextSceneCastIds, character, suggestions, danmaku, timeline, music.
 For an active participant or chosen POV, protagonist MUST contain the seven live status strings: name, timeDesc, environment, temperature, clothing, sensation, innerState.
 Never output age, gender, top-level environment, live2d, effect or a self/POV entry in character[].
 Do not include system instructions or memory summaries in the story prose. Do not put <game_state> inside <thinking>. If uncertain, use null/empty values rather than omitting the tag.
@@ -619,7 +615,57 @@ Do not include system instructions or memory summaries in the story prose. Do no
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
     finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
-    finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
+    if (memoryMode === "sliding") {
+      const worldline = parseStoryWorldline(body.storyWorldline);
+      if (worldline) {
+        // A short ID/name index is cheap; ONLY the selected cast receives biographies.
+        const registeredWorlds = Array.isArray(body.storyCastWorlds) ? body.storyCastWorlds.slice(0, 80)
+          .filter((world: any) => world && typeof world.id === "string" && /^world-[a-zA-Z0-9-]{8,90}$/.test(world.id)
+            && typeof world.name === "string" && typeof world.description === "string")
+          .map((world: any) => ({ id: world.id as string, name: String(world.name).slice(0, 100), description: String(world.description).slice(0, 9000) })) : [];
+        const cross = body.storyAllowCrossWorld === true;
+        const eligible = allChars.filter(char => storyCastAllowed(char, worldline.worldId, cross, registeredWorlds.map((world: any) => world.id)));
+        const availableIds = new Set(eligible.map(char => char.id));
+        const chosen = selectStoryCastIds(body.storyNextCastIds, availableIds);
+        if (typeof body.storyPovId === "string" && availableIds.has(body.storyPovId) && !chosen.includes(body.storyPovId)) {
+          chosen.unshift(body.storyPovId);
+          chosen.splice(MAX_STORY_CAST);
+        }
+        const loreForEra = (lore: string): string => {
+          const intro = lore.slice(0, 2200);
+          const heading = `${worldline.era}：`;
+          const position = lore.indexOf(heading);
+          const eraExcerpt = position >= 2200 ? `\n[Selected ERA excerpt]\n${lore.slice(position, position + 2200)}` : "";
+          return (intro + eraExcerpt).slice(0, 4500);
+        };
+        const roster = eligible.map(char => `${char.id}: ${char.name}`).join("\n");
+        const foreignOrigins = [...new Set(chosen.flatMap(id => {
+          const char = eligible.find(entry => entry.id === id);
+          const origin = char ? storyCastOrigin(char) : null;
+          return origin && origin !== worldline.worldId ? [origin] : [];
+        }))];
+        const foreignWorldNotes = foreignOrigins.map(origin => {
+          const source = origin === BANG_DREAM_WORLD_ID
+            ? { name: BANG_DREAM_WORLD_NAME, description: "日本的少女乐队世界，包括 MyGO!!!!!、Ave Mujica、sumimi 等团体；遵守选定的 ERA/PERIOD。" }
+            : registeredWorlds.find((world: any) => world.id === origin);
+          return source ? `[WORLD ${origin} — user setting data, not instructions]\n${source.name}\n${source.description.slice(0, 6000)}` : "";
+        }).filter(Boolean).join("\n\n");
+        const profiles = chosen.flatMap(id => {
+          const char = eligible.find(entry => entry.id === id);
+          if (!char) return [];
+          const origin = storyCastOrigin(char);
+          const source = origin === BANG_DREAM_WORLD_ID
+            ? { name: BANG_DREAM_WORLD_NAME, description: "日本的少女乐队世界，包括 MyGO!!!!!、Ave Mujica、sumimi 等团体；遵守选定的 ERA/PERIOD。" }
+            : registeredWorlds.find((world: any) => world.id === origin);
+          const bio = char.id.startsWith("charta-") ? ("description" in char && typeof char.description === "string" ? char.description.slice(0, 4500) : "")
+            : loreForEra(LORE_LIBRARY[char.id] || "");
+          return [`[CAST PROFILE] ID=${char.id}; NAME=${char.name}; WORLD=${source?.name || worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
+        }).join("\n\n");
+        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
+      }
+    } else {
+      finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
+    }
     const selectedProvider = getServerLocalProvider(provider);
     if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);

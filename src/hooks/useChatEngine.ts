@@ -9,6 +9,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
+import { storyCastAllowed, selectStoryCastIds } from "../lib/storyCast";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
 import { isDefaultSessionTitle } from "../lib/sessionTitles";
@@ -20,7 +21,7 @@ export const useChatEngine = ({
     config, 
     setTrackId, showToast, setIsGlobalGenerating,
     manualOutfitId,
-    apiProvider, customCharacters = [], customSelves = [], activeSelfId = null
+    apiProvider, customCharacters = [], customSelves = [], activeSelfId = null, storyWorlds = []
 }: any) => {
     
     const { locale } = useLanguage();
@@ -158,6 +159,9 @@ export const useChatEngine = ({
                     debugFullOutput: config.terminalLog === true,
                     ...(currentSession.memoryMode === "sliding" ? {
                         storyRole,
+                        storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.sceneCastIds ?? [],
+                        storyAllowCrossWorld: currentSession.storyAllowCrossWorld === true,
+                        storyCastWorlds: storyWorlds.map((world: any) => ({ id: world.id, name: world.name, description: world.description })),
                         storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
                         storyPovId: storyRole === "observer" ? currentSession.storyPovId : null,
                         storyPovLocked: currentSession.storyPovLocked || (isRegen ? previousStoryTurns >= 2 : previousStoryTurns >= 1),
@@ -283,6 +287,9 @@ export const useChatEngine = ({
                             debugRequestPayload: config.terminalRequestLog === true,
                             debugFullOutput: config.terminalLog === true,
                             storyRole, storyPovId: currentSession.storyPovId,
+                            storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.sceneCastIds ?? [],
+                            storyAllowCrossWorld: currentSession.storyAllowCrossWorld === true,
+                            storyCastWorlds: storyWorlds.map((world: any) => ({ id: world.id, name: world.name, description: world.description })),
                             storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
                             storyWorldline: currentSession.storyWorldline,
                             customCharacters: customCharacters.map(asChartaPromptData),
@@ -426,8 +433,15 @@ export const useChatEngine = ({
                     capturedState = parsed;
 
                     if (currentSession.memoryMode === "sliding") {
-                        const catalog = [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.names?.[c.primaryLanguage] || c.id }))];
+                        const worldId = currentSession.storyWorldline?.worldId || "";
+                        const validWorlds = storyWorlds.map((world: any) => world.id as string);
+                        const catalog = [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.names?.[c.primaryLanguage] || c.id, worldId: c.worldId }))]
+                            .filter(char => storyCastAllowed(char, worldId, currentSession.storyAllowCrossWorld === true, validWorlds));
                         const knownCast = new Set(catalog.map(c => c.id));
+                        capturedState.nextSceneCastIds = selectStoryCastIds(
+                            Array.isArray(capturedState.nextSceneCastIds) ? capturedState.nextSceneCastIds : capturedState.sceneCastIds,
+                            knownCast,
+                        );
                         const rawIds = Array.isArray(capturedState.sceneCastIds)
                             ? capturedState.sceneCastIds.filter((id: unknown) => typeof id === "string" && knownCast.has(id as string)) : [];
                         const normalizedProse = currentText.replace(/\s+/g, "");
@@ -476,8 +490,14 @@ export const useChatEngine = ({
                             const normalizedIdentity = (value: unknown) => typeof value === "string"
                                 ? value.replace(/\s+/g, "").toLocaleLowerCase() : "";
                             const excluded = new Set(ownerIdentities.map(normalizedIdentity).filter(Boolean));
+                            const knownNames = new Set([
+                                ...catalog.map(char => char.name),
+                                ...customCharacters.filter((char: any) => knownCast.has(char.id))
+                                    .flatMap((char: any) => Object.values(char.names || {})),
+                            ].map(normalizedIdentity).filter(Boolean));
                             capturedState.character = newStats.filter((stats: any) =>
                                 stats && typeof stats === "object" &&
+                                (knownCast.has(stats.id) || knownNames.has(normalizedIdentity(stats.name))) &&
                                 !excluded.has(normalizedIdentity(stats.id)) &&
                                 !excluded.has(normalizedIdentity(stats.name)))
                                 .map((stats: any) => {
@@ -572,7 +592,10 @@ export const useChatEngine = ({
                         ...(capturedState ? {
                             protagonist: capturedState.protagonist,
                             charStatus: capturedState.character,
-                            ...(s.memoryMode === "sliding" ? { sceneCastIds: capturedState.sceneCastIds || [] } : {}),
+                            ...(s.memoryMode === "sliding" ? {
+                                sceneCastIds: capturedState.sceneCastIds || [],
+                                storyNextCastIds: capturedState.nextSceneCastIds || [],
+                            } : {}),
                             plotSuggestions: capturedState.suggestions,
                             lastDanmaku: capturedState.danmaku,
                             timeline: capturedState.timeline,
@@ -760,10 +783,11 @@ export const useChatEngine = ({
         setSessions((prev: any) => prev.map((s: any) => {
             if (s.id !== currentSessionId) return s;
             if (s.memoryMode !== "sliding") return { ...s, messages: newMsgs, updatedAt: Date.now() };
-            // The world, ERA and PERIOD belong to the user and are never rolled back.
-            // If no real user turns remain, clear every generated story state.
-            const restored = newMsgs.some((m: any) => m.role === "user")
-                ? restoreStoryState(s, latestAssistant?.storyStateBefore || (role === "user" ? oldMessages[idx]?.storyStateBefore : undefined))
+            // Prefer the saved pre-turn snapshot even when deleting the FIRST turn:
+            // this restores the user's original cast selection, not the AI's forecast.
+            const checkpoint = latestAssistant?.storyStateBefore || (role === "user" ? oldMessages[idx]?.storyStateBefore : undefined);
+            const restored = checkpoint || newMsgs.some((m: any) => m.role === "user")
+                ? restoreStoryState(s, checkpoint)
                 : emptyStoryState(s);
             return { ...restored, messages: newMsgs, updatedAt: Date.now() };
         }));

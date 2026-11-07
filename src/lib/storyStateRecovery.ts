@@ -6,7 +6,7 @@ import type { Session } from "../types";
  */
 const STATE_FIELDS = [
   "stm", "ltm", "stmBackup", "turnCount", "protagonist", "charStatus",
-  "plotSuggestions", "timeline", "sceneCastIds", "lastDanmaku",
+  "plotSuggestions", "timeline", "sceneCastIds", "storyNextCastIds", "storyAllowCrossWorld", "lastDanmaku",
   "currentBackground", "live2dCharId", "currentEmotion", "currentOutfitId",
   "storyPovId", "storyPovLocked",
 ] as const;
@@ -34,7 +34,7 @@ export function emptyStoryState(session: Session): Session {
     ...session,
     stm: "", ltm: "", stmBackup: undefined, turnCount: 0,
     protagonist: undefined, charStatus: undefined, plotSuggestions: undefined,
-    timeline: undefined, sceneCastIds: [], lastDanmaku: [],
+    timeline: undefined, sceneCastIds: [], storyNextCastIds: [], lastDanmaku: [],
     currentBackground: undefined, live2dCharId: undefined,
     currentEmotion: undefined, currentOutfitId: undefined,
     storyPovId: null, storyPovLocked: false,

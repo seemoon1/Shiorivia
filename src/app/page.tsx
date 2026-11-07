@@ -250,6 +250,7 @@ export default function Home() {
         manualOutfitId,
         apiProvider,
         customCharacters: charta.characters,
+        storyWorlds: worldLibrary.worlds,
         customSelves: selfLibrary.selves,
         activeSelfId: selfLibrary.activeId,
     });
@@ -905,7 +906,8 @@ export default function Home() {
                 <SidebarRight
                     isOpen={ui.rightSidebarOpen} onClose={() => ui.setRightSidebarOpen(false)}
                     activeStorySelf={selfLibrary.activeSelf}
-                    worlds={worldLibrary.worlds} setInput={engine.setInput} worldlineOpenSignal={worldlineOpenSignal}
+                    worlds={worldLibrary.worlds} customCharacters={charta.characters} isGenerating={engine.isLoading}
+                    setInput={engine.setInput} worldlineOpenSignal={worldlineOpenSignal}
                     onOpenChartaWorld={() => { setChartaInitialSection("worlds"); setShowCharta(true); }}
                     storySelf={currentSession?.storySelfSnapshot || selfLibrary.selves.find(self => self.id === currentSession?.storySelfId) || null}
                     onStoryRoleChange={changeStoryRole} onStoryPovChange={changeStoryPov}

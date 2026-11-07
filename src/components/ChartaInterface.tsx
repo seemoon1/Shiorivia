@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import { ArrowLeft, Download, FilePlus2, Palette, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME } from "../lib/storyWorldline";
 import { useLanguage } from "../context/LanguageContext";
 import { chartaText } from "../lib/chartaText";
 import {
@@ -15,7 +16,7 @@ import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
 
-type Draft = { id: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; gender?: "male" | "female" | "undisclosed" | "custom"; genderCustom?: string; createdAt: number; updatedAt: number };
+type Draft = { id: string; worldId?: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; gender?: "male" | "female" | "undisclosed" | "custom"; genderCustom?: string; createdAt: number; updatedAt: number };
 const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
 const colors = ["#799783", "#688ca4", "#ba8295", "#a38ebc", "#c1a276", "#4d7972", "#bd7674", "#65728d"];
 
@@ -80,6 +81,9 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   const saveDraft = async () => {
     if (busy || !draft) return;
     if (!draft.names[draft.primaryLanguage]?.trim() || !draft.hex || !draft.avatar) { setMessage(txt("required")); return; }
+    if (draft.worldId && draft.worldId !== BANG_DREAM_WORLD_ID && !worldLibrary.worlds.some(world => world.id === draft.worldId)) {
+      setMessage("所属世界观不存在，请先在 Charta 创建世界观后再绑定。"); return;
+    }
     setBusy(true);
     try {
       const data = parseChartaCharacter(draft);
@@ -192,6 +196,17 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               {Object.keys(draft.names).filter(lang=>lang!==draft.primaryLanguage).map(lang=><div key={lang} className="flex items-center gap-2"><span className="w-14 shrink-0 text-xs text-[#809587]">{lang}</span><input value={draft.names[lang]||""} onChange={e=>update({...draft,names:{...draft.names,[lang]:e.target.value}})} placeholder={txt("extraName")} maxLength={100} className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm outline-none focus:border-[#7e9f86]"/><button type="button" title="Remove" onClick={()=>{const next={...draft.names};delete next[lang];update({...draft,names:next});}}><X size={16}/></button></div>)}
               <div className="space-y-2"><label className="block text-xs text-[#6e8472]">性别设定</label><div className="flex flex-wrap gap-2">{([ ["male","男"], ["female","女"], ["undisclosed","不愿透露"], ["custom","自定义"] ] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(draft.gender||"undisclosed")===value} onClick={()=>update({...draft,gender:value})} className={`rounded-xl border px-3 py-2 text-xs ${(draft.gender||"undisclosed")===value ? "border-[#60856a] bg-[#edf5ec] text-[#345443]" : "border-[#d8e4d8] text-[#819588]"}`}>{label}</button>)}</div>{draft.gender==="custom"&&<input maxLength={100} value={draft.genderCustom||""} onChange={e=>update({...draft,genderCustom:e.target.value})} placeholder="自定义性别设定" className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/>}</div>
               <p className="text-[11px] leading-6 text-[#8ba08f]">{txt("nameHint")}</p>
+              <label className="block text-xs text-[#6e8472]">所属世界观 · WORLD
+                <select value={draft.worldId || ""} onChange={e => update({ ...draft, worldId: e.target.value || undefined })}
+                  className="mt-2 w-full rounded-xl border border-[#d7e0d6] bg-[#fbfcf9] px-3 py-3 text-sm outline-none focus:border-[#7e9f86]">
+                  <option value="">未绑定 · 通用角色</option>
+                  <option value={BANG_DREAM_WORLD_ID}>{BANG_DREAM_WORLD_NAME}（内置）</option>
+                  {worldLibrary.worlds.map(world => <option key={world.id} value={world.id}>{world.name}</option>)}
+                  {draft.worldId && draft.worldId !== BANG_DREAM_WORLD_ID && !worldLibrary.worlds.some(world => world.id === draft.worldId) &&
+                    <option value={draft.worldId}>原世界观已删除 · 请重新选择</option>}
+                </select>
+              </label>
+              <p className="text-[11px] leading-5 text-[#8ba08f]">可选。跨世界观登场前，请先在 Charta 创建并绑定角色所属的世界观。</p>
             </div>
             <div className="space-y-4">
               <h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">02 · {txt("appearance")}</h3>

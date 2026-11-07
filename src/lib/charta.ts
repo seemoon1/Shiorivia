@@ -16,6 +16,8 @@ export const CHARTA_LANGUAGES = [
 export type ChartaGender = "male" | "female" | "undisclosed" | "custom";
 export type ChartaCharacter = {
   id: string;
+  /** Optional existing world ID; undefined means a world-neutral character. */
+  worldId?: string;
   primaryLanguage: string;
   names: Record<string, string>;
   hex: string;
@@ -50,10 +52,14 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   const gender = ["male", "female", "undisclosed", "custom"].includes(String(input.gender)) ? input.gender as ChartaGender : "undisclosed";
   const genderCustom = typeof input.genderCustom === "string" ? input.genderCustom.trim().slice(0, 100) : "";
   if (gender === "custom" && !genderCustom) throw new Error("A custom gender description is required.");
+  const worldId = input.worldId === undefined || input.worldId === "" || input.worldId === null ? undefined : input.worldId;
+  if (worldId !== undefined && (typeof worldId !== "string" || !/^(?:bang-dream|world-[a-zA-Z0-9-]{8,90})$/.test(worldId))) {
+    throw new Error("Invalid character world binding.");
+  }
   const id = typeof input.id === "string" && /^charta-[a-zA-Z0-9-]{8,90}$/.test(input.id) ? input.id : makeChartaId();
   const portrait = typeof input.portrait === "string" && new RegExp(`^/api/local/charta\\?portrait=${id}&v=[0-9]{1,14}$`).test(input.portrait)
     ? input.portrait : undefined;
-  return { id, primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description, gender, ...(gender === "custom" ? { genderCustom } : {}),
+  return { id, ...(worldId ? { worldId } : {}), primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description, gender, ...(gender === "custom" ? { genderCustom } : {}),
     createdAt: Number.isFinite(input.createdAt) ? Number(input.createdAt) : Date.now(), updatedAt: Date.now() };
 }
 
@@ -74,7 +80,7 @@ export function toChartaCharConfig(char: ChartaCharacter, locale: Locale): CharC
 }
 
 export function asChartaPromptData(char: ChartaCharacter) {
-  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, hex: char.hex, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
+  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, hex: char.hex, worldId: char.worldId || null, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
 }
 
 export function decodeChartaImport(value: unknown): ChartaCharacter {
