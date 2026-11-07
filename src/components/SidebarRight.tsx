@@ -9,7 +9,6 @@ import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
 import { selfName } from "../lib/chartaSelf";
-import { MemoryPreviewButton } from "./MemoryVaultModal";
 
 const SidebarRightComponent = ({
     isOpen, onClose,
@@ -76,33 +75,22 @@ const SidebarRightComponent = ({
     };
     const viewpointColor = (dbChars?.length ? dbChars : CHAR_DATA).find((char: any) => char.id === currentSession?.storyPovId)?.hex || "#637e6e";
 
+    // Keep DOM width stable on unrelated parent renders (e.g. music progress ticks).
+    // Defining the bar here is safe now that it has no mount/replay animation.
     const StatBar = ({ label, value, color, max = 100, icon: Icon }: any) => {
-        let difficultyColor = "bg-gray-200"; 
-        if (value >= 90) difficultyColor = "bg-red-900/20"; 
-
-        return (
-            <div className="mb-2">
-                <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-600">
-                    <span className="flex items-center gap-1">
-                        {Icon && typeof Icon === 'function' && <Icon size={10} />}
-                        {label}
-                    </span>
-                    <span className={value >= 100 ? "text-red-500 animate-pulse" : ""}>
-                        {value >= 100 ? "MAX" : `${value}/${max}`}
-                    </span>
-                </div>
-                <div className={`w-full h-1.5 rounded-full overflow-hidden ${difficultyColor}`}>
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((value / max) * 100, 100)}%` }}
-                        className="h-full relative"
-                        style={{ backgroundColor: color }}
-                    >
-                        <div className="absolute top-0 right-0 bottom-0 w-[2px] bg-white/50 shadow-[0_0_5px_white]"></div>
-                    </motion.div>
+        const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+        const width = Math.max(0, Math.min(100, amount / max * 100));
+        return <div className="mb-2">
+            <div className="mb-1 flex justify-between text-[10px] font-bold text-gray-600">
+                <span className="flex items-center gap-1">{Icon && typeof Icon === "function" && <Icon size={10} />}{label}</span>
+                <span className={amount >= 100 ? "text-red-500" : ""}>{amount >= 100 ? "MAX" : `${amount}/${max}`}</span>
+            </div>
+            <div className={`h-1.5 w-full overflow-hidden rounded-full ${amount >= 90 ? "bg-red-900/20" : "bg-gray-200"}`}>
+                <div className="relative h-full" style={{ width: `${width}%`, backgroundColor: color }}>
+                    <div className="absolute bottom-0 right-0 top-0 w-[2px] bg-white/50" />
                 </div>
             </div>
-        );
+        </div>;
     };
 
     const SuggestionItem = ({ type, content, colorBg, colorText, colorBorder, icon }: any) => (
@@ -165,19 +153,21 @@ const SidebarRightComponent = ({
                                     <p className="relative mt-2 text-[11px] leading-5 text-[#e0eadd]">{currentSession?.storyWorldline ? describeStoryWorldline(currentSession.storyWorldline) : currentSession?.timeline?.major ? `旧时间线：${currentSession.timeline.major} / ${currentSession.timeline.medium || "未设定"}` : "尚未铭刻命运 · 请先选择世界线"}</p>
                                 </button>
 
-                                <MemoryPreviewButton stm={currentSession?.stm} ltm={currentSession?.ltm} onOpen={onOpenMemory} tone="story" />
 
                                 {prota && (
                                     <div className="rounded-lg border shadow-sm relative overflow-hidden" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>
                                         <div className="absolute top-0 right-0 w-16 h-16 bg-[#E0E0FF]/30 rounded-bl-full -mr-4 -mt-4"></div>
                                         <div className="p-3 relative z-10">
                                             <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider flex items-center gap-1"><User size={10} /> 自身状态</div>
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : viewpointColor }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
-                                                <div className="text-gray-500">Time: <span className="text-gray-800">{prota.timeDesc}</span></div>
-                                                <div className="text-gray-500 col-span-2">Env: <span className="text-gray-800">{prota.environment}</span></div>
-                                                <div className="text-gray-500 col-span-2 flex items-center gap-1"><Thermometer size={10} /> {prota.temperature} | {prota.sensation}</div>
-                                                <div className="text-gray-500 col-span-2 italic text-[10px] border-t pt-1 mt-1 border-slate-200">"{prota.innerState}"</div>
+                                            <div className="grid grid-cols-2 gap-2 text-xs leading-5">
+                                                <div className="col-span-2 text-gray-500">Name: <span className="font-bold" style={{ color: storyRole === "participant" ? storySelf?.hex || "#799783" : viewpointColor }}>{storyRole === "participant" && storySelf ? selfName(storySelf, locale) : prota.name || "未命名"}</span></div>
+                                                <div className="text-gray-500">Age: <span className="text-gray-800">{prota.age || "—"}</span></div>
+                                                <div className="text-gray-500">Gender: <span className="text-gray-800">{prota.gender || "—"}</span></div>
+                                                <div className="col-span-2 text-gray-500">Time: <span className="text-gray-800">{prota.timeDesc || "—"}</span></div>
+                                                <div className="col-span-2 text-gray-500">Env: <span className="text-gray-800">{prota.environment || "—"}</span></div>
+                                                <div className="col-span-2 text-gray-500">Outfit: <span className="text-gray-800">{prota.clothing || "—"}</span></div>
+                                                <div className="col-span-2 flex items-start gap-1 text-gray-500"><Thermometer size={11} className="mt-0.5 shrink-0"/><span>{prota.temperature || "—"} · {prota.sensation || "—"}</span></div>
+                                                <div className="col-span-2 border-t border-slate-200 pt-2 text-[11px] italic text-gray-700">{prota.innerState && prota.innerState !== "—" ? `“${prota.innerState}”` : "内心状态：未记录"}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -274,9 +264,6 @@ const SidebarRightComponent = ({
                                     ))}
                                 </div>
 
-                                <div className="pt-4 border-t border-gray-100 text-center">
-                                    <div className="text-[9px] text-gray-300 font-mono">IDE MOVED TO TOP BAR ↗</div>
-                                </div>
                             </div>
                         )}
                     </div>

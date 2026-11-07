@@ -353,6 +353,7 @@ export default function Home() {
         const newSession: Session = {
             id: newId,
             title: nextMode === 'lime' ? "VIAE Workspace" : defaultSessionTitle(nextMode, locale),
+            titleAutoManaged: nextMode === "sliding" || nextMode === "infinite" || nextMode === "chat",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -763,7 +764,7 @@ export default function Home() {
                     editingSessionId={editingSessionId} setEditingSessionId={setEditingSessionId}
                     tempTitle={tempTitle} setTempTitle={setTempTitle}
                     activeMenuSessionId={activeMenuSessionId} setActiveMenuSessionId={setActiveMenuSessionId}
-                    updateSessionTitle={(id: string, t: string) => { cloud.setSessions(prev => prev.map(s => s.id === id ? { ...s, title: t } : s)); setEditingSessionId(null) }}
+                    updateSessionTitle={(id: string, t: string) => { cloud.setSessions(prev => prev.map(s => s.id === id ? { ...s, title: t, titleAutoManaged: false } : s)); setEditingSessionId(null) }}
                     moveSessionToFolder={(sid: string, fid: string | null) => { cloud.setSessions(prev => prev.map(s => s.id === sid ? { ...s, folderId: fid } : s)); setActiveMenuSessionId(null) }}
 
                     handleExportData={() => { const d = { sessions: cloud.sessions, folders: cloud.folders, globalWorldInfo: cloud.globalWorldInfo, bgImage: cloud.bgImage }; const b = new Blob([JSON.stringify(d)], { type: "application/json" }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "backup.json"; a.click(); }}

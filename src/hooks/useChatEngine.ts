@@ -10,6 +10,8 @@ import { asChartaSelfPromptData, selfName, selfGenderLabel } from "../lib/charta
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
+import { completeStoryProtagonist } from "../lib/storyProtagonist";
+import { isDefaultSessionTitle } from "../lib/sessionTitles";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -26,12 +28,39 @@ export const useChatEngine = ({
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<{ url: string, type: 'image' | 'video' | 'text', name: string } | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    const [pendingStoryRegeneration, setPendingStoryRegeneration] = useState<{ sessionId: string; messagesLength: number } | null>(null);
 
     const stopGeneration = () => { 
         if (abortControllerRef.current) { 
             abortControllerRef.current.abort(); 
             setIsLoading(false); 
         } 
+    };
+
+    const requestAutomaticTitle = (history: any[], answer: string, modelName: string, generationId: string) => {
+        const mode = currentSession?.memoryMode;
+        if (!(mode === "sliding" || mode === "infinite" || mode === "chat")) return;
+        if (currentSession.titleAutoManaged === false ||
+            (currentSession.titleAutoManaged !== true && !isDefaultSessionTitle(currentSession.title, mode))) return;
+        const userTurns = history.filter(message => message.role === "user").length;
+        if (userTurns !== 1 && userTurns % 5 !== 0) return;
+        const lastUser = [...history].reverse().find(message => message.role === "user");
+        const userText = typeof lastUser?.content === "string" ? lastUser.content : JSON.stringify(lastUser?.content || "");
+        const cleanedAnswer = answer.replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, " [code] ")
+            .replace(/<game_state>[\s\S]*?<\/game_state>/gi, "").slice(0, 1400);
+        void fetch("/api/summarize", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: "title", text: `USER: ${userText.slice(0, 1200)}\nASSISTANT: ${cleanedAnswer}`,
+                model: modelName, provider: apiProvider, uiLanguage: locale }),
+        }).then(response => response.ok ? response.json() : null).then(result => {
+            const title = typeof result?.summary === "string" ? result.summary.trim().slice(0, 60) : "";
+            if (!title || title.length < 2) return;
+            setSessions((prev: any) => prev.map((session: any) => session.id !== currentSessionId ||
+                session.titleAutoManaged === false ||
+                !(session.titleAutoManaged === true || isDefaultSessionTitle(session.title, mode)) ||
+                !session.messages.some((message: any) => message.storyGenerationId === generationId)
+                ? session : { ...session, title, titleAutoManaged: true }));
+        }).catch(error => console.warn("Automatic title skipped:", error));
     };
 
     const handleSend = async (
@@ -61,9 +90,10 @@ export const useChatEngine = ({
         }
         const previousStoryTurns = (overrideMessages || currentSession.messages).filter((message: any) => message.role === "user").length;
         const generationId = crypto.randomUUID();
-        const assistantMeta = currentSession.memoryMode === "sliding" ? {
-            storyStateBefore: snapshotStoryState(currentSession), storyGenerationId: generationId,
-        } : {};
+        const assistantMeta = {
+            storyGenerationId: generationId,
+            ...(currentSession.memoryMode === "sliding" ? { storyStateBefore: snapshotStoryState(currentSession) } : {}),
+        };
 
         if (!isRegen) { setInput(""); setSelectedFile(null); }
         setIsLoading(true);
@@ -86,7 +116,7 @@ export const useChatEngine = ({
             ...(s.memoryMode === "sliding" ? {
                 storyRole, storySelfId: storyRole === "participant" ? selectedSelfId : null,
                 storySelfSnapshot: storyRole === "participant" ? selectedSelf : null,
-                storyPovLocked: s.storyPovLocked || (!isRegen && previousStoryTurns >= 1),
+                storyPovLocked: s.storyPovLocked || (isRegen ? previousStoryTurns >= 2 : previousStoryTurns >= 1),
             } : {}),
             updatedAt: Date.now(),
             voiceVariant 
@@ -128,7 +158,7 @@ export const useChatEngine = ({
                         storyRole,
                         storySelf: selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
                         storyPovId: storyRole === "observer" ? currentSession.storyPovId : null,
-                        storyPovLocked: currentSession.storyPovLocked || (!isRegen && previousStoryTurns >= 1),
+                        storyPovLocked: currentSession.storyPovLocked || (isRegen ? previousStoryTurns >= 2 : previousStoryTurns >= 1),
                         previousProtagonist: currentSession.protagonist,
                     } : {}),
                     customCharacters: customCharacters.map(asChartaPromptData),
@@ -167,6 +197,7 @@ export const useChatEngine = ({
                     updatedAt: Date.now(),
                 } : s));
 
+                if (fullText.trim()) requestAutomaticTitle(msgs, fullText, modelToUse, generationId);
                 // The active provider summarizes Chat memories without changing Local JSON format.
                 // Run this after the visible response so memory work does not block the conversation.
                 if (fullText.trim()) {
@@ -415,10 +446,22 @@ export const useChatEngine = ({
                         } else {
                             const chosenPov = catalog.find(c => c.id === currentSession.storyPovId);
                             if (storyRole === "participant" && selectedSelf) {
-                                capturedState.protagonist = { ...(capturedState.protagonist || {}),
-                                    name: selfName(selectedSelf, locale), gender: selfGenderLabel(selectedSelf.gender, selectedSelf.genderCustom) };
+                                capturedState.protagonist = completeStoryProtagonist({
+                                    raw: capturedState.protagonist, previous: currentSession.protagonist,
+                                    name: selfName(selectedSelf, locale),
+                                    gender: selfGenderLabel(selectedSelf.gender, selectedSelf.genderCustom),
+                                    environment: capturedState.environment,
+                                    era: currentSession.storyWorldline?.era, period: currentSession.storyWorldline?.period,
+                                });
                             } else if (chosenPov) {
-                                capturedState.protagonist = { ...(capturedState.protagonist || {}), name: chosenPov.name };
+                                const povStats = (Array.isArray(capturedState.character) ? capturedState.character : [])
+                                    .find((item: any) => item?.name === chosenPov.name);
+                                capturedState.protagonist = completeStoryProtagonist({
+                                    raw: capturedState.protagonist, previous: currentSession.protagonist,
+                                    currentCharacter: povStats, name: chosenPov.name,
+                                    environment: capturedState.environment,
+                                    era: currentSession.storyWorldline?.era, period: currentSession.storyWorldline?.period,
+                                });
                             }
                             const oldStats = Array.isArray(currentSession.charStatus) ? currentSession.charStatus : currentSession.charStatus ? [currentSession.charStatus] : [];
                             const newStats = Array.isArray(capturedState.character) ? capturedState.character : capturedState.character ? [capturedState.character] : [];
@@ -531,6 +574,7 @@ export const useChatEngine = ({
                 return s;
             }));
 
+            if (currentText.trim()) requestAutomaticTitle(msgs, currentText, modelToUse, generationId);
             if ((currentSession.memoryMode === 'sliding' && !storyProtocolMissing) || currentSession.memoryMode === 'novel') {
                 const textToSummarize = currentSession.memoryMode === 'novel' ? currentText : `User: ${txt}\nAI: ${currentText}\n`;
                 const summarizeMode = currentSession.memoryMode === 'novel' ? 'novel_chapter' : 'micro';
@@ -619,13 +663,41 @@ export const useChatEngine = ({
         }
     };
 
-    const handleRegenerate = (idx: number) => {
-        if (!currentSession) return;
-        if (idx === currentSession.messages.length - 1) {
-            setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId && s.stmBackup !== undefined ? { ...s, stm: s.stmBackup } : s));
-            showToast("⏳ Timeline Reverted");
+    // This effect runs only after the previous story state AND message history have committed.
+    useEffect(() => {
+        if (!pendingStoryRegeneration || isLoading || !currentSession ||
+            pendingStoryRegeneration.sessionId !== currentSessionId ||
+            currentSession.messages.length !== pendingStoryRegeneration.messagesLength) return;
+        setPendingStoryRegeneration(null);
+        if (currentSession.messages[currentSession.messages.length - 1]?.role !== "user") {
+            showToast("没有找到可以重新生成的用户输入。"); return;
         }
-        handleSend(undefined, currentSession.messages.slice(0, idx));
+        void handleSend(undefined, [...currentSession.messages]);
+    }, [pendingStoryRegeneration, currentSession, currentSessionId, isLoading]);
+
+    const handleRegenerate = (idx: number) => {
+        if (!currentSession || isLoading) return;
+        const target = currentSession.messages[idx];
+        if (!target || target.role !== "assistant") return;
+        if (currentSession.memoryMode === "sliding" && idx !== currentSession.messages.length - 1) {
+            showToast("故事模式请从最后一轮开始刷新，以便正确回退状态与记忆。"); return;
+        }
+        if (!window.confirm(currentSession.memoryMode === "sliding"
+            ? "确认刷新这轮故事吗？将恢复本轮之前的自身状态、角色数值、剧情引导与记忆，然后重新生成。"
+            : "确认重新生成这条 AI 回复吗？当前回复会被替换。")) return;
+        if (currentSession.memoryMode !== "sliding") {
+            void handleSend(undefined, currentSession.messages.slice(0, idx));
+            return;
+        }
+        const keptMessages = currentSession.messages.slice(0, idx);
+        const snapshot = target.storyStateBefore || currentSession.messages[idx - 1]?.storyStateBefore;
+        setSessions((prev: any) => prev.map((session: any) => {
+            if (session.id !== currentSessionId) return session;
+            const restored = keptMessages.some((message: any) => message.role === "user")
+                ? restoreStoryState(session, snapshot) : emptyStoryState(session);
+            return { ...restored, messages: keptMessages, updatedAt: Date.now() };
+        }));
+        setPendingStoryRegeneration({ sessionId: currentSessionId, messagesLength: keptMessages.length });
     };
 
     const handleDeleteMessage = (idx: number, role: string) => {

@@ -30,6 +30,10 @@ const languages: Locale[] = ["zh-CN", "zh-TW", "en", "ja", "ko"];
 export function defaultSessionTitle(mode: NamedSessionMode, locale: Locale): string {
   return titles[mode][Math.max(0, languages.indexOf(locale))];
 }
+/** Default titles across every locale; do not overwrite user-authored names. */
+export function isDefaultSessionTitle(title: string, mode: string): boolean {
+    return mode in titles && (titles[mode as NamedSessionMode] as readonly string[]).includes(title);
+}
 /** Read-only fallback used by Tela's first-chapter automatic naming. */
 export function isUntitledNovel(title: string): boolean {
   return titles.novel.includes(title as (typeof titles.novel)[number]) ||

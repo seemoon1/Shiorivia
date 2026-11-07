@@ -106,7 +106,9 @@ export type NovelDraft = {
 
 export type Session = {
   id: string; 
-  title: string; 
+  title: string;
+  /** False after manual rename; automatic naming must never overwrite it. */
+  titleAutoManaged?: boolean;
   folderId: string | null; 
   characterId: string;
   voiceVariant?: string; 

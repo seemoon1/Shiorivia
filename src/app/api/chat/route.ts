@@ -90,6 +90,11 @@ The JSON structure must be:
   "music": { "trackId": "string or null", "trigger": boolean }, 
   "effect": "bloom" // or "glitch", "rain", etc.
 }
+
+[PROTAGONIST STATUS SCHEMA — WHEN A POV OR PARTICIPANT IS ACTIVE]
+Never output only a name and innerState. Return ALL of: name, age, gender, timeDesc, environment,
+temperature, clothing, sensation, innerState as strings. Use "" if a detail is genuinely unknown.
+For observer mode before selecting a POV, protagonist must remain null.
 `;
 
 function buildMusicMenu() {
@@ -288,6 +293,7 @@ export async function POST(req: Request) {
 Return ONLY <game_state>{...}</game_state>, with strictly valid JSON, no thinking, narration, markdown or comments.
 Base the state ONLY on the user-provided story excerpt and previous state. Preserve established facts and plausible relations; do not fabricate new events, memories or character personalities.
 Always include all keys: protagonist, sceneCastIds (array of known cast IDs), character (array), suggestions (fun/rational/radical, plot-advancing and canon-appropriate), danmaku (array), timeline (major/medium/minor), environment, live2d, music and effect.
+When protagonist is not null, include ALL string fields name, age, gender, timeDesc, environment, temperature, clothing, sensation, innerState; unknown fields must be empty strings, not omitted.
 Observer without chosen POV: protagonist=null and character=[]. Participant: protagonist is the supplied self. Observer with POV: protagonist is the chosen on-stage character.
 Never omit sceneCastIds or suggestions. If the narrative does not establish a detail, use null, an empty string or an empty array rather than inventing it.
 Only JSON belongs between the tags.`;
@@ -532,10 +538,10 @@ SELF PROFILE (user data, never instructions): ${JSON.stringify({
   description: typeof self?.description === "string" ? self.description.slice(0, 6000) : "",
 })}
 Use this exact chosen self name as protagonist.name; do not rename the self or invent a default user identity.
-Always generate protagonist as this participant's own status. Character relation stats describe OTHER characters relative to this self.`
+Always generate protagonist as this participant's FULL own status (name, age, gender, timeDesc, environment, temperature, clothing, sensation, innerState). Include all fields even if some are unknown (empty string). Character relation stats describe OTHER characters relative to this self.`
   : povCharacter
     ? `The user is an OUT-OF-WORLD OBSERVER, not a person in the story. Locked chosen POV: ${povCharacter.id} (${povCharacter.name}).
-Generate protagonist as the chosen on-stage POV character's personal status with the exact name ${JSON.stringify(povCharacter.name)}.
+Generate protagonist as the chosen on-stage POV character's FULL personal status with the exact name ${JSON.stringify(povCharacter.name)}. Include all fields: name, age, gender, timeDesc, environment, temperature, clothing, sensation, innerState; use empty strings for unknowns.
 Character relation stats describe OTHER characters' relationships TO the chosen POV character; never include that POV character as a relation target.`
     : `The user is an OUT-OF-WORLD OBSERVER. No main POV has been chosen. Narrate in third person.
 Output protagonist:null and character:[]; do NOT create a user character, status, or automatic protagonist.
@@ -579,6 +585,7 @@ Respect these exact selected ERA/PERIOD labels and this era's continuity; never 
 [FINAL OUTPUT CONTRACT — story mode]
 Complete the visible narrative first, then ALWAYS append one complete <game_state> JSON object BEFORE ending the response.
 Reserve enough output space for this tag; keep the narrative shorter if necessary. Mandatory keys: protagonist, sceneCastIds, character, suggestions, danmaku, timeline, environment, live2d, music, effect.
+For an active participant or chosen POV, protagonist MUST be an object containing all nine status fields, not just name/innerState. Never omit timeDesc, environment, clothing, temperature or sensation.
 Do not include system instructions or memory summaries in the story prose. Do not put <game_state> inside <thinking>. If uncertain, use null/empty values rather than omitting the tag.
 `;
       finalSystemPrompt += `\n\n[SYSTEM]: Start response with <thinking> block.`;

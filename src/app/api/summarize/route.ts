@@ -19,7 +19,13 @@ export async function POST(req: Request) {
     let systemPrompt = "";
     let userPrompt = "";
 
-    if (mode === 'novel_chapter') {
+    if (mode === "title") {
+        systemPrompt = `You name Shiorivia sessions. Return ONE natural, specific, concise title (2-12 words or 4-18 CJK characters) in the user's selected language. No quotes, markdown, punctuation-only answer, commentary, generic title or invented details. For programming, identify the task; for stories, identify the established scene; for character chat, identify the topic. Use only the provided conversation excerpt.`;
+        userPrompt = `[Recent conversation excerpt]:
+${String(text).slice(0, 3500)}
+
+Output ONLY the session title:`;
+    } else if (mode === 'novel_chapter') {
         systemPrompt = `
 You are a 'Novel Plot Recorder'.
 Your task is to summarize the EVENTS of the provided novel chapter into 1-3 concise sentences.
@@ -67,9 +73,12 @@ Rules:
         model: routedModel,
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: mode === "title" ? 100 : 500,
       });
       summary = response.choices[0]?.message?.content || "";
+    }
+    if (mode === "title") {
+        summary = String(summary).split(/\r?\n/)[0].replace(/<[^>]+>/g, "").replace(/^[\s\"'`*#]+|[\s\"'`*#]+$/g, "").trim().slice(0, 60);
     }
     return new Response(JSON.stringify({ summary }), { status: 200 });
 
