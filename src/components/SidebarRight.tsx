@@ -134,6 +134,7 @@ const SidebarRightComponent = ({
 
                     <div className="flex-1 overflow-y-auto scrollbar-thin">
                         {isStoryMode ? (
+                            <div className="p-3 space-y-4">
                                 <div className="rounded-xl border border-[#e4e8e5] bg-[#fafcf9] p-3 space-y-3">
                                     <div className="text-[10px] font-bold tracking-widest text-[#6f8678]">故事身份 · STORY ROLE</div>
                                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -146,7 +147,6 @@ const SidebarRightComponent = ({
                                         {currentSession?.storyPovLocked && <p className="flex items-center gap-1 text-[10px] text-[#a18c6f]"><Lock size={11}/>视角已在下一轮发送时锁定</p>}
                                     </div>}
                                 </div>
-                            <div className="p-3 space-y-4">
                                 {!prota && charList.length === 0 && (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-3 opacity-60">
                                         <Radio size={40} className="animate-pulse" />
