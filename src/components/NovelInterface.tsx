@@ -28,6 +28,7 @@ import { localText } from "../lib/i18nLocal";
 import { isUntitledNovel } from "../lib/sessionTitles";
 import { deepText } from "../lib/i18nDeep";
 import { IllustratedImage, ImageLightbox } from "./IllustrationImage";
+import { stripNovelState } from "../lib/novelState";
 
 const THEMES = {
     sage: {
@@ -78,7 +79,7 @@ const PRESETS = [
 ];
 
 const NovelContent = ({ content, onOptionClick, onImageOpen, theme }: any) => {
-    let clean = cleanDrawTag(content) 
+    let clean = cleanDrawTag(stripNovelState(content)) 
         .replace(/<meta.*?\/>/g, "")
         .replace(/<audio>.*?<\/audio>/g, "")
         .trim();
@@ -198,8 +199,9 @@ export const NovelInterface = ({
     const availableModels = (providerModels.length ? providerModels : fallbackModelGroups(provider || "")).flatMap(g => g.models);
     const { savedModels, saveModel, forgetModel } = useSavedModels();
     const savedIds = savedModels[provider] || [];
-    const [scenario, setScenario] = useState("午后的红茶店"); 
-    const [action, setAction] = useState("谈心");
+    const [environment, setEnvironment] = useState("");
+    const [event, setEvent] = useState("");
+    const [manualStateEdit, setManualStateEdit] = useState(false);
     const [style, setStyle] = useState("温馨、细腻、富有生活感");
 
     const [outline, setOutline] = useState(currentSession.localWorldInfo || "");
@@ -209,12 +211,32 @@ export const NovelInterface = ({
         setSelectedCharIds(Array.isArray(currentSession?.storyNextCastIds) ? currentSession.storyNextCastIds
             : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : []);
         setNovelSelfId(typeof draft?.selfId === "string" ? draft.selfId : null);
-        setScenario(draft?.scenario || "午后的红茶店");
-        setAction(draft?.action || "谈心");
+        setEnvironment(currentSession?.novelState?.environment || draft?.environment || draft?.scenario || "");
+        setEvent(currentSession?.novelState?.event || draft?.event || draft?.action || "");
+        setManualStateEdit(false);
         setStyle(draft?.style || "温馨、细腻、富有生活感");
         setOutline(currentSession?.localWorldInfo || draft?.outline || "");
         setThemeMode(draft?.themeMode === "sage" ? "sage" : "paper");
     }, [currentSession?.id]);
+    // AI state updates arrive after every chapter; reflect them in the editor.
+    useEffect(() => {
+        if (!currentSession?.novelState) return;
+        setEnvironment(currentSession.novelState.environment);
+        setEvent(currentSession.novelState.event);
+        setSelectedCharIds(Array.isArray(currentSession.storyNextCastIds)
+            ? currentSession.storyNextCastIds : currentSession.novelState.nextSceneCastIds);
+        setManualStateEdit(false);
+    }, [currentSession?.id, currentSession?.novelState]);
+    const hasNovelChapters = currentSession?.messages?.some((message: any) =>
+        message.role === "assistant" && typeof message.content === "string"
+          && !message.content.includes("（...正在") && Boolean(message.content.trim()));
+    const inputsLocked = hasNovelChapters && !manualStateEdit;
+    const allowSceneEdit = () => {
+        if (isLoading) return;
+        if (!hasNovelChapters || window.confirm("本章已经开始。确定手动覆盖 AI 自动更新的 Environment / Event 吗？修改后会在下一章使用。")) {
+            setManualStateEdit(true);
+        }
+    };
     const { currentTrack } = useMusic();
     const lastDrawPromptRef = useRef("");
 
@@ -384,7 +406,11 @@ export const NovelInterface = ({
             return;
         }
         const targetNames = chars.filter((c: any) => selectedCharIds.includes(c.id)).map((c: any) => characterDisplayName(c.id, c.name, locale)).join(", ");
-        const novelConfig = { charNames: targetNames, scenario, action, style, outline, selfId:novelSelfId };
+        if (!environment.trim() || !event.trim()) {
+            showToast?.("Environment（环境）和 Event（当前事件）都是必填项。");
+            return;
+        }
+        const novelConfig = { charNames: targetNames, environment:environment.trim(), event:event.trim(), style, outline, selfId:novelSelfId };
         saveDraft();
 
         if (type === 'new') {
@@ -423,7 +449,7 @@ export const NovelInterface = ({
 
     const saveDraft = (patch: Partial<NovelDraft> = {}) => {
         updateSessionInfo?.(currentSession.id, {
-            novelDraft: { selectedCharIds, selfId:novelSelfId, scenario, action, style, outline, themeMode, ...patch },
+            novelDraft: { selectedCharIds, selfId:novelSelfId, environment, event, style, outline, themeMode, ...patch },
             updatedAt: Date.now(),
         });
     };
@@ -444,7 +470,7 @@ export const NovelInterface = ({
         setSelectedCharIds(ids);
         updateSessionInfo?.(currentSession.id, {
             storyNextCastIds: ids, storyAllowCrossWorld: allowCrossWorld,
-            novelDraft: { selectedCharIds: ids, selfId:novelSelfId, scenario, action, style, outline, themeMode },
+            novelDraft: { selectedCharIds: ids, selfId:novelSelfId, environment, event, style, outline, themeMode },
             updatedAt: Date.now(),
         });
     };
@@ -544,7 +570,7 @@ export const NovelInterface = ({
                 <div className="flex-1 overflow-y-auto p-6 md:p-16 scroll-smooth pb-32">
                     <div className="max-w-3xl mx-auto space-y-16">
                         {chapters.map((msg: any, i: number) => {
-                            const cleanContent = msg.content.replace(/<meta.*?\/>/, '').trim();
+                            const cleanContent = stripNovelState(msg.content).replace(/<meta.*?\/>/, '').trim();
                             const match = msg.content.match(/chapter="(.*?)"/);
                             const title = match ? match[1] : `Chapter ${i + 1}`;
                             return (
@@ -666,7 +692,7 @@ export const NovelInterface = ({
 
                                     <NovelArchiveActions
                                         session={currentSession}
-                                        draft={{ selectedCharIds, selfId:novelSelfId, scenario, action, style, outline, themeMode }}
+                                        draft={{ selectedCharIds, selfId:novelSelfId, environment, event, style, outline, themeMode }}
                                         onImport={onImportNovelSession}
                                         disabled={isLoading}
                                         tone={themeMode}
@@ -742,11 +768,16 @@ export const NovelInterface = ({
                                 </section>
 
 
-                                <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-2 block uppercase`}>Quick Presets · 六种剧情方向</label><div className="grid grid-cols-2 gap-2">{PRESETS.map((p, i) => (<button key={i} type="button" onClick={() => { setScenario(p.scenario); setAction(p.action); setStyle(p.style); saveDraft({ scenario:p.scenario, action:p.action, style:p.style }); }} className={`px-3 py-2.5 rounded-xl text-left ${theme.inputBg} border ${theme.border} text-[11px] ${theme.text} hover:shadow-sm transition-all`}>{p.name}</button>))}</div></div>
+                                <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-2 block uppercase`}>Quick Presets · 六种剧情方向</label><div className="grid grid-cols-2 gap-2">{PRESETS.map((p, i) => (<button key={i} type="button" disabled={isLoading || inputsLocked} onClick={() => { setEnvironment(p.scenario); setEvent(p.action); setStyle(p.style); saveDraft({ environment:p.scenario, event:p.action, style:p.style }); }} className={`px-3 py-2.5 rounded-xl text-left ${theme.inputBg} border ${theme.border} text-[11px] ${theme.text} hover:shadow-sm transition-all`}>{p.name}</button>))}</div></div>
 
                                 <div className="space-y-4">
-                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Scenario</label><input value={scenario} onChange={e => setScenario(e.target.value)} onBlur={() => saveDraft()} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
-                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Action / Play</label><textarea value={action} onChange={e => setAction(e.target.value)} onBlur={() => saveDraft()} className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-none`} /></div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`text-[10px] ${theme.text} opacity-75`}>{hasNovelChapters ? "每章结束由 AI 自动更新环境、事件和下章阵容" : "第一章开始前请填写环境与当前事件"}</span>
+                                        {inputsLocked && <button type="button" onClick={allowSceneEdit} className={`shrink-0 rounded-lg border ${theme.border} px-2 py-1 text-[10px] font-semibold ${theme.hover}`}>确认后修改</button>}
+                                        {manualStateEdit && <span className="text-[10px] text-amber-700">手动编辑中</span>}
+                                    </div>
+                                    <div><label className={`text-xs ${theme.text} opacity-80 font-bold mb-1 block`}>Environment · 环境 *</label><textarea required value={environment} readOnly={inputsLocked} onChange={e => setEnvironment(e.target.value)} onBlur={() => saveDraft()} placeholder="地点、天气、温度及周边环境" className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-y read-only:opacity-65`} /></div>
+                                    <div><label className={`text-xs ${theme.text} opacity-80 font-bold mb-1 block`}>Event · 当前事件 *</label><textarea required value={event} readOnly={inputsLocked} onChange={e => setEvent(e.target.value)} onBlur={() => saveDraft()} placeholder="当前正在发生的事情" className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-y read-only:opacity-65`} /></div>
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} onBlur={() => saveDraft()} placeholder="默认正文 1000–2000 字；可在此自行指定字数" className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
                                 </div>
 
@@ -760,6 +791,7 @@ export const NovelInterface = ({
                 value={novelWorldline || undefined}
                 worlds={storyWorlds}
                 onSave={updateWorldline}
+                showEvent={false}
                 onClose={() => setWorldlineOpen(false)}
                 onOpenCharta={onOpenCharta}
             />
