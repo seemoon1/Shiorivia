@@ -151,7 +151,8 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       } else if (kind === "self") {
         const original = decodeChartaSelfImport(source);
         const imported = parseChartaSelf({
-          ...original, id: `self-${crypto.randomUUID()}`,
+          ...original, id: selfLibrary.selves.some(item=>item.id===original.id)
+            ? `self-${crypto.randomUUID()}` : original.id,
           createdAt: now, updatedAt: now,
         });
         if (imported.worldId && imported.worldId !== BANG_DREAM_WORLD_ID
@@ -171,7 +172,8 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       } else {
         const original = decodeChartaWorldImport(source);
         const imported = parseChartaWorld({
-          ...original, id: `world-${crypto.randomUUID()}`,
+          ...original, id: worldLibrary.worlds.some(item=>item.id===original.id)
+            ? `world-${crypto.randomUUID()}` : original.id,
           createdAt: now, updatedAt: now,
         });
         if (!await worldLibrary.saveWorld(imported)) throw new Error("世界观保存失败，请检查时间线");
@@ -180,7 +182,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
         setRequestVersion(version => version + 1);
         setChildDirty(false); setCabinetHome(false);
       }
-      setMessage("导入成功：已创建独立档案，不会覆盖原有资料。");
+      setMessage("导入成功：不会覆盖原有资料。若导入的世界观 ID 已存在，会创建新 ID，关联角色需要重新绑定。");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "JSON 导入失败");
     } finally { setBusy(false); }
@@ -363,7 +365,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
           <p className="mt-5 text-[11px] leading-6 text-[#9cab9c]">{txt("independent")}</p>
         </section>)}
       </div>
-      {cabinetHome && message && <p role="status" className="mx-auto mt-4 max-w-3xl rounded-xl bg-[#f0f5ef] px-4 py-3 text-xs text-[#54705f]">{message}</p>}
+      {message && <p role="status" className="mx-auto mt-4 max-w-3xl rounded-xl bg-[#f0f5ef] px-4 py-3 text-xs text-[#54705f]">{message}</p>}
     </div>
   </main>;
 }
