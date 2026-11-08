@@ -493,12 +493,20 @@ export const NovelInterface = ({
     };
     const updateWorldline = (next: StoryWorldline) => {
         const changedWorld = currentSession.storyWorldline?.worldId !== next.worldId;
+        if (changedWorld && novelStarted && novelRole === "participant" && novelSelf?.worldId
+            && novelSelf.worldId !== next.worldId) {
+            showToast?.("已开始的小说绑定了自设身份；请新建小说以切换到不兼容的世界观。");
+            return;
+        }
         updateSessionInfo?.(currentSession.id, {
             storyWorldline: next,
             ...(changedWorld ? {
                 storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [],
-                storyRole: "observer", storySelfId: null, storySelfSnapshot: null,
-                novelDraft: { ...(currentSession.novelDraft || {}), selectedCharIds: [], selfId: null },
+                ...(!novelStarted ? { storyRole: "observer", storySelfId: null, storySelfSnapshot: null } : {}),
+                novelDraft: {
+                    ...(currentSession.novelDraft || {}), selectedCharIds: [],
+                    selfId: novelStarted && novelRole === "participant" ? novelSelfId : null,
+                },
             } : {}),
             updatedAt: Date.now(),
         });
