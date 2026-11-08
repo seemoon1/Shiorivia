@@ -205,7 +205,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <SectionTitle>{t("settings.extensions")}</SectionTitle>
                 <SwitchRow
                   title="文风优化"
-                  description="参考Gemini文风和日轻文风，优化模型文笔和叙事节奏。仅作用于故事正文，不影响角色设定、时间线、状态修复或摘要；默认关闭。"
+                  description="参考 Gemini 与日轻文风优化叙事节奏。作用于 Via Lata 故事正文及 Tela 小说正文，不改变角色设定、世界线、状态 JSON、修复请求或摘要；默认关闭。"
                   checked={geminiNarrativeStyleEnabled}
                   onClick={onToggleGeminiNarrativeStyle}
                   icon={BookOpen}
