@@ -16,7 +16,7 @@ import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
 import { ChartaLoreEditor } from "./ChartaLoreEditor";
-import { emptyChartaLore, validateChartaTimelineLinks } from "../lib/chartaLore";
+import { emptyChartaLore, validateChartaTimelineLinks, validateChartaRelationshipTargets } from "../lib/chartaLore";
 import { BANG_DREAM_CANON } from "../lib/storyWorldline";
 
 type Draft = ChartaCharacter;
@@ -91,6 +91,8 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     const selectedStages = draft.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON : worldLibrary.worlds.find(world=>world.id===draft.worldId)?.canonTimeline || [];
     const warning = validateChartaTimelineLinks(editingProfile(draft), selectedStages);
     if (warning) { setMessage(warning); return; }
+    const targetError = validateChartaRelationshipTargets(editingProfile(draft), draft.worldId, [...characters, ...selfLibrary.selves]);
+    if (targetError) { setMessage(targetError); return; }
     setBusy(true);
     try {
       const data = parseChartaCharacter(draft);
@@ -273,7 +275,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
                 value={editingProfile(draft)}
                 onChange={profile=>update({...draft,profile})}
                 stages={draft.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON : worldLibrary.worlds.find(world=>world.id===draft.worldId)?.canonTimeline || []}
-                currentId={draft.id} characters={characters}
+                currentId={draft.id} characters={characters} worldId={draft.worldId} selves={selfLibrary.selves}
               />
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={!characters.some(c=>c.id===draft.id)} onClick={deleteDraft} className="inline-flex items-center gap-2 rounded-xl border border-rose-100 px-3 py-3 text-xs text-rose-600 disabled:opacity-30"><Trash2 size={15}/>{txt("delete")}</button><div className="flex flex-wrap gap-2"><button type="button" onClick={exportDraft} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-3 text-xs"><Download size={15}/>{txt("export")}</button><button type="button" disabled={busy} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-3 text-xs font-semibold text-white hover:bg-[#355640] disabled:opacity-50"><Save size={15}/>{txt("save")}</button></div></div>
           </div>}
