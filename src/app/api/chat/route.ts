@@ -340,6 +340,47 @@ Use this worldline as the novel's established background. Do not replace it with
 [SYSTEM]: EXECUTE NOVEL MODE. GENERATE METADATA FIRST. IF SCENE IS VIVID, GENERATE <draw> TAG.
 `;
 
+      if (body.novelSelf !== null && body.novelSelf !== undefined) {
+        const rawSelf = body.novelSelf;
+        if (!rawSelf || typeof rawSelf !== "object" || Array.isArray(rawSelf)
+          || typeof rawSelf.id !== "string" || !/^self-[a-zA-Z0-9-]{8,90}$/.test(rawSelf.id)) {
+          return new Response(JSON.stringify({ error: "小说自设资料无效" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        }
+        const selfWorldId = typeof rawSelf.worldId === "string" ? rawSelf.worldId : null;
+        if (selfWorldId && selfWorldId !== novelWorldline.worldId) {
+          return new Response(JSON.stringify({ error: "小说自设不属于当前世界观" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        }
+        try {
+          const names = Object.fromEntries(Object.entries(
+            rawSelf.names && typeof rawSelf.names === "object" && !Array.isArray(rawSelf.names)
+              ? rawSelf.names : {}
+          ).filter(([key, name]) => /^[a-z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}$/.test(key)
+              && typeof name === "string" && name.trim().length > 0 && name.length <= 100)
+            .slice(0, 12)) as Record<string, string>;
+          const selfName = names[normalizeLocale(body.uiLanguage)]
+            || names[typeof rawSelf.primaryLanguage === "string" ? rawSelf.primaryLanguage : ""]
+            || Object.values(names)[0];
+          if (!selfName) throw new Error("自设名称未配置");
+          const profile = parseChartaLoreProfile(rawSelf.profile);
+          const extras = parseChartaIdentityExtras(rawSelf);
+          const basePeriod = novelWorldline.kind === "au" ? novelWorldline.basePeriod || null : novelWorldline.period;
+          const period = selfWorldId === novelWorldline.worldId ? basePeriod : null;
+          const selfLore = formatChartaLore({
+            id: rawSelf.id, name: selfName, names,
+            description: typeof rawSelf.description === "string" ? rawSelf.description.slice(0, 20000) : "",
+            profile,
+            gender: typeof rawSelf.gender === "string" ? rawSelf.gender : undefined,
+            genderCustom: typeof rawSelf.genderCustom === "string" ? rawSelf.genderCustom : undefined,
+            ...extras,
+          }, period, selfWorldId ? novelWorldline.canonTimeline : []);
+          finalSystemPrompt += "\n\n[NOVEL PROTAGONIST — user-authored character data]\n"
+            + selfLore + "\n[END NOVEL PROTAGONIST]\n"
+            + "Use this selected Charta self as the novel protagonist; respect their authored identity, relationships and stage-specific knowledge. They are NOT an additional cast ID. Do not override the user's explicit director choices, invent an unrelated protagonist, or treat the self's future experiences as past facts.";
+        } catch {
+          return new Response(JSON.stringify({ error: "小说自设资料无法读取，请到 Charta 检查设定" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        }
+      }
+
       if (useMusicControl) finalSystemPrompt += buildMusicMenu();
 
       const MAX_HISTORY = 6; 
