@@ -727,7 +727,7 @@ export const NovelInterface = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-            <StoryWorldlineFateModal isOpen={worldlineOpen}
+            <StoryWorldlineFateModal elevated isOpen={worldlineOpen}
                 value={novelWorldline || undefined}
                 worlds={storyWorlds}
                 onSave={updateWorldline}
