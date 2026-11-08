@@ -502,7 +502,21 @@ export const useChatEngine = ({
                                 !excluded.has(normalizedIdentity(stats.name)))
                                 .map((stats: any) => {
                                     const prev = oldStats.find((item: any) => item.name === stats.name);
-                                    const damped = calculateNewStats(prev || { affection: 0, Possessiveness: 0, Obsession: 0, Intimacy: 0 }, stats);
+                                    const previousMetrics = {
+                                         affection: Number(prev?.affection) || 0,
+                                         Possessiveness: Number(prev?.Possessiveness) || 0,
+                                         Obsession: Number(prev?.Obsession) || 0,
+                                         Intimacy: Number(prev?.Intimacy) || 0,
+                                     };
+                                     // Missing score fields mean "unchanged", not 0.
+                                     // A state-only extraction may supply favorability and trust,
+                                     // but only favorability has a defined mapping to affection.
+                                     const suggestedMetrics = Object.fromEntries(
+                                         (["affection", "Possessiveness", "Obsession", "Intimacy"] as const)
+                                             .map(key => [key, typeof stats[key] === "number" && Number.isFinite(stats[key])
+                                                 ? stats[key] : previousMetrics[key]]),
+                                     ) as typeof previousMetrics;
+                                     const damped = calculateNewStats(previousMetrics, suggestedMetrics);
                                     const updated = { ...prev, ...stats,
                                         affection: damped.affection, Possessiveness: damped.Possessiveness,
                                         Obsession: damped.Obsession, Intimacy: damped.Intimacy };
