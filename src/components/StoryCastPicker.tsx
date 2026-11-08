@@ -15,12 +15,13 @@ import { useLanguage } from "../context/LanguageContext";
 
 type CastOption = { id: string; name: string; origin: string | null; color: string };
 
-export function StoryCastPicker({ session, worlds, customCharacters, busy, onApply }: {
+export function StoryCastPicker({ session, worlds, customCharacters, busy, onApply, mode = "story" }: {
   session: Session;
   worlds: ChartaWorld[];
   customCharacters: ChartaCharacter[];
   busy: boolean;
   onApply: (ids: string[], allowCrossWorld: boolean) => void;
+  mode?: "story" | "novel";
 }) {
   const { locale } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -33,7 +34,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
     ...CHAR_DATA.map(char => ({ id: char.id, name: char.name, color: char.hex, origin: BANG_DREAM_WORLD_ID })),
     ...customCharacters.map(char => ({ id: char.id, name: nameForCharta(char, locale), color: char.hex, origin: storyCastOrigin(char) })),
   ], [customCharacters, locale]);
-  const currentIds = session.storyNextCastIds ?? session.sceneCastIds ?? [];
+  const currentIds = session.storyNextCastIds ?? (mode === "novel" ? session.novelDraft?.selectedCharIds : session.sceneCastIds) ?? [];
   const available = catalog.filter(char => world && storyCastAllowed({ id: char.id, worldId: char.origin }, world.worldId, cross, registeredIds));
   const allowedIds = new Set(available.map(char => char.id));
   const chosen = selectStoryCastIds(currentIds, new Set(catalog.map(char => char.id)));
@@ -58,7 +59,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
   };
   const apply = () => {
     const selected = selectStoryCastIds(draftIds, allowedIds);
-    if (started && !window.confirm("故事已开始。确认手动覆盖 AI 对下一轮登场角色的预选吗？")) return;
+    if (started && mode === "story" && !window.confirm("故事已开始。确认手动覆盖 AI 对下一轮登场角色的预选吗？")) return;
     onApply(selected, cross);
     setOpen(false);
   };
@@ -79,7 +80,8 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
       <p className="mt-2 text-[11px] leading-5 text-[#849588]">
         {!world ? "请先配置世界线以解锁" : names.length ? names.join(" · ") : "尚未预选角色 · 建议选择，亦可直接开始故事"}
       </p>
-      {world && started && <p className="mt-1 text-[10px] text-[#a28c6f]">AI 会预测下一轮阵容；手动修改需要确认</p>}
+      {world && started && mode === "story" && <p className="mt-1 text-[10px] text-[#a28c6f]">AI 会预测下一轮阵容；手动修改需要确认</p>}
+      {world && mode === "novel" && <p className="mt-1 text-[10px] text-[#927b57]">小说按选定阵容注入档案，可随章节调整；不会自动预测下一章角色</p>}
     </section>
     {typeof document !== "undefined" && createPortal(<AnimatePresence>
       {open && world && <motion.div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#152a20]/35 p-4"
@@ -88,7 +90,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
             role="dialog" aria-modal="true" aria-label="下一轮登场角色"
             className="flex max-h-[85vh] w-full max-w-[430px] flex-col overflow-hidden rounded-2xl border border-[#dfe8dd] bg-[#fcfdfb] shadow-2xl">
             <header className="flex items-center justify-between border-b border-[#e7ede5] px-5 py-4">
-              <div><p className="text-[10px] font-semibold tracking-[.16em] text-[#93a797]">VIA LATA · CAST</p>
+              <div><p className="text-[10px] font-semibold tracking-[.16em] text-[#93a797]">{mode === "novel" ? "TELA · CAST" : "VIA LATA · CAST"}</p>
                 <h2 className="mt-1 font-serif text-lg text-[#345340]">下一轮登场角色</h2></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="关闭" className="rounded-lg p-2 text-[#8ba090] hover:bg-[#edf3ed]"><X size={17}/></button>
             </header>
