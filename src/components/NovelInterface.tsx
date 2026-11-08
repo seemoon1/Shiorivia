@@ -791,7 +791,7 @@ export const NovelInterface = ({
                 )}
             </AnimatePresence>
             <StoryWorldlineFateModal elevated isOpen={worldlineOpen}
-                value={novelWorldline || undefined}
+                value={novelWorldline ? { ...novelWorldline, event:"" } : undefined}
                 worlds={storyWorlds}
                 onSave={updateWorldline}
                 showEvent={false}
