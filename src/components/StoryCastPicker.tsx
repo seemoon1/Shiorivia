@@ -60,7 +60,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
   };
   const apply = () => {
     const selected = selectStoryCastIds(draftIds, allowedIds);
-    if (started && mode === "story" && !window.confirm("故事已开始。确认手动覆盖 AI 对下一轮登场角色的预选吗？")) return;
+    if (started && !window.confirm(mode === "novel" ? "小说已开始，确定覆盖 AI 预测的下一章登场角色吗？" : "故事已开始。确认手动覆盖 AI 对下一轮登场角色的预选吗？")) return;
     onApply(selected, cross);
     setOpen(false);
   };
@@ -82,7 +82,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
         {!world ? "请先配置世界线以解锁" : names.length ? names.join(" · ") : "尚未预选角色 · 建议选择，亦可直接开始故事"}
       </p>
       {world && started && mode === "story" && <p className="mt-1 text-[10px] text-[#a28c6f]">AI 会预测下一轮阵容；手动修改需要确认</p>}
-      {world && mode === "novel" && <p className="mt-1 text-[10px] text-[#927b57]">小说按选定阵容注入档案，可随章节调整；不会自动预测下一章角色</p>}
+      {world && mode === "novel" && <p className="mt-1 text-[10px] text-[#927b57]">{started ? "AI 会预测下一章登场角色；手动覆盖时需要确认。" : "第一章可以手动选角；之后由 AI 根据剧情预测下章阵容。"}</p>}
     </section>
     {typeof document !== "undefined" && createPortal(<AnimatePresence>
       {open && world && <motion.div className={`fixed inset-0 ${mode === "novel" ? "z-[800]" : "z-[200]"} flex items-center justify-center bg-[#152a20]/35 p-4`}
