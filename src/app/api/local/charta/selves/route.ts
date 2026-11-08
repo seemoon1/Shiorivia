@@ -2,10 +2,15 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { parseChartaSelf, type ChartaSelf } from "../../../../../lib/chartaSelf";
+import { parseChartaWorld } from "../../../../../lib/chartaWorld";
+import { parseChartaCharacter } from "../../../../../lib/charta";
+import { validateChartaTimelineLinks, validateChartaRelationshipTargets } from "../../../../../lib/chartaLore";
+import { BANG_DREAM_CANON, BANG_DREAM_WORLD_ID } from "../../../../../lib/storyWorldline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const FILE = path.join(process.cwd(), "data_storage", "charta", "selves.json");
+const ROOT = path.dirname(FILE);
 
 async function readProfiles(): Promise<{ selves: ChartaSelf[]; activeId: string | null }> {
   try {
@@ -33,6 +38,28 @@ export async function PUT(request: Request) {
     const selves = body.selves.map(parseChartaSelf);
     if (new Set(selves.map((s: ChartaSelf) => s.id)).size !== selves.length) return json({ error: "Duplicate ID" }, 400);
     if (body.activeId != null && !selves.some((s: ChartaSelf) => s.id === body.activeId)) return json({ error: "Unknown active profile" }, 400);
+    let worlds: ReturnType<typeof parseChartaWorld>[] = [];
+    let characters: ReturnType<typeof parseChartaCharacter>[] = [];
+    try {
+      const rawWorlds = JSON.parse(await fs.readFile(path.join(ROOT, "worlds.json"), "utf8"));
+      worlds = rawWorlds.map(parseChartaWorld);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    try {
+      const rawCharacters = JSON.parse(await fs.readFile(path.join(ROOT, "characters.json"), "utf8"));
+      characters = rawCharacters.map(parseChartaCharacter);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    for (const self of selves) {
+      if (!self.profile) continue; // Existing legacy self documents stay readable.
+      const stages = self.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+        : worlds.find(world => world.id === self.worldId)?.canonTimeline || [];
+      const error = validateChartaTimelineLinks(self.profile, stages)
+        || validateChartaRelationshipTargets(self.profile, self.worldId, [...characters, ...selves]);
+      if (error) return json({ error: error + "：" + (self.names[self.primaryLanguage] || self.id) }, 400);
+    }
     const activeId = typeof body.activeId === "string" ? body.activeId : null;
     await fs.mkdir(path.dirname(FILE), { recursive: true });
     const temporary = `${FILE}.${randomUUID()}.tmp`;
