@@ -22,6 +22,8 @@ export function extractNovelChapters(messages: Array<{ role: string; content: un
         .replace(/<draw\b[^>]*>[\s\S]*?<\/draw\s*>/gi, "")
         .replace(/<draw\b[^>]*\/\s*>/gi, "")
         .replace(/<audio\b[^>]*>[\s\S]*?<\/audio\s*>/gi, "")
+        .replace(/<novel_state\b[^>]*>[\s\S]*?<\/novel_state\s*>/gi, "")
+        .replace(/<novel_state\b[^>]*>[\s\S]*$/gi, "")
         .replace(/<(thinking|game_state|memory_update|file)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
         .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
         .replace(/^\s*>\s*\*\*Option\s+\d+\*\*\s*:\s*.*$/gim, "")
