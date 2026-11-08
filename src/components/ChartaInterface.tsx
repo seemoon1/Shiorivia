@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, Download, FilePlus2, Palette, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FilePlus2, Palette, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME } from "../lib/storyWorldline";
 import { useLanguage } from "../context/LanguageContext";
 import { chartaText } from "../lib/chartaText";
@@ -10,6 +10,9 @@ import {
   makeChartaId, nameForCharta, parseChartaCharacter, type ChartaCharacter,
 } from "../lib/charta";
 import { ChartaSelfPanel } from "./ChartaSelfPanel";
+import { decodeChartaSelfImport, decodeChartaWorldImport, saveChartaJsonFile } from "../lib/chartaJson";
+import { parseChartaSelf } from "../lib/chartaSelf";
+import { parseChartaWorld } from "../lib/chartaWorld";
 import { ChartaWorldPanel } from "./ChartaWorldPanel";
 import { ChartaArchiveList } from "./ChartaArchiveList";
 import type { useChartaWorlds } from "../hooks/useChartaWorlds";
@@ -58,7 +61,11 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   storageError: string;
 }) {
   const { locale } = useLanguage();
-  const [section, setSection] = useState<"characters" | "self" | "worlds">(initialSection);
+  type CabinetKind = "characters" | "self" | "worlds";
+  const [section, setSection] = useState<CabinetKind>(initialSection);
+  const [cabinetHome, setCabinetHome] = useState(true);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const importKindRef = useRef<CabinetKind>("characters");
   const [cabinetSelection, setCabinetSelection] = useState<{ kind: "characters" | "self" | "worlds"; id: string | null }>({ kind: initialSection, id: null });
   const [requestVersion, setRequestVersion] = useState(0);
   const [childDirty, setChildDirty] = useState(false);
@@ -104,9 +111,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     if (!draft) return;
     try {
       const data = parseChartaCharacter(draft);
-      const blob = new Blob([encodeChartaExport(data)], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url;
-      a.download = `charta-${data.id}.json`; a.click(); URL.revokeObjectURL(url);
+      saveChartaJsonFile(`charta-${data.id}.json`, encodeChartaExport(data));
     } catch (e) { setMessage(e instanceof Error ? e.message : txt("required")); }
   };
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +163,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
   };
   const chooseArchive = (kind: "characters" | "self" | "worlds", id: string | null) => {
     if ((dirty || childDirty) && !window.confirm("有尚未保存的档案修改，确定切换吗？")) return;
-    setSection(kind); setCabinetSelection({ kind, id }); setChildDirty(false);
+    setSection(kind); setCabinetSelection({ kind, id }); setChildDirty(false); setCabinetHome(false); setImportMenuOpen(false);
     if (kind === "characters") {
       const item = id ? characters.find(character => character.id === id) : null;
       setDraft(item ? { ...item, names: { ...item.names }, profile: item.profile ? { ...item.profile, relationships: item.profile.relationships.map(r=>({...r,periods:[...r.periods]})), experiences:item.profile.experiences.map(e=>({...e,periods:[...e.periods]})) } : { ...emptyChartaLore(), intro:item.description || "" } } : newDraft(locale));
@@ -169,7 +174,14 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     }
   };
   const closeArchive = () => {
-    if ((dirty || childDirty) && !window.confirm("有尚未保存的档案修改，确定退出吗？")) return;
+    if (!cabinetHome) {
+      if ((dirty || childDirty) && !window.confirm("有尚未保存的档案修改，确定返回 Charta 主界面吗？")) return;
+      setCabinetHome(true);
+      setDraft(null); setDirty(false); setChildDirty(false); setMessage("");
+      setCabinetSelection({ kind: section, id: null });
+      setImportMenuOpen(false);
+      return;
+    }
     onExit();
   };
   // Unified archive cabinet renders the three editors in one detail pane.
@@ -179,16 +191,24 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     <input ref={portraitRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={uploadStandee} />
     <div className="mx-auto max-w-7xl px-4 py-7 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce5dc] pb-5">
-        <button type="button" onClick={closeArchive} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{txt("return")}</button>
+        <button type="button" onClick={closeArchive} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><ArrowLeft size={16}/>{cabinetHome ? "返回导航页" : "返回 Charta 主界面"}</button>
         <div className="text-center"><h1 className="font-serif text-3xl tracking-[0.16em]">CHARTA · 档案柜</h1><p className="pt-1 text-[11px] tracking-[0.22em] text-[#7c9181]">CHARACTER · SELF · WORLD</p></div>
-        <button type="button" onClick={() => importRef.current?.click()} className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>{txt("import")}</button>
+        <div className="relative">
+          {cabinetHome ? <>
+            <button type="button" onClick={()=>setImportMenuOpen(open=>!open)} aria-expanded={importMenuOpen} aria-controls="charta-import-menu" className="flex items-center gap-2 rounded-xl border border-[#d7e1d8] bg-white px-3 py-2 text-xs hover:border-[#7a9b83]"><Upload size={15}/>导入 JSON<ChevronDown size={14}/></button>
+            {importMenuOpen && <div id="charta-import-menu" className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-xl border border-[#d7e1d8] bg-white p-1 shadow-lg">
+              {([{kind:"characters" as const,label:"导入角色 JSON"},{kind:"self" as const,label:"导入自设 JSON"},{kind:"worlds" as const,label:"导入世界观 JSON"}]).map(option=>
+                <button type="button" key={option.kind} onClick={()=>openImport(option.kind)} className="block w-full rounded-lg px-3 py-2 text-left text-xs hover:bg-[#f0f5ef]">{option.label}</button>)}
+            </div>}
+          </> : <span className="text-xs text-[#7b8e80]">CHARTA EDITOR</span>}
+        </div>
       </header>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <div className={cabinetHome ? "mt-6 mx-auto max-w-3xl" : "mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]"}>
         <ChartaArchiveList characters={characters} selves={selfLibrary.selves} worlds={worldLibrary.worlds}
           activeSelfId={selfLibrary.activeId} selection={cabinetSelection} locale={locale}
           onChoose={(kind, id) => chooseArchive(kind, id)} onCreate={(kind) => chooseArchive(kind, null)}
           onActivate={(id) => { void selfLibrary.selectSelf(id); }} />
-        {section === "self"
+        {!cabinetHome && (section === "self"
           ? <ChartaSelfPanel {...selfLibrary} characters={characters} worlds={worldLibrary.worlds} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "self", id })} />
           : section === "worlds"
             ? <ChartaWorldPanel {...worldLibrary} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "worlds", id })} />
@@ -281,8 +301,9 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
           </div>}
           {(message || storageError) && <p role="status" className="mt-4 rounded-lg bg-[#f2f4ee] px-4 py-3 text-xs text-[#607566]">{storageError || message}</p>}
           <p className="mt-5 text-[11px] leading-6 text-[#9cab9c]">{txt("independent")}</p>
-        </section>}
+        </section>)}
       </div>
+      {cabinetHome && message && <p role="status" className="mx-auto mt-4 max-w-3xl rounded-xl bg-[#f0f5ef] px-4 py-3 text-xs text-[#54705f]">{message}</p>}
     </div>
   </main>;
 }
