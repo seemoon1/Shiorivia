@@ -1,5 +1,6 @@
 import type { ChartaSelf } from "./lib/chartaSelf";
 import type { StoryWorldline } from "./lib/storyWorldline";
+import type { NovelState } from "./lib/novelState";
 import type { StoryStateSnapshot } from "./lib/storyStateRecovery";
 
 export type Message = { 
@@ -99,8 +100,12 @@ export type NovelDraft = {
   selectedCharIds: string[];
   /** Optional Charta self as the authored novel protagonist. */
   selfId?: string | null;
-  scenario: string;
-  action: string;
+  /** Current field names, formerly scenario/action. */
+  environment?: string;
+  event?: string;
+  /** Legacy fields retained for old novel archive import compatibility. */
+  scenario?: string;
+  action?: string;
   style: string;
   outline: string;
   /** `dark` is accepted only for compatibility with previous Novel JSON exports. */
@@ -142,6 +147,8 @@ export type Session = {
   stmBackup?: string; 
   ltm?: string;
   novelDraft?: NovelDraft;
+  /** Most recent AI-derived chapter state, not the global worldline event. */
+  novelState?: NovelState;
   turnCount?: number;
 
   protagonist?: ProtagonistState;
