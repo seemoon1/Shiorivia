@@ -9,6 +9,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
+import { extractNovelState, stripNovelState } from "../lib/novelState";
 import { storyCastAllowed, selectStoryCastIds } from "../lib/storyCast";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol, normalizeStoryProtocol, storyProtocolIssues } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
@@ -341,6 +342,25 @@ export const useChatEngine = ({
                 if (storyProtocolMissing) showToast("本轮故事没有返回完整状态；已保留正文和上一轮状态，建议重试本轮。");
             }
             let currentText = fullText;
+            let novelState = currentSession.memoryMode === "novel" ? extractNovelState(fullText) : null;
+            if (currentSession.memoryMode === "novel") {
+                // A malformed or missing chapter state must never erase the last good state.
+                if (!novelState) {
+                    showToast("本章没有返回完整的 novel_state：正文已保留，环境、事件和下章阵容未更新。");
+                } else {
+                    const worldline = parseStoryWorldline(currentSession.storyWorldline);
+                    const worldIds = storyWorlds.map((world: any) => world.id as string);
+                    const allowed = new Set([...CHARACTERS, ...customCharacters].filter((char: any) =>
+                        worldline && storyCastAllowed(char, worldline.worldId,
+                            currentSession.storyAllowCrossWorld === true, worldIds)
+                    ).map((char: any) => char.id as string));
+                    novelState = {
+                        ...novelState,
+                        nextSceneCastIds: selectStoryCastIds(novelState.nextSceneCastIds, allowed),
+                    };
+                }
+                currentText = stripNovelState(currentText);
+            }
             let capturedState: any = null;
             let newFiles: Record<string, any> = {};
 
@@ -615,6 +635,16 @@ export const useChatEngine = ({
                         ...s,
                         messages: [...msgs, { role: "assistant", content: currentText, modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta, storyProtocolMissing }],
                         codeRepository: updatedRepo,
+                        ...(s.memoryMode === "novel" && novelState ? {
+                            novelState,
+                            storyNextCastIds: novelState.nextSceneCastIds,
+                            novelDraft: {
+                                ...(s.novelDraft || {}),
+                                environment: novelState.environment,
+                                event: novelState.event,
+                                selectedCharIds: novelState.nextSceneCastIds,
+                            },
+                        } : {}),
                         ...(capturedState ? {
                             protagonist: capturedState.protagonist,
                             charStatus: capturedState.character,
