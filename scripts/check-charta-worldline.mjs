@@ -1,7 +1,7 @@
 // Regression checks: node --experimental-strip-types scripts/check-charta-worldline.mjs
 import assert from "node:assert/strict";
 import {
-  emptyChartaLore, formatChartaLore, parseChartaLoreProfile,
+  emptyChartaLore, formatChartaLore, parseChartaLoreProfile, validateChartaRelationshipTargets,
   parseChartaIdentityExtras, validateChartaTimelineLinks,
 } from "../src/lib/chartaLore.ts";
 import { parseStoryWorldline } from "../src/lib/storyWorldline.ts";
@@ -69,4 +69,22 @@ assert.ok(allowed && allowed.basePeriod==="初遇");
 assert.equal(parseStoryWorldline({...world,basePeriod:"不存在"}),null);
 assert.equal(parseStoryWorldline({...world,baseEra:"其他时代"}),null);
 assert.equal(parseStoryWorldline({...world,kind:"canon"}),null);
+// BanG Dream built-ins can be linked by ID, but only in the same world.
+const bangDreamProfile = parseChartaLoreProfile({
+  ...emptyChartaLore(), intro:"个性化角色",
+  relationships:[{id:"rel-saki",targetId:"sakiko",targetName:"丰川祥子",content:"朋友",periods:[]}],
+});
+assert.ok(bangDreamProfile);
+assert.equal(validateChartaRelationshipTargets(bangDreamProfile,"bang-dream",[]),null);
+assert.match(validateChartaRelationshipTargets(bangDreamProfile,"world-abcdefgh",[]) || "",/世界观/);
+const customRelationProfile = parseChartaLoreProfile({
+  ...emptyChartaLore(),intro:"原创人物",
+  relationships:[{id:"rel-custom",targetId:"charta-abcdefgh",targetName:"同伴",content:"好友",periods:[]}],
+});
+assert.ok(customRelationProfile);
+assert.equal(validateChartaRelationshipTargets(customRelationProfile,"world-abcdefgh",
+  [{id:"charta-abcdefgh",worldId:"world-abcdefgh"}]),null);
+assert.match(validateChartaRelationshipTargets(customRelationProfile,"world-abcdefgh",
+  [{id:"charta-abcdefgh",worldId:"world-ijklmnop"}]) || "",/世界观/);
+
 console.log("Charta baseline and structured lore checks passed.");
