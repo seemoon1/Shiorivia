@@ -309,6 +309,10 @@ Only JSON belongs between the tags.`;
       finalMessages = Array.isArray(messages) ? messages.slice(-1) : [];
     } else if (memoryMode === "novel") {
       console.log("🌌 Mode: Novel Generation");
+      const novelWorldline = parseStoryWorldline(body.storyWorldline);
+      if (!novelWorldline) return new Response(JSON.stringify({
+        error: "小说模式需要先配置世界观、ERA 和 PERIOD（AU 还需要基准时间线）"
+      }), { status: 400, headers: { "Content-Type": "application/json" } });
       const nc = novelConfig || {};
 
       finalSystemPrompt = VISUAL_INSTRUCTION;
@@ -316,7 +320,17 @@ Only JSON belongs between the tags.`;
 [ROLE]: You are an immersive novelist.
 [OBJECTIVE]: Write a chapter based on settings.
 ${COLOR_INSTRUCTION}
-[Settings]: Outline: ${nc.outline} | Char: ${nc.charNames} | Scenario: ${nc.scenario} | Style: ${nc.style}
+[Settings]: Outline: ${typeof nc.outline === "string" ? nc.outline.slice(0, 20000) : ""} | Scenario: ${typeof nc.scenario === "string" ? nc.scenario.slice(0, 1000) : ""} | Action: ${typeof nc.action === "string" ? nc.action.slice(0, 2000) : ""} | Style: ${typeof nc.style === "string" ? nc.style.slice(0, 2000) : ""}
+[CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\\d+\\s*[-~～至到]\\s*\\d+|\\d+)\\s*(?:字|汉字|中文字)/.test(nc.style) ? "Follow the user's explicit word-count instruction in Style; it overrides the default." : "Default: approximately 1000–2000 Chinese characters of narrative prose per chapter. Do not pad mechanically."}
+[STORY WORLDLINE — CANON OR AU]
+World: ${novelWorldline.worldName}
+World setting: ${novelWorldline.worldDescription}
+Mode: ${novelWorldline.kind === "au" ? "AU" : "Original timeline"}
+Current ERA / PERIOD: ${novelWorldline.era} / ${novelWorldline.period}
+${novelWorldline.kind === "au" ? `Canonical baseline (character knowledge cutoff): ${novelWorldline.baseEra} / ${novelWorldline.basePeriod}. Later canon events are not automatic AU facts.` : ""}
+Worldline event: ${novelWorldline.event || "No additional event"}
+Use this worldline as the novel's established background. Do not replace it with another era or invent knowledge from future events.
+[END STORY WORLDLINE]
 
 [MANDATORY FORMATTING RULES]:
 1. **METADATA**: First line MUST be: <meta title="NOVEL_TITLE" chapter="CHAPTER_TITLE" />.
@@ -674,7 +688,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
     finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
-    if (memoryMode === "sliding") {
+    if (memoryMode === "sliding" || memoryMode === "novel") {
       const worldline = parseStoryWorldline(body.storyWorldline);
       if (worldline) {
         // A short ID/name index is cheap; ONLY the selected cast receives biographies.
@@ -689,7 +703,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
         const eligible = allChars.filter(char => storyCastAllowed(char, worldline.worldId, cross, registeredWorlds.map((world: any) => world.id)));
         const availableIds = new Set(eligible.map(char => char.id));
         const chosen = selectStoryCastIds(body.storyNextCastIds, availableIds);
-        if (typeof body.storyPovId === "string" && availableIds.has(body.storyPovId) && !chosen.includes(body.storyPovId)) {
+        if (memoryMode === "sliding" && typeof body.storyPovId === "string" && availableIds.has(body.storyPovId) && !chosen.includes(body.storyPovId)) {
           chosen.unshift(body.storyPovId);
           chosen.splice(MAX_STORY_CAST);
         }
@@ -722,7 +736,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
             : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? originPeriod : null);
           return [`[CAST PROFILE] ID=${char.id}; NAME=${char.name}; WORLD=${source?.name || worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
         }).join("\n\n");
-        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
+        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS ${memoryMode === "novel" ? "CHAPTER" : "response"}: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
     } else {
       finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
