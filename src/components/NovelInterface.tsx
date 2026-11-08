@@ -370,15 +370,22 @@ export const NovelInterface = ({
 
     const handleGenerate = (type: 'new' | 'continue', optionText?: string) => {
         if (isLoading) return;
+        if (!novelWorldline) {
+            showToast?.("请先在右侧设置小说世界线：WORLD、ERA、PERIOD；AU 还需选择基准时间线。");
+            setWorldlineOpen(true);
+            setRightOpen(true);
+            return;
+        }
         const targetNames = chars.filter((c: any) => selectedCharIds.includes(c.id)).map((c: any) => characterDisplayName(c.id, c.name, locale)).join(", ");
         const novelConfig = { charNames: targetNames, scenario, action, style, outline };
+        saveDraft();
 
         if (type === 'new') {
             const chapterCount = currentSession.messages.filter((m: any) => m.role === 'assistant' && !m.content.includes("（...正在")).length;
 
             if (chapterCount > 0) {
                 if (confirm("⚠️ 当前梦境已有剧情，是否保存并开启一段【全新的梦境】？\n(这会创建一个新的会话)")) {
-                    createNewSession(selectedCharIds[0], 'novel');
+                    createNewSession(selectedCharIds[0] || "sakiko", 'novel');
                     return;
                 } else {
                     return; 
@@ -386,7 +393,6 @@ export const NovelInterface = ({
             } else {
                 const prompt = `[Action]: Start Chapter 1 based on the [Dream Outline]. Introduce the scene and start the action immediately.`;
                 handleSend(prompt, undefined, {
-                    useMusicControl,
                     novelConfig,
                     modelOverride: activeModel
                 });
@@ -399,7 +405,6 @@ export const NovelInterface = ({
             else prompt = `[SYSTEM]: Continue the novel. Next Chapter.`;
 
             handleSend(prompt, undefined, {
-                useMusicControl,
                 novelConfig,
                 modelOverride: activeModel
             });
@@ -518,7 +523,7 @@ export const NovelInterface = ({
                         <button type="button" onClick={() => {
                             const next = themeMode === 'sage' ? 'paper' : 'sage';
                             setThemeMode(next);
-                            updateSessionInfo?.(currentSession.id, { novelDraft: { selectedCharIds, scenario, action, style, outline, themeMode: next } });
+                            saveDraft({ themeMode: next });
                         }} className={`rounded-lg p-2 transition-colors ${theme.accent} ${theme.hover}`} title={`切换小说主题（当前：${themeMode === 'sage' ? '鼠尾草' : '羊皮纸'}）`} aria-label="切换小说主题">{themeMode === 'sage' ? <Sun size={19} /> : <Moon size={19} />}</button>
                         <button type="button" onClick={onOpenSettings} className={`rounded-lg p-2 transition-colors ${theme.text} ${theme.hover}`} title="打开 Shiorivia 设置中心" aria-label="打开设置中心"><Settings2 size={19} /></button>
                         <button type="button" onClick={() => setRightOpen(!rightOpen)} className={`rounded-lg p-2 transition-colors ${theme.text} ${theme.hover}`} title="切换小说设定面板" aria-label="切换小说设定面板"><PanelRight size={19} /></button>
