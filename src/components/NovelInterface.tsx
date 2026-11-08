@@ -167,7 +167,7 @@ export const NovelInterface = ({
     provider, providers = [], onProviderChange,
     selectedModel, customModelId, onModelChange, onCustomModelChange,
     onImportNovelSession,
-    storyWorlds = [], customCharacters = [], onOpenCharta,
+    storyWorlds = [], customCharacters = [], customSelves = [], onOpenCharta,
 }: any) => {
     const { locale } = useLanguage();
     const [leftOpen, setLeftOpen] = useState(true);
@@ -182,6 +182,7 @@ export const NovelInterface = ({
 
     const [directorInput, setDirectorInput] = useState("");
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
+    const [novelSelfId, setNovelSelfId] = useState<string | null>(null);
     const novelWorldline = parseStoryWorldline(currentSession.storyWorldline);
     // The same model/provider state powers Engineering, Chat, VIAE and Novel.
     const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
@@ -207,6 +208,7 @@ export const NovelInterface = ({
         const draft = currentSession?.novelDraft as NovelDraft | undefined;
         setSelectedCharIds(Array.isArray(currentSession?.storyNextCastIds) ? currentSession.storyNextCastIds
             : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : []);
+        setNovelSelfId(typeof draft?.selfId === "string" ? draft.selfId : null);
         setScenario(draft?.scenario || "午后的红茶店");
         setAction(draft?.action || "谈心");
         setStyle(draft?.style || "温馨、细腻、富有生活感");
@@ -376,8 +378,13 @@ export const NovelInterface = ({
             setRightOpen(true);
             return;
         }
+        if (novelSelfId && !customSelves.some((item: any) =>
+            item?.id === novelSelfId && (!item.worldId || item.worldId === novelWorldline.worldId))) {
+            showToast?.("当前自设不属于选定世界观，请重新选择自设主角。");
+            return;
+        }
         const targetNames = chars.filter((c: any) => selectedCharIds.includes(c.id)).map((c: any) => characterDisplayName(c.id, c.name, locale)).join(", ");
-        const novelConfig = { charNames: targetNames, scenario, action, style, outline };
+        const novelConfig = { charNames: targetNames, scenario, action, style, outline, selfId:novelSelfId };
         saveDraft();
 
         if (type === 'new') {
@@ -416,7 +423,7 @@ export const NovelInterface = ({
 
     const saveDraft = (patch: Partial<NovelDraft> = {}) => {
         updateSessionInfo?.(currentSession.id, {
-            novelDraft: { selectedCharIds, scenario, action, style, outline, themeMode, ...patch },
+            novelDraft: { selectedCharIds, selfId:novelSelfId, scenario, action, style, outline, themeMode, ...patch },
             updatedAt: Date.now(),
         });
     };
@@ -436,7 +443,7 @@ export const NovelInterface = ({
         setSelectedCharIds(ids);
         updateSessionInfo?.(currentSession.id, {
             storyNextCastIds: ids, storyAllowCrossWorld: allowCrossWorld,
-            novelDraft: { selectedCharIds: ids, scenario, action, style, outline, themeMode },
+            novelDraft: { selectedCharIds: ids, selfId:novelSelfId, scenario, action, style, outline, themeMode },
             updatedAt: Date.now(),
         });
     };
@@ -658,7 +665,7 @@ export const NovelInterface = ({
 
                                     <NovelArchiveActions
                                         session={currentSession}
-                                        draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
+                                        draft={{ selectedCharIds, selfId:novelSelfId, scenario, action, style, outline, themeMode }}
                                         onImport={onImportNovelSession}
                                         disabled={isLoading}
                                         tone={themeMode}
@@ -708,6 +715,26 @@ export const NovelInterface = ({
                                         className={`w-full rounded-xl border ${theme.border} px-3 py-2 text-xs font-semibold transition ${theme.hover} disabled:opacity-50`}>
                                         {novelWorldline ? "编辑世界线" : "创建世界线"}
                                     </button>
+                                </section>
+                                <section className={`rounded-2xl border ${theme.border} ${theme.inputBg} p-4 space-y-2`}>
+                                    <label htmlFor="novel-self-select" className={`text-xs font-bold ${theme.accent}`}>自设主角 · 可选</label>
+                                    <select id="novel-self-select" value={novelSelfId || ""}
+                                        onChange={e => {
+                                            const next = e.target.value || null;
+                                            setNovelSelfId(next);
+                                            saveDraft({ selfId:next });
+                                        }}
+                                        disabled={isLoading || !novelWorldline}
+                                        className={`w-full rounded-xl border ${theme.border} ${theme.bg} p-2.5 text-xs ${theme.text} disabled:opacity-50`}>
+                                        <option value="">不使用自设主角 · 普通小说</option>
+                                        {customSelves.filter((item: any) => item && (!item.worldId || item.worldId === novelWorldline?.worldId))
+                                            .map((item: any) => <option key={item.id} value={item.id}>
+                                                {item.names?.[item.primaryLanguage] || Object.values(item.names || {})[0] || item.id}
+                                            </option>)}
+                                        {novelSelfId && !customSelves.some((item: any) => item?.id === novelSelfId && (!item.worldId || item.worldId === novelWorldline?.worldId))
+                                            && <option value={novelSelfId} disabled>自设不属于当前世界观，请重新选择</option>}
+                                    </select>
+                                    <p className={`text-[10px] leading-5 ${theme.text} opacity-65`}>仅注入所选自设的身份与对应时期经历；无自设时不预设主角姓名。</p>
                                 </section>
                                 <StoryCastPicker session={currentSession} worlds={storyWorlds}
                                     customCharacters={customCharacters} busy={isLoading}
