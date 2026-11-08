@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Save, Trash2, Globe2, X } from "lucide-react";
+import { Download, Plus, Save, Trash2, Globe2, X } from "lucide-react";
 import { newChartaWorld, parseChartaWorld, type ChartaWorld } from "../lib/chartaWorld";
+import { encodeChartaWorldExport, saveChartaJsonFile } from "../lib/chartaJson";
 import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 
 export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld, embedded = false, selectedId = null, requestVersion = 0, onDirtyChange, onSaved }: ReturnType<typeof useChartaWorlds> & {
@@ -35,6 +36,14 @@ export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld
       else setMessage("保存失败，请检查字段和本地服务");
     } catch (e) { setMessage(e instanceof Error ? e.message : "保存失败"); }
     finally { setBusy(false); }
+  };
+  const exportWorld = () => {
+    if (!draft) return;
+    try {
+      const parsed = parseChartaWorld(draft);
+      saveChartaJsonFile(`charta-world-${parsed.id}.json`, encodeChartaWorldExport(parsed));
+      setMessage("世界观 JSON 已导出");
+    } catch (e) { setMessage(e instanceof Error ? e.message : "世界观导出失败"); }
   };
   const remove = async () => {
     if (!draft || busy || !worlds.some(world => world.id === draft.id)) return;
@@ -71,7 +80,7 @@ export function ChartaWorldPanel({ worlds, loaded, error, saveWorld, removeWorld
         </section>
         <label className="block text-xs text-[#6e8472]">世界观具体设定（可选）<textarea rows={9} maxLength={20000} value={draft.description} onChange={e=>update({...draft,description:e.target.value})} placeholder="时代、人物关系、历史事件、世界规则……" className="mt-2 w-full resize-y rounded-xl border border-[#d7e0d6] p-3 text-sm leading-7"/></label>
         <p className="text-[11px] leading-6 text-[#809687]">较老、热门的作品世界观，模型可能已有较多知识，可简略填写；较新、冷门或原创世界观建议提供详细设定。模型对作品的熟悉程度并无保证。</p>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={busy || !worlds.some(world => world.id === draft.id)} onClick={remove} className="flex items-center gap-2 text-xs text-[#bd7777] disabled:opacity-30"><Trash2 size={14}/>删除世界观</button><button type="button" disabled={busy} onClick={save} className="flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-2 text-xs text-white disabled:opacity-40"><Save size={14}/>保存世界观</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={busy || !worlds.some(world => world.id === draft.id)} onClick={remove} className="flex items-center gap-2 text-xs text-[#bd7777] disabled:opacity-30"><Trash2 size={14}/>删除世界观</button><div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={exportWorld} className="flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-2 text-xs text-[#456b57] disabled:opacity-40"><Download size={14}/>导出 JSON</button><button type="button" disabled={busy} onClick={save} className="flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-2 text-xs text-white disabled:opacity-40"><Save size={14}/>保存世界观</button></div></div>
       </div>}
       {(message || error) && <p role="status" className="mt-4 text-xs text-[#9a6e54]">{message || error}</p>}
     </section>
