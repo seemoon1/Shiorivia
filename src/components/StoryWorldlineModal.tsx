@@ -38,6 +38,7 @@ export function StoryWorldlineModal({ isOpen, value, legacyTimeline, worlds, onS
     setDraft(previous => ({ ...previous, period, era: !period || previous.canonTimeline.some(stage => stage.era === previous.era && stage.period === period) ? previous.era : "" }));
   };
   const save = () => {
+    if (draft.kind === "au" && (!draft.baseEra || !draft.basePeriod)) { setError("AU 必须选择基准 ERA 和 PERIOD。"); return; }
     const valid = parseStoryWorldline(draft);
     if (!valid) { setError("请填写有效的 ERA 与 PERIOD；原作时间线须选择对应关系。"); return; }
     onSave(valid); onClose();
