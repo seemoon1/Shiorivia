@@ -18,7 +18,8 @@ assert.ok(!GEMINI_NARRATIVE_STYLE_PROMPT.includes("Shiorivia"),
 assert.equal(shouldApplyGeminiNarrativeStyle({
   enabled: true, memoryMode: "sliding", stateRepair: false,
 }), true);
-for (const memoryMode of ["chat", "lime", "infinite", "novel"]) {
+assert.equal(shouldApplyGeminiNarrativeStyle({ enabled: true, memoryMode: "novel", stateRepair: false }), true);
+for (const memoryMode of ["chat", "lime", "infinite"]) {
   assert.equal(shouldApplyGeminiNarrativeStyle({
     enabled: true, memoryMode, stateRepair: false,
   }), false, "Style must not leak into " + memoryMode);
@@ -27,6 +28,9 @@ assert.equal(shouldApplyGeminiNarrativeStyle({
   enabled: true, memoryMode: "sliding", stateRepair: true,
 }), false, "State recovery must remain a structured task");
 assert.equal(shouldApplyGeminiNarrativeStyle({
+  enabled: true, memoryMode: "novel", novelStateRepair: true,
+}), false, "Novel state recovery must remain a structured task");
+assert.equal(shouldApplyGeminiNarrativeStyle({
   enabled: false, memoryMode: "sliding", stateRepair: false,
 }), false, "Default-off must not inject the style guide");
-console.log("PASS: 5 literary laws, 3 examples, isolated story-only toggle, and structured-repair protection.");
+console.log("PASS: 5 literary laws, 3 examples, isolated Story/Tela prose toggle, and structured-repair protection.");
