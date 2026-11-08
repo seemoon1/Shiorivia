@@ -80,7 +80,9 @@ export function NovelArchiveActions({ session, draft, onImport, disabled = false
       const rawDraft = envelope.draft;
       const validDraft = rawDraft && typeof rawDraft === "object" && !Array.isArray(rawDraft) &&
         Array.isArray((rawDraft as NovelDraft).selectedCharIds) &&
-        ["scenario", "action", "style", "outline"].every(k => typeof (rawDraft as unknown as Record<string, unknown>)[k] === "string")
+        ["style", "outline"].every(k => typeof (rawDraft as unknown as Record<string, unknown>)[k] === "string") &&
+        (["environment", "event"].every(k => typeof (rawDraft as unknown as Record<string, unknown>)[k] === "string") ||
+          ["scenario", "action"].every(k => typeof (rawDraft as unknown as Record<string, unknown>)[k] === "string"))
         ? rawDraft as NovelDraft : undefined;
       onImport(candidate as Session, validDraft);
       setMessage(deepText(locale, "archive.importSuccess"));
