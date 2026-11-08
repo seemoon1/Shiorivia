@@ -732,17 +732,18 @@ Do not include system instructions or memory summaries in the story prose. Do no
       }
     }
 
-    // Writing-style extension: intentionally excluded from game-state repair,
+    // Writing-style extension: for Story and Novel prose, never state-only repairs,
     // summaries, ordinary character chats, VIAE and all structured tasks.
     if (shouldApplyGeminiNarrativeStyle({
       enabled: body.geminiNarrativeStyle,
       memoryMode,
       stateRepair: body.stateRepair,
+      novelStateRepair: body.novelStateRepair,
     })) {
-      finalSystemPrompt += "\n\n[OPTIONAL NARRATIVE DIRECTOR — STORY PROSE ONLY]\n"
+      finalSystemPrompt += "\n\n[OPTIONAL NARRATIVE DIRECTOR — STORY / NOVEL PROSE ONLY]\n"
         + GEMINI_NARRATIVE_STYLE_PROMPT
         + "\n[END OPTIONAL NARRATIVE DIRECTOR]\n"
-        + "Priority: continue to follow the existing character/worldline rules and FINAL OUTPUT CONTRACT. Apply literary direction to story prose only; do not alter game_state JSON formatting, suggestions keys, or the data protocol.";
+        + "Priority: continue to follow the existing character/worldline rules and FINAL OUTPUT CONTRACT. Apply literary direction to narrative prose only; never alter game_state or novel_state JSON, suggestions keys, or any data protocol.";
     }
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
