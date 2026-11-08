@@ -204,8 +204,8 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <p className="mb-6 text-xs leading-6 text-slate-500">{t("settings.providers.description")}</p>
                 <SectionTitle>{t("settings.extensions")}</SectionTitle>
                 <SwitchRow
-                  title="Gemini文风 特化"
-                  description="可选的日轻文学叙事导演：克制意象、潜台词、轻快日常与情绪节奏。仅影响故事模式的正文生成；不修改角色设定、时间线、状态修复或摘要。默认关闭，亦可配合其他模型使用。"
+                  title="文风优化"
+                  description="参考Gemini文风和日轻文风，优化模型文笔和叙事节奏。仅作用于故事正文，不影响角色设定、时间线、状态修复或摘要；默认关闭。"
                   checked={geminiNarrativeStyleEnabled}
                   onClick={onToggleGeminiNarrativeStyle}
                   icon={BookOpen}
