@@ -36,7 +36,7 @@ export type ChartaIdentityExtras = {
 };
 
 const record = (x: unknown): x is Record<string, unknown> => Boolean(x && typeof x === "object" && !Array.isArray(x));
-const idRule = /^charta-[a-zA-Z0-9-]{8,90}$/;
+const idRule = /^(?:charta|self)-[a-zA-Z0-9-]{8,90}$/;
 const builtinIds = new Set(CHAR_DATA.map(char => char.id));
 const validTargetId = (id: string) => idRule.test(id) || builtinIds.has(id);
 const entryId = /^[a-zA-Z0-9_-]{1,100}$/;
