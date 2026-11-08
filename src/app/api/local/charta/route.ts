@@ -3,6 +3,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { parseChartaCharacter, type ChartaCharacter } from "../../../../lib/charta";
+import { validateChartaTimelineLinks } from "../../../../lib/chartaLore";
+import { parseChartaWorld } from "../../../../lib/chartaWorld";
+import { BANG_DREAM_CANON, BANG_DREAM_WORLD_ID } from "../../../../lib/storyWorldline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +14,7 @@ export const dynamic = "force-dynamic";
 const ROOT = path.join(process.cwd(), "data_storage", "charta");
 const PORTRAITS = path.join(ROOT, "portraits");
 const DATABASE = path.join(ROOT, "characters.json");
+const WORLDS = path.join(ROOT, "worlds.json");
 const idPattern = /^charta-[a-zA-Z0-9-]{8,90}$/;
 const noCache = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: noCache });
@@ -87,6 +91,22 @@ export async function PUT(request: Request) {
     if (!Array.isArray(body) || body.length > 100) return json({ error: "Invalid character library" }, 400);
     const characters = body.map(parseChartaCharacter);
     if (new Set(characters.map(c => c.id)).size !== characters.length) return json({ error: "Duplicate character ID" }, 400);
+    let worlds: ReturnType<typeof parseChartaWorld>[] = [];
+    try {
+      const saved = JSON.parse(await fs.readFile(WORLDS, "utf8"));
+      if (!Array.isArray(saved)) return json({ error: "Invalid world library" }, 500);
+      worlds = saved.map(parseChartaWorld);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    }
+    for (const character of characters) {
+      if (!character.profile) continue;
+      const stages = character.worldId === BANG_DREAM_WORLD_ID
+        ? BANG_DREAM_CANON
+        : worlds.find(world => world.id === character.worldId)?.canonTimeline || [];
+      const error = validateChartaTimelineLinks(character.profile, stages);
+      if (error) return json({ error: character.names[character.primaryLanguage] + "：" + error }, 400);
+    }
     await fs.mkdir(ROOT, { recursive: true });
     const tmp = path.join(ROOT, `characters.${randomUUID()}.tmp`);
     try {
