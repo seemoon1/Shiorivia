@@ -15,13 +15,14 @@ import { useLanguage } from "../context/LanguageContext";
 
 type CastOption = { id: string; name: string; origin: string | null; color: string };
 
-export function StoryCastPicker({ session, worlds, customCharacters, busy, onApply, mode = "story" }: {
+export function StoryCastPicker({ session, worlds, customCharacters, busy, onApply, mode = "story", tone = "sage" }: {
   session: Session;
   worlds: ChartaWorld[];
   customCharacters: ChartaCharacter[];
   busy: boolean;
   onApply: (ids: string[], allowCrossWorld: boolean) => void;
   mode?: "story" | "novel";
+  tone?: "sage" | "paper";
 }) {
   const { locale } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -67,11 +68,11 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
     ? BANG_DREAM_WORLD_NAME : worlds.find(item => item.id === id)?.name || "未知世界观";
 
   return <>
-    <section className="rounded-xl border border-[#dce6dc] bg-[#fbfcfa] p-3">
+    <section className={`rounded-xl border p-3 ${tone === "paper" ? "border-[#d6c29b] bg-[#fffaf0]" : "border-[#dce6dc] bg-[#fbfcfa]"}`}>
       <button type="button" disabled={!world || busy} onClick={begin}
         className="flex w-full items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="选择下一轮登场角色">
-        <span className="flex min-w-0 items-center gap-2 text-xs font-semibold text-[#486b56]">
+        <span className={`flex min-w-0 items-center gap-2 text-xs font-semibold ${tone === "paper" ? "text-[#765b36]" : "text-[#486b56]"}`}>
           {world && !started ? <UsersRound size={15} /> : <LockKeyhole size={15} />}
           下一轮登场 · CAST
         </span>
