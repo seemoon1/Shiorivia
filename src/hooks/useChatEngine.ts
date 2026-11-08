@@ -10,7 +10,7 @@ import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { storyCastAllowed, selectStoryCastIds } from "../lib/storyCast";
-import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol } from "../lib/storyStateRecovery";
+import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol, normalizeStoryProtocol, storyProtocolIssues } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
 import { isDefaultSessionTitle } from "../lib/sessionTitles";
 
@@ -266,7 +266,7 @@ export const useChatEngine = ({
             let validGameJson = false;
             if (existingGameBlock) {
                 try {
-                    const value = JSON.parse(existingGameBlock[1]);
+                    const value = normalizeStoryProtocol(JSON.parse(existingGameBlock[1]));
                     validGameJson = isUsableStoryProtocol(value);
                 } catch { /* A broken trailing JSON block must not be accepted. */ }
             }
@@ -309,9 +309,9 @@ export const useChatEngine = ({
                     repairText += repairDecoder.decode();
                     const match = repairText.match(/<game_state>([\s\S]*?)<\/game_state>/i);
                     if (!match) throw new Error("State repair returned no game_state");
-                    const recovered = JSON.parse(match[1]);
+                    const recovered = normalizeStoryProtocol(JSON.parse(match[1]));
                     if (!isUsableStoryProtocol(recovered)) {
-                        throw new Error("State repair returned incomplete fields");
+                        throw new Error("State repair returned incomplete fields: " + storyProtocolIssues(recovered).join("; "));
                     }
                     // Replace malformed completed blocks so the first-match parser sees the repaired state.
                     const openTagIndex = fullText.toLowerCase().lastIndexOf("<game_state>");
@@ -323,7 +323,7 @@ export const useChatEngine = ({
                 }
                 const finalGameBlock = fullText.match(/<game_state>([\s\S]*?)<\/game_state>/i);
                 try {
-                    const state = finalGameBlock ? JSON.parse(finalGameBlock[1]) : null;
+                    const state = finalGameBlock ? normalizeStoryProtocol(JSON.parse(finalGameBlock[1])) : null;
                     storyProtocolMissing = !isUsableStoryProtocol(state);
                 } catch { storyProtocolMissing = true; }
                 if (storyProtocolMissing) showToast("本轮故事没有返回完整状态；已保留正文和上一轮状态，建议重试本轮。");
@@ -425,10 +425,10 @@ export const useChatEngine = ({
             const gameMatch = currentText.match(gameRegex);
             if (gameMatch) {
                 try {
-                    const parsed = JSON.parse(gameMatch[1]);
+                    const parsed = normalizeStoryProtocol(JSON.parse(gameMatch[1]));
                     currentText = currentText.replace(gameRegex, "").trim();
                     if (currentSession.memoryMode === "sliding" && !isUsableStoryProtocol(parsed)) {
-                        throw new Error("Incomplete game_state JSON — preserve previous story state");
+                        throw new Error("Incomplete game_state JSON: " + storyProtocolIssues(parsed).join("; "));
                     }
                     capturedState = parsed;
 
