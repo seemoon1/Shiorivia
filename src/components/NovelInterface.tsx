@@ -223,7 +223,8 @@ export const NovelInterface = ({
         if (!currentSession?.novelState) return;
         // A saved, confirmed manual override may differ from the last AI output.
         // Do not erase that pending override when re-opening a novel archive.
-        if (currentSession.novelDraft?.environment && currentSession.novelDraft.environment !== currentSession.novelState.environment) return;
+        if ((currentSession.novelDraft?.environment && currentSession.novelDraft.environment !== currentSession.novelState.environment)
+            || (currentSession.novelDraft?.event && currentSession.novelDraft.event !== currentSession.novelState.event)) return;
         setEnvironment(currentSession.novelState.environment);
         setEvent(currentSession.novelState.event);
         setSelectedCharIds(Array.isArray(currentSession.storyNextCastIds)
