@@ -25,6 +25,8 @@ export function StoryWorldlineModal({ isOpen, value, legacyTimeline, worlds, onS
   const canonStages = draft.canonTimeline || [];
   const eras = [...new Set(canonStages.filter(stage => !draft.period || stage.period === draft.period).map(stage => stage.era))];
   const periods = [...new Set(canonStages.filter(stage => !draft.era || stage.era === draft.era).map(stage => stage.period))];
+  const baseEras = [...new Set(canonStages.map(stage => stage.era))];
+  const basePeriods = canonStages.filter(stage => !draft.baseEra || stage.era === draft.baseEra);
   const chooseWorld = (id: string) => {
     const item = worlds.find(world => world.id === id) || null;
     setDraft(worldlineFor(item)); setError("");
@@ -55,9 +57,17 @@ export function StoryWorldlineModal({ isOpen, value, legacyTimeline, worlds, onS
             <p className="text-[11px] leading-5 text-[#869b8c]">{draft.worldDescription ? `设定简介：${draft.worldDescription.slice(0,160)}${draft.worldDescription.length>160 ? "…" : ""}` : "未填写详细世界设定。模型将根据其已有知识理解这个世界。"}</p>
           </div>
           <section className="space-y-3"><h3 className="flex items-center gap-2 text-xs font-semibold"><BookOpen size={14}/>时间线类型 *</h3><div className="grid grid-cols-2 gap-3">
-            <button type="button" disabled={!canonStages.length} onClick={()=>setDraft(previous=>({...previous,kind:"canon",era:"",period:"",event:previous.event}))} className={`rounded-xl border p-3 text-left text-xs ${draft.kind==="canon"?"border-[#78a182] bg-[#eaf4eb] text-[#3d6548]":"border-[#d7e3d7] bg-white text-[#76877b]"} disabled:opacity-40`}><span className="block font-semibold">原作时间线</span><span className="mt-1 block text-[10px] opacity-80">按 ERA / PERIOD 对照选择</span></button>
-            <button type="button" onClick={()=>setDraft(previous=>({...previous,kind:"au",era:"",period:"",event:previous.event}))} className={`rounded-xl border p-3 text-left text-xs ${draft.kind==="au"?"border-[#78a182] bg-[#eaf4eb] text-[#3d6548]":"border-[#d7e3d7] bg-white text-[#76877b]"}`}><span className="block font-semibold">AU · 自定义时间线</span><span className="mt-1 block text-[10px] opacity-80">自行输入 ERA 与 PERIOD</span></button>
-          </div>{!canonStages.length && <p className="text-[11px] text-amber-700">这个世界观还没有定义原作时间线，可在 Charta 中添加，或直接选择 AU。</p>}</section>
+            <button type="button" disabled={!canonStages.length} onClick={()=>setDraft(previous=>({...previous,kind:"canon",era:"",period:"",baseEra:undefined,basePeriod:undefined,event:previous.event}))} className={`rounded-xl border p-3 text-left text-xs ${draft.kind==="canon"?"border-[#78a182] bg-[#eaf4eb] text-[#3d6548]":"border-[#d7e3d7] bg-white text-[#76877b]"} disabled:opacity-40`}><span className="block font-semibold">原作时间线</span><span className="mt-1 block text-[10px] opacity-80">按 ERA / PERIOD 对照选择</span></button>
+            <button type="button" disabled={!canonStages.length} onClick={()=>setDraft(previous=>({...previous,kind:"au",era:"",period:"",baseEra:"",basePeriod:"",event:previous.event}))} className={`rounded-xl border p-3 text-left text-xs ${draft.kind==="au"?"border-[#78a182] bg-[#eaf4eb] text-[#3d6548]":"border-[#d7e3d7] bg-white text-[#76877b]"}`}><span className="block font-semibold">AU · 自定义时间线</span><span className="mt-1 block text-[10px] opacity-80">自行输入 ERA 与 PERIOD</span></button>
+          </div>{!canonStages.length && <p className="text-[11px] text-amber-700">这个世界观尚无时间线：请先在 Charta 建立时间线，AU 也必须选择基准时期。</p>}</section>
+          {draft.kind === "au" && <section className="space-y-3 rounded-2xl border border-[#b8d2bf] bg-[#eff6ee] p-4">
+            <h3 className="text-xs font-semibold text-[#3f7551]">AU · 基准时间线 *</h3>
+            <p className="text-[11px] leading-5 text-[#738d79]">角色继承该原作时期以及之前已经发生的经历。AU 自己的 ERA / PERIOD 独立填写，不会改变基准。</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="text-xs">基准 ERA *<select value={draft.baseEra || ""} onChange={e=>setDraft(p=>({...p,baseEra:e.target.value,basePeriod:""}))} className={fieldClass}><option value="">请选择基准时代</option>{baseEras.map(era=><option key={era} value={era}>{era}</option>)}</select></label>
+              <label className="text-xs">基准 PERIOD *<select value={draft.basePeriod || ""} onChange={e=>setDraft(p=>({...p,basePeriod:e.target.value,baseEra:p.canonTimeline.find(stage=>stage.period===e.target.value)?.era || p.baseEra}))} className={fieldClass}><option value="">请选择基准时期</option>{basePeriods.map(stage=><option key={stage.period} value={stage.period}>{stage.period}</option>)}</select></label>
+            </div>
+          </section>}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-semibold">ERA · 时代 *{draft.kind==="canon" ? <select value={draft.era} onChange={e=>setEra(e.target.value)} className={fieldClass}><option value="">请选择 ERA</option>{eras.map(era=><option key={era} value={era}>{era}</option>)}</select> : <input maxLength={100} value={draft.era} onChange={e=>setDraft(previous=>({...previous,era:e.target.value}))} placeholder="自定义时代" className={fieldClass}/>}</label>
             <label className="text-xs font-semibold">PERIOD · 时期 *{draft.kind==="canon" ? <select value={draft.period} onChange={e=>setPeriod(e.target.value)} className={fieldClass}><option value="">请选择 PERIOD</option>{periods.map(period=><option key={period} value={period}>{period}</option>)}</select> : <input maxLength={100} value={draft.period} onChange={e=>setDraft(previous=>({...previous,period:e.target.value}))} placeholder="自定义时期" className={fieldClass}/>}</label>
