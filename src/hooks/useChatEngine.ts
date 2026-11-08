@@ -341,6 +341,55 @@ export const useChatEngine = ({
                 } catch { storyProtocolMissing = true; }
                 if (storyProtocolMissing) showToast("本轮故事没有返回完整状态；已保留正文和上一轮状态，建议重试本轮。");
             }
+            // Some providers occasionally omit or truncate the trailing novel_state.
+            // Recover only the state, never regenerate and replace the chapter itself.
+            if (currentSession.memoryMode === "novel" && !extractNovelState(fullText)) {
+                try {
+                    const worldline = parseStoryWorldline(currentSession.storyWorldline);
+                    const registeredIds = storyWorlds.map((item: any) => item.id as string);
+                    const knownCast = [...CHARACTERS, ...customCharacters].filter((character: any) =>
+                        worldline && storyCastAllowed(character, worldline.worldId,
+                            currentSession.storyAllowCrossWorld === true, registeredIds))
+                        .map((character: any) => ({ id: character.id, name: character.name || character.names?.[locale] || character.names?.[character.primaryLanguage] }));
+                    const earlier = currentSession.novelState || {
+                        environment: configOverride?.novelConfig?.environment || "",
+                        event: configOverride?.novelConfig?.event || "",
+                        nextSceneCastIds: currentSession.storyNextCastIds || [],
+                    };
+                    const repairPrompt = [
+                        "请仅恢复以下已生成小说章节末尾的 <novel_state> JSON，禁止续写正文。",
+                        `既有 Environment/Event: ${JSON.stringify(earlier).slice(0, 5000)}`,
+                        `允许角色 ID 与姓名: ${JSON.stringify(knownCast).slice(0, 7000)}`,
+                        `已生成的小说章节: ${stripNovelState(fullText).slice(-16000)}`,
+                    ].join("\n\n");
+                    const response = await fetch("/api/chat", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            novelStateRepair: true, memoryMode: "novel", model: modelToUse,
+                            provider: apiProvider, uiLanguage: locale,
+                            storyWorldline: currentSession.storyWorldline,
+                            debugRequestPayload: config.terminalRequestLog === true,
+                            debugFullOutput: config.terminalLog === true,
+                            messages: [{ role: "user", content: repairPrompt }],
+                        }), signal: abortControllerRef.current?.signal,
+                    });
+                    if (!response.ok || !response.body) throw new Error("novel_state recovery unavailable");
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let text = "";
+                    while (text.length < 16000) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        text += decoder.decode(value, { stream: true });
+                    }
+                    text += decoder.decode();
+                    const recovered = extractNovelState(text);
+                    if (!recovered) throw new Error("novel_state recovery returned invalid JSON");
+                    fullText = stripNovelState(fullText) + "\n\n<novel_state>" + JSON.stringify(recovered) + "</novel_state>";
+                } catch (error) {
+                    console.warn("Novel state recovery skipped:", error);
+                }
+            }
             let currentText = fullText;
             let novelState = currentSession.memoryMode === "novel" ? extractNovelState(fullText) : null;
             if (currentSession.memoryMode === "novel") {
