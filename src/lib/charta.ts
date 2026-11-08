@@ -1,5 +1,6 @@
 import type { Locale } from "./locale";
 import type { CharConfig } from "../data/char_config";
+import { formatChartaLore, parseChartaIdentityExtras, parseChartaLoreProfile, type ChartaIdentityExtras, type ChartaLoreProfile } from "./chartaLore";
 
 export const CHARTA_STORAGE_KEY = "shiorivia_charta_characters_v1";
 export const CHARTA_FORMAT = "shiorivia-character";
@@ -14,7 +15,7 @@ export const CHARTA_LANGUAGES = [
 ] as const;
 
 export type ChartaGender = "male" | "female" | "undisclosed" | "custom";
-export type ChartaCharacter = {
+export type ChartaCharacter = ChartaIdentityExtras & {
   id: string;
   /** Optional existing world ID; undefined means a world-neutral character. */
   worldId?: string;
@@ -23,7 +24,8 @@ export type ChartaCharacter = {
   hex: string;
   avatar: string; // Emoji preset or validated, resized data:image/png/jpeg/webp
   portrait?: string; // Local-only, disk-backed full-body illustration URL
-  description: string;
+  description: string; // Legacy v1 notes, retained for compatibility.
+  profile?: ChartaLoreProfile;
   gender?: ChartaGender;
   genderCustom?: string;
   createdAt: number;
@@ -48,7 +50,11 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   }
   if (!names[input.primaryLanguage] || Object.keys(names).length > 12) throw new Error("A primary name is required.");
   if (!isHex(input.hex) || !isAvatar(input.avatar)) throw new Error("A theme color and avatar are required.");
-  if (typeof input.description !== "string" || input.description.length > 20000) throw new Error("Character notes exceed the limit.");
+  if (input.description !== undefined && (typeof input.description !== "string" || input.description.length > 20000)) throw new Error("Character notes exceed the limit.");
+  const description = typeof input.description === "string" ? input.description : "";
+  const profile = parseChartaLoreProfile(input.profile) || { intro: description, personality: "", relationshipNotes: "", relationships: [], experienceNotes: "", experiences: [], guidance: "" };
+  if (!profile.intro.trim()) throw new Error("请先填写角色简介（必填）；其他四类设定均为选填");
+  const identity = parseChartaIdentityExtras(input);
   const gender = ["male", "female", "undisclosed", "custom"].includes(String(input.gender)) ? input.gender as ChartaGender : "undisclosed";
   const genderCustom = typeof input.genderCustom === "string" ? input.genderCustom.trim().slice(0, 100) : "";
   if (gender === "custom" && !genderCustom) throw new Error("A custom gender description is required.");
@@ -59,7 +65,7 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   const id = typeof input.id === "string" && /^charta-[a-zA-Z0-9-]{8,90}$/.test(input.id) ? input.id : makeChartaId();
   const portrait = typeof input.portrait === "string" && new RegExp(`^/api/local/charta\\?portrait=${id}&v=[0-9]{1,14}$`).test(input.portrait)
     ? input.portrait : undefined;
-  return { id, ...(worldId ? { worldId } : {}), primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description: input.description, gender, ...(gender === "custom" ? { genderCustom } : {}),
+  return { id, ...(worldId ? { worldId } : {}), primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description, profile, ...identity, gender, ...(gender === "custom" ? { genderCustom } : {}),
     createdAt: Number.isFinite(input.createdAt) ? Number(input.createdAt) : Date.now(), updatedAt: Date.now() };
 }
 
@@ -76,18 +82,18 @@ export function toChartaCharConfig(char: ChartaCharacter, locale: Locale): CharC
   return { id: char.id, name, sub: "Charta", hex: char.hex,
     // Legacy controls expect an emoji here; uploaded images render in Charta and the custom portrait stage.
     avatar: char.avatar.startsWith("data:") ? "✦" : char.avatar,
-    keys: [...new Set(Object.values(char.names))], lore: char.description, baseStats: { Obsession: 0 } };
+    keys: [...new Set([...Object.values(char.names), ...(char.aliases || [])])], lore: formatChartaLore({ ...char, name }, null, [], true), baseStats: { Obsession: 0 } };
 }
 
 export function asChartaPromptData(char: ChartaCharacter) {
-  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, hex: char.hex, worldId: char.worldId || null, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
+  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, profile: char.profile, aliases: char.aliases, hairColor: char.hairColor, eyeColor: char.eyeColor, height: char.height, birthday: char.birthday, zodiac: char.zodiac, moeTags: char.moeTags, hex: char.hex, worldId: char.worldId || null, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
 }
 
 export function decodeChartaImport(value: unknown): ChartaCharacter {
-  if (!isRecord(value) || value.format !== CHARTA_FORMAT || value.version !== 1) throw new Error("Not a Charta character JSON v1 file.");
+  if (!isRecord(value) || value.format !== CHARTA_FORMAT || ![1, 2].includes(Number(value.version))) throw new Error("Not a Charta character JSON v1/v2 file.");
   return parseChartaCharacter(value.character);
 }
 
 export function encodeChartaExport(char: ChartaCharacter): string {
-  return JSON.stringify({ format: CHARTA_FORMAT, version: 1, character: char }, null, 2);
+  return JSON.stringify({ format: CHARTA_FORMAT, version: 2, character: char }, null, 2);
 }
