@@ -37,9 +37,9 @@ assert.throws(()=>parseChartaLoreProfile({...profile,relationships:[{id:"x",targ
 const parsed = parseChartaLoreProfile(profile);
 assert.ok(parsed);
 const character = {
-  id:"charta-a12345678", name:"小月", names:{"zh-CN":"小月"},
-  aliases:["月月","编剧用脚填数值（笑）"],
-  gender:"female", hairColor:"青色", moeTags:["眼镜","傲娇"],
+  id:"charta-a12345678", name:"样例角色", names:{"zh-CN":"样例角色"},
+  aliases:["别名甲","别名乙"],
+  gender:"female", hairColor:"青色", moeTags:["眼镜","认真"],
   profile:parsed,
 };
 const early = formatChartaLore(character, "初遇", stages);
@@ -48,7 +48,7 @@ assert.ok(early.includes("任意时期都会认识"));
 assert.ok(early.includes("永远记得外婆"));
 assert.ok(!early.includes("转折之后才成为好友"));
 assert.ok(!early.includes("加入新的旅团"));
-assert.ok(early.includes("青色") && early.includes("傲娇"));
+assert.ok(early.includes("青色") && early.includes("认真"));
 const late = formatChartaLore(character, "重逢", stages);
 assert.ok(late.includes("童年认识"), "Past memories must remain");
 assert.ok(late.includes("转折之后才成为好友"));
@@ -56,7 +56,7 @@ assert.ok(late.includes("加入新的旅团"));
 const unscoped = formatChartaLore(character, null, stages);
 assert.ok(!unscoped.includes("童年认识"));
 assert.ok(unscoped.includes("默认好友关系。"));
-const extra = parseChartaIdentityExtras({aliases:["别名","别名",""],moeTags:["傲娇"]});
+const extra = parseChartaIdentityExtras({aliases:["别名","别名",""],moeTags:["认真"]});
 assert.deepEqual(extra.aliases,["别名"]);
 
 const world = {
