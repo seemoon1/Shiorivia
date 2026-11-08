@@ -504,7 +504,12 @@ export const useChatEngine = ({
 
             const gameRegex = /<game_state>([\s\S]*?)<\/game_state>/i;
             const gameMatch = currentText.match(gameRegex);
-            if (gameMatch) {
+            if (currentSession.memoryMode === "novel") {
+                // Novel owns <novel_state>; a stray Story protocol must not mutate
+                // novel character/status fields or leak into the reading view.
+                currentText = currentText.replace(gameRegex, "").trim();
+            }
+            if (gameMatch && currentSession.memoryMode === "sliding") {
                 try {
                     const parsed = normalizeStoryProtocol(JSON.parse(gameMatch[1]));
                     currentText = currentText.replace(gameRegex, "").trim();
