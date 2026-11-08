@@ -3,10 +3,11 @@
 import { useMemo } from "react";
 import { Plus, Trash2, Clock3, Users, BookOpen, Feather, Sparkles } from "lucide-react";
 import type { ChartaCharacter } from "../lib/charta";
+import { CHAR_DATA } from "../data/char_config";
 import type { ChartaTimelineStage } from "../lib/chartaWorld";
 import {
   type ChartaLoreProfile, type ChartaRelationship, type ChartaExperience,
-  validateChartaTimelineLinks,
+  validateChartaTimelineLinks, validateChartaRelationshipTargets,
 } from "../lib/chartaLore";
 
 const field = "mt-2 w-full rounded-xl border border-[#d7e0d6] bg-[#fbfcf9] px-3 py-3 text-sm leading-6 text-[#2d4739] outline-none focus:border-[#789e83]";
@@ -41,19 +42,25 @@ export function ChartaTimelineRangePicker({ periods, stages, onChange }: {
   </div>;
 }
 
-export function ChartaLoreEditor({ value, onChange, stages, characters, currentId }: {
+export function ChartaLoreEditor({ value, onChange, stages, characters, currentId, worldId, selfId, selves = [] }: {
   value: ChartaLoreProfile;
   onChange: (next: ChartaLoreProfile) => void;
   stages: readonly ChartaTimelineStage[];
   characters: ChartaCharacter[];
   currentId: string;
+  worldId?: string;
+  selfId?: string;
+  selves?: {id:string;worldId?:string;names:Record<string,string>;primaryLanguage:string}[];
 }) {
-  // Relationship targets can come from ANY project world; ONLY the linked
-  // timeline is constrained to the character's own world.
-  const eligible = useMemo(() => characters
-    .filter(c=>c.id!==currentId)
-    .map(c=>({ id:c.id, name:c.names[c.primaryLanguage] || Object.values(c.names)[0] || c.id })),
-    [characters,currentId]);
+  // Only candidates from this profile's own world; built-in BanG Dream cast
+  // is available when worldId === bang-dream. Unknown characters can be typed.
+  const eligible = useMemo(() => [
+    ...(worldId === "bang-dream" ? CHAR_DATA.map(c => ({ id:c.id, name:c.name })) : []),
+    ...characters.filter(c => c.id!==currentId && worldId && c.worldId === worldId)
+      .map(c=>({ id:c.id, name:c.names[c.primaryLanguage] || Object.values(c.names)[0] || c.id })),
+    ...selves.filter(c=>c.id !== selfId && worldId && c.worldId === worldId)
+      .map(c=>({ id:c.id, name:c.names[c.primaryLanguage] || Object.values(c.names)[0] || c.id })),
+  ], [characters,currentId,worldId,selves,selfId]);
   const patch = (key: keyof ChartaLoreProfile, content: string) => onChange({ ...value, [key]: content });
   const newRelation = () => onChange({...value, relationships:[...value.relationships,{
     id:uid("relation"), targetName:"", content:"", periods:[]
@@ -66,6 +73,7 @@ export function ChartaLoreEditor({ value, onChange, stages, characters, currentI
   const updateExperience = (id: string, diff: Partial<ChartaExperience>) =>
     onChange({...value, experiences:value.experiences.map(e=>e.id===id?{...e,...diff}:e)});
   const timelineError = validateChartaTimelineLinks(value, stages);
+  const relationshipError = validateChartaRelationshipTargets(value, worldId, [...characters, ...selves]);
   return <section className="space-y-7" aria-label="角色五段式设定">
     <div className="space-y-2"><h3 className={head}><span><BookOpen size={15} className="mr-2 inline"/>03 · 简介 *</span></h3>
       <textarea value={value.intro} onChange={e=>patch("intro",e.target.value)} maxLength={20000} rows={6} placeholder="这是唯一必填的角色设定。她是谁？生活在怎样的世界？有什么值得一提的故事？" className={field}/>
@@ -107,6 +115,7 @@ export function ChartaLoreEditor({ value, onChange, stages, characters, currentI
     <div className="space-y-2"><h3 className={head}><span><Sparkles size={15} className="mr-2 inline"/>07 · AI还原角色注意事项</span><span className="font-normal text-[#8aa18d]">选填</span></h3>
       <textarea value={value.guidance} onChange={e=>patch("guidance",e.target.value)} maxLength={20000} rows={6} placeholder="口癖、称呼演变、容易误读的性格、需要坚守的行为边界……" className={field}/>
     </div>
+    {relationshipError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{relationshipError}</p>}
     {timelineError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{timelineError}</p>}
     <p className="text-[11px] leading-6 text-[#889d8d]">关联只允许选择角色所属世界观内的连续时期；未关联的内容默认注入。已发生过的关联经历，在更晚的时期依然可被角色回忆。</p>
   </section>;
