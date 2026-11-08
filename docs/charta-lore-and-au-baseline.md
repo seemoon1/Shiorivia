@@ -48,3 +48,13 @@ npm run build
 ```
 
 Suggested manual cases: AU baseline at T-3-4 and AU current time labeled “十年后” must still omit T-8-9 original-canon revelations; selecting T-8-9 as the baseline should include the previously authored relationship history. Create a custom-world character with an unscoped intro and two relationship/experience entries, verify that early and late worldline selections change the supplied lore without dropping the default content. Finally, re-open a v1 character and export its structured v2 data.
+
+
+## Charta self profiles and scoped relation targets
+
+- The self editor has optional alias, hair color, eye color, height, birthday, zodiac, moe-tag and belonging-world fields, alongside the same structured five-part lore editor as custom characters.
+- Self records keep existing IDs, localized names, gender and colors. Legacy `description` becomes the new intro when edited; no automatic replacement of prior session snapshots.
+- A relationship's **selected** target must belong to its author's world. BanG Dream user profiles can select the built-in members from `CHAR_DATA` as well as user-created characters bound to BanG Dream; custom-world profiles can select characters or selves bound to that custom world. Manual text names remain possible for characters not in the project.
+- A relationship target's ID can be a built-in BanG Dream member, a `charta-...` ID or a `self-...` ID. The local save routes enforce world ownership; changing world affiliation will require editing incompatible relationship links.
+- Participant-mode self lore uses the world's selected canon period or AU baseline. It is injected as the participating protagonist's authored lore, **not** added to the cast list or relationship target state.
+- Existing story sessions may keep their saved `storySelfSnapshot`; reselect/recreate the session if you want it to use a newly edited self profile.
