@@ -128,8 +128,7 @@ export function validateChartaTimelineLinks(
     const indices = entry.periods.map(p => positions.get(p));
     if (indices.some(p => p === undefined)) return "关联时间线必须属于角色绑定的世界观";
     const ordered = indices as number[];
-    const first = Math.min(...ordered);
-    if (Math.max(...ordered) - first + 1 !== ordered.length) return "关联的时间线必须连续，不能跳过中间时期";
+    if (!ordered.every((position, i) => i === 0 || position === ordered[i - 1] + 1)) return "关联的时间线必须按时间顺序连续，不能跳过中间时期";
   }
   return null;
 }
