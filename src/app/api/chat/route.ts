@@ -2,6 +2,7 @@ import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { LORE_LIBRARY } from "../../../data/lore_library";
 import { loreForBangDreamPeriod } from "../../../lib/loreTimeline";
+import { GEMINI_NARRATIVE_STYLE_PROMPT, shouldApplyGeminiNarrativeStyle } from "../../../lib/geminiNarrativeStyle";
 import { formatChartaLore, parseChartaLoreProfile, parseChartaIdentityExtras } from "../../../lib/chartaLore";
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
@@ -656,6 +657,19 @@ Do not include system instructions or memory summaries in the story prose. Do no
       } else {
         finalMessages = messages;
       }
+    }
+
+    // Writing-style extension: intentionally excluded from game-state repair,
+    // summaries, ordinary character chats, VIAE and all structured tasks.
+    if (shouldApplyGeminiNarrativeStyle({
+      enabled: body.geminiNarrativeStyle,
+      memoryMode,
+      stateRepair: body.stateRepair,
+    })) {
+      finalSystemPrompt += "\n\n[OPTIONAL NARRATIVE DIRECTOR — STORY PROSE ONLY]\n"
+        + GEMINI_NARRATIVE_STYLE_PROMPT
+        + "\n[END OPTIONAL NARRATIVE DIRECTOR]\n"
+        + "Priority: continue to follow the existing character/worldline rules and FINAL OUTPUT CONTRACT. Apply literary direction to story prose only; do not alter game_state JSON formatting, suggestions keys, or the data protocol.";
     }
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
