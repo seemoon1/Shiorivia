@@ -6,36 +6,36 @@ import {
 
 const recoveredFromModel = {
   protagonist: {
-    name:"涼宮 月",timeDesc:"深秋周末白天",
-    environment:"地下铁车站外的涉谷街口红绿灯前",
-    temperature:"干燥冷冽",clothing:"秋冬风衣",
-    sensation:"冷风",innerState:"无奈又开心",
+    name:"测试主角",timeDesc:"晴日上午",
+    environment:"公园入口",
+    temperature:"微凉",clothing:"日常外套",
+    sensation:"微风",innerState:"平静",
   },
   sceneCastIds:["anon"],nextSceneCastIds:["anon"],
   character:[{
-    charId:"anon",characterName:"千早 爱音",favorability:78,trust:75,
-    innerPsychology:"期待买可颂",status:"等红绿灯",
-    clothing:"米白色针织开衫",action:"拉住手指",
+    charId:"anon",characterName:"测试角色",favorability:78,trust:75,
+    innerPsychology:"准备散步",status:"站在路边",
+    clothing:"日常服装",action:"挥手",
   }],
   suggestions:[
-    {tag:"fun",text:"讨论焦糖布丁的分法"},
-    {tag:"rational",text:"提醒绿灯"},
-    {tag:"radical",text:"反握手"},
+    {tag:"fun",text:"提出建议"},
+    {tag:"rational",text:"理性分析"},
+    {tag:"radical",text:"尝试新路线"},
   ],
-  danmaku:[{text:"粉毛大狗狗出街！"}],
-  timeline:[{type:"minor",description:"深秋周末与爱音出游"}],
-  music:{title:"Autumn Breeze",genre:"Acoustic Pop",mood:"轻快"},
+  danmaku:[{text:"测试弹幕"}],
+  timeline:[{type:"minor",description:"角色在公园相遇"}],
+  music:{title:"Test Track",genre:"Acoustic Pop",mood:"轻快"},
 };
 assert.equal(isUsableStoryProtocol(recoveredFromModel),false);
 const fixed = normalizeStoryProtocol(recoveredFromModel);
 assert.equal(isUsableStoryProtocol(fixed),true,storyProtocolIssues(fixed).join("; "));
-assert.deepEqual(fixed.suggestions,{fun:"讨论焦糖布丁的分法",rational:"提醒绿灯",radical:"反握手"});
-assert.deepEqual(fixed.timeline,{major:"",medium:"",minor:"深秋周末与爱音出游"});
+assert.deepEqual(fixed.suggestions,{fun:"提出建议",rational:"理性分析",radical:"尝试新路线"});
+assert.deepEqual(fixed.timeline,{major:"",medium:"",minor:"角色在公园相遇"});
 assert.equal(fixed.character[0].id,"anon");
-assert.equal(fixed.character[0].name,"千早 爱音");
+assert.equal(fixed.character[0].name,"测试角色");
 assert.equal(fixed.character[0].affection,78);
-assert.equal(fixed.character[0].innerState,"期待买可颂");
-assert.equal(fixed.character[0].bodyState,"等红绿灯");
+assert.equal(fixed.character[0].innerState,"准备散步");
+assert.equal(fixed.character[0].bodyState,"站在路边");
 assert.equal(recoveredFromModel.character[0].id,undefined,"Normalization must not mutate original data");
 
 const normal={
