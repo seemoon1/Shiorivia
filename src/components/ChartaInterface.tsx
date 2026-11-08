@@ -15,9 +15,13 @@ import { ChartaArchiveList } from "./ChartaArchiveList";
 import type { useChartaWorlds } from "../hooks/useChartaWorlds";
 import type { useChartaSelves } from "../hooks/useChartaSelves";
 import { ChartaPortrait } from "./ChartaPortrait";
+import { ChartaLoreEditor } from "./ChartaLoreEditor";
+import { emptyChartaLore, validateChartaTimelineLinks } from "../lib/chartaLore";
+import { BANG_DREAM_CANON } from "../lib/storyWorldline";
 
-type Draft = { id: string; worldId?: string; primaryLanguage: string; names: Record<string, string>; hex: string; avatar: string; portrait?: string; description: string; gender?: "male" | "female" | "undisclosed" | "custom"; genderCustom?: string; createdAt: number; updatedAt: number };
-const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
+type Draft = ChartaCharacter;
+const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", profile: emptyChartaLore(), gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
+const editingProfile = (draft: Draft) => draft.profile || { ...emptyChartaLore(), intro: draft.description || "" };
 const colors = ["#799783", "#688ca4", "#ba8295", "#a38ebc", "#c1a276", "#4d7972", "#bd7674", "#65728d"];
 
 function compactImage(file: File): Promise<string> {
@@ -84,6 +88,9 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     if (draft.worldId && draft.worldId !== BANG_DREAM_WORLD_ID && !worldLibrary.worlds.some(world => world.id === draft.worldId)) {
       setMessage("所属世界观不存在，请先在 Charta 创建世界观后再绑定。"); return;
     }
+    const selectedStages = draft.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON : worldLibrary.worlds.find(world=>world.id===draft.worldId)?.canonTimeline || [];
+    const warning = validateChartaTimelineLinks(editingProfile(draft), selectedStages);
+    if (warning) { setMessage(warning); return; }
     setBusy(true);
     try {
       const data = parseChartaCharacter(draft);
@@ -152,7 +159,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     setSection(kind); setCabinetSelection({ kind, id }); setChildDirty(false);
     if (kind === "characters") {
       const item = id ? characters.find(character => character.id === id) : null;
-      setDraft(item ? { ...item, names: { ...item.names } } : newDraft(locale));
+      setDraft(item ? { ...item, names: { ...item.names }, profile: item.profile ? { ...item.profile, relationships: item.profile.relationships.map(r=>({...r,periods:[...r.periods]})), experiences:item.profile.experiences.map(e=>({...e,periods:[...e.periods]})) } : { ...emptyChartaLore(), intro:item.description || "" } } : newDraft(locale));
       setDirty(false);
     } else {
       setRequestVersion(version => version + 1);
@@ -195,6 +202,21 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               {showAdd && <div className="grid items-end gap-2 rounded-xl border border-[#e1e8dc] bg-[#f7f9f5] p-3 sm:grid-cols-[1fr_1fr_auto]"><label className="text-xs">{txt("language")}<select value={extraLang} onChange={e=>setExtraLang(e.target.value)} className="mt-1 w-full rounded-lg border p-2 text-sm">{CHARTA_LANGUAGES.map(o=><option key={o.code} value={o.code}>{o.label}</option>)}</select></label>{extraLang==="other"?<input value={customLang} onChange={e=>setCustomLang(e.target.value)} placeholder={txt("otherLanguage")} className="rounded-lg border p-2 text-sm"/>:<span/>}<button type="button" onClick={addLanguage} className="rounded-lg bg-[#65876d] p-2 text-xs text-white">{txt("addName")}</button></div>}
               {Object.keys(draft.names).filter(lang=>lang!==draft.primaryLanguage).map(lang=><div key={lang} className="flex items-center gap-2"><span className="w-14 shrink-0 text-xs text-[#809587]">{lang}</span><input value={draft.names[lang]||""} onChange={e=>update({...draft,names:{...draft.names,[lang]:e.target.value}})} placeholder={txt("extraName")} maxLength={100} className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm outline-none focus:border-[#7e9f86]"/><button type="button" title="Remove" onClick={()=>{const next={...draft.names};delete next[lang];update({...draft,names:next});}}><X size={16}/></button></div>)}
               <div className="space-y-2"><label className="block text-xs text-[#6e8472]">性别设定</label><div className="flex flex-wrap gap-2">{([ ["male","男"], ["female","女"], ["undisclosed","不愿透露"], ["custom","自定义"] ] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(draft.gender||"undisclosed")===value} onClick={()=>update({...draft,gender:value})} className={`rounded-xl border px-3 py-2 text-xs ${(draft.gender||"undisclosed")===value ? "border-[#60856a] bg-[#edf5ec] text-[#345443]" : "border-[#d8e4d8] text-[#819588]"}`}>{label}</button>)}</div>{draft.gender==="custom"&&<input maxLength={100} value={draft.genderCustom||""} onChange={e=>update({...draft,genderCustom:e.target.value})} placeholder="自定义性别设定" className="w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/>}</div>
+              <section className="space-y-4 rounded-2xl border border-[#e0e9df] bg-[#fbfdfa] p-4">
+                <h4 className="text-xs font-semibold tracking-wider text-[#51745e]">外号／别号、外观与萌点（均选填）</h4>
+                <p className="text-[11px] text-[#91a393]">别号和萌点可以添加多个，不区分语言；其他字段自由填写，不会凭空自动补全。</p>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-[#688270]">别号 / 外号</span><button type="button" disabled={(draft.aliases||[]).length>=50} onClick={()=>update({...draft,aliases:[...(draft.aliases||[]),""]})} className="flex items-center gap-1 text-xs text-[#568466] disabled:opacity-40"><Plus size={14}/>增加别号</button></div>
+                  {(draft.aliases||[]).map((alias,i)=><div key={i} className="flex gap-2"><input value={alias} onChange={e=>update({...draft,aliases:(draft.aliases||[]).map((x,j)=>j===i?e.target.value:x)})} maxLength={100} placeholder="别号，例如客服S（笑）" className="min-w-0 flex-1 rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/><button type="button" aria-label="删除别号" onClick={()=>update({...draft,aliases:(draft.aliases||[]).filter((_,j)=>j!==i)})} className="text-[#b0837d]"><X size={15}/></button></div>)}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([{key:"hairColor",label:"发色",placeholder:"例如：蓝色"},{key:"eyeColor",label:"瞳色",placeholder:"例如：琥珀色"},{key:"height",label:"身高",placeholder:"例如：155cm"},{key:"birthday",label:"生日",placeholder:"例如：2月14日"},{key:"zodiac",label:"星座",placeholder:"例如：水瓶座"}] as const).map(({key,label,placeholder})=><label key={key} className="text-xs text-[#6e8472]">{label}<input value={draft[key]||""} onChange={e=>update({...draft,[key]:e.target.value})} maxLength={100} placeholder={placeholder} className="mt-2 w-full rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/></label>)}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-[#688270]">萌点（笑）</span><button type="button" disabled={(draft.moeTags||[]).length>=50} onClick={()=>update({...draft,moeTags:[...(draft.moeTags||[]),""]})} className="flex items-center gap-1 text-xs text-[#568466] disabled:opacity-40"><Plus size={14}/>添加萌点</button></div>
+                  {(draft.moeTags||[]).map((tag,i)=><div key={i} className="flex gap-2"><input value={tag} onChange={e=>update({...draft,moeTags:(draft.moeTags||[]).map((x,j)=>j===i?e.target.value:x)})} maxLength={100} placeholder="例如：包子脸、中二病" className="min-w-0 flex-1 rounded-xl border border-[#d7e0d6] px-3 py-2 text-sm"/><button type="button" aria-label="删除萌点" onClick={()=>update({...draft,moeTags:(draft.moeTags||[]).filter((_,j)=>j!==i)})} className="text-[#b0837d]"><X size={15}/></button></div>)}
+                </div>
+              </section>
               <p className="text-[11px] leading-6 text-[#8ba08f]">{txt("nameHint")}</p>
               <label className="block text-xs text-[#6e8472]">所属世界观 · WORLD
                 <select value={draft.worldId || ""} onChange={e => update({ ...draft, worldId: e.target.value || undefined })}
@@ -247,7 +269,12 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
                 </section>
               </div>
             </div>
-            <div className="space-y-3"><h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">03 · {txt("notes")}</h3><p className="text-xs leading-6 text-[#8a9d8d]">{txt("notesHelp")}</p><textarea value={draft.description} onChange={e=>update({...draft,description:e.target.value})} maxLength={20000} rows={10} className="w-full resize-y rounded-xl border border-[#d7e1d6] bg-[#fbfcf9] p-4 text-sm leading-7 outline-none focus:border-[#7e9f86]"/></div>
+            <ChartaLoreEditor
+                value={editingProfile(draft)}
+                onChange={profile=>update({...draft,profile})}
+                stages={draft.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON : worldLibrary.worlds.find(world=>world.id===draft.worldId)?.canonTimeline || []}
+                worldId={draft.worldId} currentId={draft.id} characters={characters}
+              />
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={!characters.some(c=>c.id===draft.id)} onClick={deleteDraft} className="inline-flex items-center gap-2 rounded-xl border border-rose-100 px-3 py-3 text-xs text-rose-600 disabled:opacity-30"><Trash2 size={15}/>{txt("delete")}</button><div className="flex flex-wrap gap-2"><button type="button" onClick={exportDraft} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-3 text-xs"><Download size={15}/>{txt("export")}</button><button type="button" disabled={busy} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-3 text-xs font-semibold text-white hover:bg-[#355640] disabled:opacity-50"><Save size={15}/>{txt("save")}</button></div></div>
           </div>}
           {(message || storageError) && <p role="status" className="mt-4 rounded-lg bg-[#f2f4ee] px-4 py-3 text-xs text-[#607566]">{storageError || message}</p>}
