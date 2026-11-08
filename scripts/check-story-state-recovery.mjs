@@ -11,9 +11,9 @@ const recoveredFromModel = {
     temperature:"微凉",clothing:"日常外套",
     sensation:"微风",innerState:"平静",
   },
-  sceneCastIds:["anon"],nextSceneCastIds:["anon"],
+  sceneCastIds:["test-character"],nextSceneCastIds:["test-character"],
   character:[{
-    charId:"anon",characterName:"测试角色",favorability:78,trust:75,
+    charId:"test-character",characterName:"测试角色",favorability:42,trust:30,
     innerPsychology:"准备散步",status:"站在路边",
     clothing:"日常服装",action:"挥手",
   }],
@@ -31,9 +31,9 @@ const fixed = normalizeStoryProtocol(recoveredFromModel);
 assert.equal(isUsableStoryProtocol(fixed),true,storyProtocolIssues(fixed).join("; "));
 assert.deepEqual(fixed.suggestions,{fun:"提出建议",rational:"理性分析",radical:"尝试新路线"});
 assert.deepEqual(fixed.timeline,{major:"",medium:"",minor:"角色在公园相遇"});
-assert.equal(fixed.character[0].id,"anon");
+assert.equal(fixed.character[0].id,"test-character");
 assert.equal(fixed.character[0].name,"测试角色");
-assert.equal(fixed.character[0].affection,78);
+assert.equal(fixed.character[0].affection,42);
 assert.equal(fixed.character[0].innerState,"准备散步");
 assert.equal(fixed.character[0].bodyState,"站在路边");
 assert.equal(recoveredFromModel.character[0].id,undefined,"Normalization must not mutate original data");
