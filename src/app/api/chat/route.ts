@@ -307,6 +307,19 @@ Only JSON belongs between the tags.`;
         if (pov) finalSystemPrompt += `\nOBSERVER POV: ${JSON.stringify({ id: pov.id, name: pov.name })}. Put this person in protagonist; never include them in character. They MAY remain in sceneCastIds if present on stage.`;
       }
       finalMessages = Array.isArray(messages) ? messages.slice(-1) : [];
+    } else if (body.novelStateRepair === true && memoryMode === "novel") {
+      // Standalone state-only pass. Never run the full novel prompt or its literary layer.
+      const repairWorldline = parseStoryWorldline(body.storyWorldline);
+      if (!repairWorldline) return Response.json({ error: "Invalid novel worldline for state recovery" }, { status: 400 });
+      finalSystemPrompt = `You are a strict novel chapter-state extractor, NOT a novelist.
+Return ONLY a single valid JSON object inside <novel_state>...</novel_state>. No explanations, markdown or chapter prose.
+Required JSON shape: {"environment":"nonempty location, weather, temperature and other environmental facts","event":"nonempty CURRENT event at the end of the chapter","nextSceneCastIds":["known character ID"]}
+All three keys are mandatory; environment/event must be plain strings, each at most 2000 characters, and nextSceneCastIds an array of 0–6 unique character IDs.
+Only infer facts from the given completed chapter, existing state and known cast roster. Never fabricate a transition that has not occurred. Keep environment/event from the previous state when the chapter did not change them.
+The NEXT chapter cast should be a conservative prediction based on actual narrative presence or a clear impending entrance. Use IDs only from the roster in the user input, otherwise [].
+DO NOT change WORLD / ERA / PERIOD / AU baseline. Return structured state, not story prose.
+Worldline: ${JSON.stringify({ worldId: repairWorldline.worldId, era: repairWorldline.era, period: repairWorldline.period, kind: repairWorldline.kind, basePeriod: repairWorldline.basePeriod })}.`;
+      finalMessages = Array.isArray(messages) ? messages.slice(-1) : [];
     } else if (memoryMode === "novel") {
       console.log("🌌 Mode: Novel Generation");
       const novelWorldline = parseStoryWorldline(body.storyWorldline);
@@ -734,7 +747,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
     finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
-    if (memoryMode === "sliding" || memoryMode === "novel") {
+    if ((memoryMode === "sliding" || memoryMode === "novel") && body.novelStateRepair !== true) {
       const worldline = parseStoryWorldline(body.storyWorldline);
       if (worldline) {
         // A short ID/name index is cheap; ONLY the selected cast receives biographies.
