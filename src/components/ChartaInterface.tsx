@@ -228,7 +228,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
                     <option value={draft.worldId}>原世界观已删除 · 请重新选择</option>}
                 </select>
               </label>
-              <p className="text-[11px] leading-5 text-[#8ba08f]">可选。跨世界观登场前，请先在 Charta 创建并绑定角色所属的世界观。</p>
+              <p className="text-[11px] leading-5 text-[#8ba08f]">建议先在 Charta「世界观」中创建世界与对应时间线，再为角色绑定所属世界。这样下方人物关系、主要经历才能关联正确的时期；未关联的条目将始终注入。</p>
             </div>
             <div className="space-y-4">
               <h3 className="text-xs font-bold tracking-widest uppercase text-[#547562]">02 · {txt("appearance")}</h3>
