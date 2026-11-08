@@ -105,7 +105,7 @@ export function NovelArchiveActions({ session, draft, onImport, disabled = false
       </label>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" disabled={disabled} onClick={exportNovel} className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-semibold transition disabled:opacity-40 ${actionStyle}`}><Download size={14}/> {deepText(locale, "archive.export")} {exportFormat.toUpperCase()}</button>
-        <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()} className="flex items-center justify-center gap-1.5 rounded-lg border border-current/20 px-2 py-2 text-xs transition hover:opacity-70 disabled:opacity-40"><Upload size={14}/> {deepText(locale, "archive.import")} JSON</button>
+        <button type="button" disabled={disabled} onClick={() => inputRef.current?.click()} className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-semibold transition disabled:opacity-40 ${actionStyle}`}><Upload size={14}/> {deepText(locale, "archive.import")} JSON</button>
       </div>
       <input ref={inputRef} type="file" accept=".json,application/json" className="hidden" onChange={e => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void importNovel(f); }}/>
       {message && <p role="status" className="mt-3 text-[11px] leading-5 font-medium">{message}</p>}
