@@ -1,4 +1,5 @@
 import type { ChartaTimelineStage } from "./chartaWorld";
+import { CHAR_DATA } from "../data/char_config";
 
 export type ChartaRelationship = {
   id: string;
@@ -35,7 +36,9 @@ export type ChartaIdentityExtras = {
 };
 
 const record = (x: unknown): x is Record<string, unknown> => Boolean(x && typeof x === "object" && !Array.isArray(x));
-const idRule = /^(?:charta-[a-zA-Z0-9-]{8,90})$/;
+const idRule = /^charta-[a-zA-Z0-9-]{8,90}$/;
+const builtinIds = new Set(CHAR_DATA.map(char => char.id));
+const validTargetId = (id: string) => idRule.test(id) || builtinIds.has(id);
 const entryId = /^[a-zA-Z0-9_-]{1,100}$/;
 const stageName = (x: unknown): x is string => typeof x === "string" && x.length > 0 && x.length <= 100;
 const checkText = (x: unknown, limit: number, name: string): string => {
@@ -69,7 +72,7 @@ export function parseChartaLoreProfile(value: unknown): ChartaLoreProfile | unde
     if (!record(raw)) throw new Error("无效的人物关系");
     const targetName = checkText(raw.targetName, 100, "关系对象名称").trim();
     if (!targetName) throw new Error(`第${i + 1}条人物关系必须填写对应角色名称`);
-    const targetId = typeof raw.targetId === "string" && idRule.test(raw.targetId) ? raw.targetId : undefined;
+    const targetId = typeof raw.targetId === "string" && validTargetId(raw.targetId) ? raw.targetId : undefined;
     return {
       id: typeof raw.id === "string" && entryId.test(raw.id) ? raw.id : `relation-${i}`,
       targetName, ...(targetId ? { targetId } : {}),
@@ -129,6 +132,23 @@ export function validateChartaTimelineLinks(
     if (indices.some(p => p === undefined)) return "关联时间线必须属于角色绑定的世界观";
     const ordered = indices as number[];
     if (!ordered.every((position, i) => i === 0 || position === ordered[i - 1] + 1)) return "关联的时间线必须按时间顺序连续，不能跳过中间时期";
+  }
+  return null;
+}
+
+/** A picked relationship target must belong to the editing character's world.
+ * User-entered names without targetId remain valid for unknown characters. */
+export function validateChartaRelationshipTargets(
+  profile: ChartaLoreProfile,
+  worldId: string | undefined,
+  custom: readonly { id: string; worldId?: string }[],
+): string | null {
+  for (const relation of profile.relationships) {
+    if (!relation.targetId) continue;
+    const targetWorld = builtinIds.has(relation.targetId) ? "bang-dream"
+      : custom.find(char => char.id === relation.targetId)?.worldId;
+    if (!worldId || !targetWorld || targetWorld !== worldId)
+      return "关联角色必须属于当前角色的世界观；如需跨世界的人物，请手动填写名称";
   }
   return null;
 }
