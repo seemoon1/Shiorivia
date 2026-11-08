@@ -380,7 +380,9 @@ ${COLOR_INSTRUCTION}
       // Character Chat shares the stage with Engineering, not its code/task protocol.
       const activeChar = allChars.find((c: any) => c.id === characterId) || allChars[0];
       const charName = activeChar?.name || "聊天伙伴";
-      const charLore = String(LORE_LIBRARY[activeChar?.id] || activeChar?.lore || "").slice(0, 10000);
+      const charLore = LORE_LIBRARY[activeChar?.id]
+        ? loreForBangDreamPeriod(LORE_LIBRARY[activeChar.id], "T-9-10") // Chat mode has no worldline picker: latest available continuity.
+        : String(activeChar?.lore || "");
       finalSystemPrompt = [
         `[IDENTITY / 角色身份] 你正在扮演 ${charName}（${activeChar?.sub || "Shiorivia"}）。这是用户与角色的一对一聊天，不是通用 AI 客服。`,
         "始终以当前角色的身份和第一人称自然说话。保持角色的性格、语气、人际关系与已知经历；可以帮助用户讨论现实问题，但不要突然切换成工程师或旁白。",
