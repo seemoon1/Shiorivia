@@ -501,7 +501,7 @@ export default function Home() {
         return <ChartaInterface characters={charta.characters} save={charta.save} remove={charta.remove} selfLibrary={selfLibrary} worldLibrary={worldLibrary} initialSection={chartaInitialSection}
             loaded={charta.loaded} storageError={charta.error}
             usedIds={cloud.sessions.flatMap(s => [s.characterId, ...((s.limeGroups || []).flatMap(g => g.members))])}
-            onExit={() => setShowCharta(false)} />;
+            onExit={() => { setShowCharta(false); setShowModeHub(true); }} />;
     }
     if (!cloud.initLoaded || showModeHub) {
         return (
