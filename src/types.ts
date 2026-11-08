@@ -97,6 +97,8 @@ export type ViaeConversation = {
 
 export type NovelDraft = {
   selectedCharIds: string[];
+  /** Optional Charta self as the authored novel protagonist. */
+  selfId?: string | null;
   scenario: string;
   action: string;
   style: string;
