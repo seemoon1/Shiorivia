@@ -289,6 +289,7 @@ export async function POST(req: Request) {
 Return ONLY <game_state>{...}</game_state>, with strictly valid JSON, no thinking, narration, markdown or comments.
 Base the state ONLY on the user-provided story excerpt and previous state. Preserve established facts and plausible relations; do not fabricate new events, memories or character personalities.
 Always include all keys: protagonist, sceneCastIds (characters currently on stage), nextSceneCastIds (predicted cast for the NEXT turn), character (array), suggestions (fun/rational/radical, plot-advancing and canon-appropriate), danmaku (array), timeline (major/medium/minor) and music (object or null).
+STRICT SHAPE: suggestions MUST be a JSON object like {"fun":"...","rational":"...","radical":"..."}, NEVER an array of {"tag","text"} items. timeline MUST be an object like {"major":"","medium":"","minor":"..."} rather than an array. Each character entry uses id and name (not charId or characterName).
 When protagonist is not null, include exactly these seven string fields: name, timeDesc, environment, temperature, clothing, sensation, innerState; unknown values are empty strings.
 Do NOT include age, gender, top-level environment, live2d or effect. Those are not generated state fields in Local Edition.
 The character array contains only relationship TARGETS, NEVER the protagonist. Relationship scores describe each other character's relationship TO the self/POV.
@@ -720,9 +721,37 @@ Do not include system instructions or memory summaries in the story prose. Do no
     // Local-only, opt-in diagnostics. Never include API keys in the request log.
     const debugRequestPayload = body.debugRequestPayload === true;
     const debugFullOutput = body.debugFullOutput === true;
+    // Diagnostic-only presentation: show actual prompt newlines rather than
+    // JSON.stringify-escaped "\\n". The provider receives the SAME payload.
+    const readableRequestLog = (payload: unknown): string => {
+        if (!payload || typeof payload !== "object" || Array.isArray(payload))
+            return JSON.stringify(payload, null, 2);
+        const request = payload as Record<string, any>;
+        const { messages, systemInstruction, startChat, sendMessageStream, ...options } = request;
+        const parts = [`[REQUEST OPTIONS]\n${JSON.stringify(options, null, 2)}`];
+        const show = (heading: string, content: unknown) => {
+            const body = typeof content === "string" ? content : JSON.stringify(content, null, 2);
+            parts.push(`\n========== ${heading} ==========\n${body ?? ""}`);
+        };
+        if (typeof systemInstruction === "string") show("SYSTEM INSTRUCTION", systemInstruction);
+        if (Array.isArray(messages)) {
+            messages.forEach((message: any, index: number) => {
+                show(`MESSAGE ${index + 1} — ${String(message?.role || "unknown").toUpperCase()}`, message?.content);
+            });
+        }
+        if (startChat && Array.isArray(startChat.history)) {
+            startChat.history.forEach((item: any, index: number) =>
+                show(`GEMINI HISTORY ${index + 1} — ${String(item?.role || "unknown").toUpperCase()}`,
+                    Array.isArray(item?.parts)
+                        ? item.parts.map((part: any) => typeof part?.text === "string" ? part.text : JSON.stringify(part, null, 2)).join("\n")
+                        : item));
+        }
+        if (sendMessageStream !== undefined) show("GEMINI CURRENT MESSAGE", sendMessageStream);
+        return parts.join("\n");
+    };
     const logModelRequest = (payload: unknown) => {
         if (!debugRequestPayload) return;
-        console.log(`\n========== SHIORIVIA LOCAL | REQUEST TO AI | ${memoryMode} | ${selectedProvider.id}/${routedModel} ==========\n${JSON.stringify(payload, null, 2)}\n========== END AI REQUEST ==========\n`);
+        console.log(`\n========== SHIORIVIA LOCAL | REQUEST TO AI | ${memoryMode} | ${selectedProvider.id}/${routedModel} ==========\n${readableRequestLog(payload)}\n========== END AI REQUEST ==========\n`);
     };
     const logFullOutput = (raw: string, complete: boolean) => {
         if (!debugFullOutput) return;
