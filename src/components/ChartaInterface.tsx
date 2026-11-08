@@ -189,7 +189,7 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
           onChoose={(kind, id) => chooseArchive(kind, id)} onCreate={(kind) => chooseArchive(kind, null)}
           onActivate={(id) => { void selfLibrary.selectSelf(id); }} />
         {section === "self"
-          ? <ChartaSelfPanel {...selfLibrary} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "self", id })} />
+          ? <ChartaSelfPanel {...selfLibrary} characters={characters} worlds={worldLibrary.worlds} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "self", id })} />
           : section === "worlds"
             ? <ChartaWorldPanel {...worldLibrary} embedded selectedId={cabinetSelection.id} requestVersion={requestVersion} onDirtyChange={onChildDirty} onSaved={(id) => setCabinetSelection({ kind: "worlds", id })} />
             : <section className="rounded-2xl border border-[#dce4dc] bg-white/90 p-5 shadow-sm sm:p-8">
