@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import { Plus, Trash2, Clock3, Users, BookOpen, Feather, Sparkles } from "lucide-react";
 import type { ChartaCharacter } from "../lib/charta";
 import type { ChartaTimelineStage } from "../lib/chartaWorld";
