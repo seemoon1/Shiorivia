@@ -114,16 +114,76 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
       saveChartaJsonFile(`charta-${data.id}.json`, encodeChartaExport(data));
     } catch (e) { setMessage(e instanceof Error ? e.message : txt("required")); }
   };
+  const openImport = (kind: CabinetKind) => {
+    importKindRef.current = kind;
+    setImportMenuOpen(false);
+    importRef.current?.click();
+  };
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || busy) return;
+    setBusy(true);
+    const kind = importKindRef.current;
     try {
-      if (file.size > 1024 * 1024) throw new Error(txt("fileError"));
-      const item = decodeChartaImport(JSON.parse(await file.text()));
-      // Import is always a new ID, even if the file originated from this library.
-      // A disk-backed path belongs to the original profile ID; never link two characters to one portrait.
-      const imported = { ...item, portrait: undefined, id: makeChartaId(), createdAt: Date.now(), updatedAt: Date.now() };
-      if (await save(imported)) { setDraft(imported); setDirty(false); setMessage(txt("imported")); }
-    } catch (e) { setMessage(e instanceof Error ? e.message : txt("fileError")); }
+      if (file.size > 1024 * 1024) throw new Error("JSON 文件过大（上限 1 MB）");
+      const source: unknown = JSON.parse(await file.text());
+      const now = Date.now();
+      if (kind === "characters") {
+        const original = decodeChartaImport(source);
+        const imported = parseChartaCharacter({
+          ...original, id: makeChartaId(), portrait: undefined,
+          createdAt: now, updatedAt: now,
+        });
+        if (imported.worldId && imported.worldId !== BANG_DREAM_WORLD_ID
+          && !worldLibrary.worlds.some(w => w.id === imported.worldId)) {
+          throw new Error("原 JSON 所属的世界观尚不存在。请先导入对应世界观 JSON。");
+        }
+        const stages = imported.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+          : worldLibrary.worlds.find(w => w.id === imported.worldId)?.canonTimeline || [];
+        const validation = imported.profile && (validateChartaTimelineLinks(imported.profile, stages)
+          || validateChartaRelationshipTargets(imported.profile, imported.worldId, [...characters, ...selfLibrary.selves]));
+        if (validation) throw new Error(validation + "。如涉及其他档案，请先导入关联角色。");
+        if (!await save(imported)) throw new Error("角色保存失败，请检查档案关联");
+        setSection("characters");
+        setCabinetSelection({kind:"characters",id:imported.id});
+        setDraft(imported); setDirty(false); setCabinetHome(false);
+      } else if (kind === "self") {
+        const original = decodeChartaSelfImport(source);
+        const imported = parseChartaSelf({
+          ...original, id: `self-${crypto.randomUUID()}`,
+          createdAt: now, updatedAt: now,
+        });
+        if (imported.worldId && imported.worldId !== BANG_DREAM_WORLD_ID
+          && !worldLibrary.worlds.some(w => w.id === imported.worldId)) {
+          throw new Error("原 JSON 所属的世界观尚不存在。请先导入对应世界观 JSON。");
+        }
+        const stages = imported.worldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+          : worldLibrary.worlds.find(w => w.id === imported.worldId)?.canonTimeline || [];
+        const validation = imported.profile && (validateChartaTimelineLinks(imported.profile, stages)
+          || validateChartaRelationshipTargets(imported.profile, imported.worldId, [...characters, ...selfLibrary.selves]));
+        if (validation) throw new Error(validation + "。如涉及其他档案，请先导入关联角色。");
+        if (!await selfLibrary.saveSelf(imported)) throw new Error("自设保存失败，请检查档案关联");
+        setSection("self");
+        setCabinetSelection({kind:"self",id:imported.id});
+        setRequestVersion(version => version + 1);
+        setChildDirty(false); setCabinetHome(false);
+      } else {
+        const original = decodeChartaWorldImport(source);
+        const imported = parseChartaWorld({
+          ...original, id: `world-${crypto.randomUUID()}`,
+          createdAt: now, updatedAt: now,
+        });
+        if (!await worldLibrary.saveWorld(imported)) throw new Error("世界观保存失败，请检查时间线");
+        setSection("worlds");
+        setCabinetSelection({kind:"worlds",id:imported.id});
+        setRequestVersion(version => version + 1);
+        setChildDirty(false); setCabinetHome(false);
+      }
+      setMessage("导入成功：已创建独立档案，不会覆盖原有资料。");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "JSON 导入失败");
+    } finally { setBusy(false); }
   };
   const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ""; if (!file || !draft) return;
