@@ -29,6 +29,8 @@ type Props = {
   onToggleTerminalLog: () => void;
   engineeringTransitionEnabled: boolean;
   onToggleEngineeringTransition: () => void;
+  geminiNarrativeStyleEnabled: boolean;
+  onToggleGeminiNarrativeStyle: () => void;
   onTestEffect: (name: "rain" | "curtain" | "math" | "glitch") => void;
   isStory: boolean;
   storyTheme: StoryTheme;
@@ -88,7 +90,7 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
   );
 }
 
-export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, terminalRequestLogEnabled, onToggleTerminalRequestLog, terminalLogEnabled, onToggleTerminalLog, engineeringTransitionEnabled, onToggleEngineeringTransition, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
+export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, terminalRequestLogEnabled, onToggleTerminalRequestLog, terminalLogEnabled, onToggleTerminalLog, engineeringTransitionEnabled, onToggleEngineeringTransition, geminiNarrativeStyleEnabled, onToggleGeminiNarrativeStyle, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { refreshLibrary, allTracks } = useMusic();
   const [scanningMusic, setScanningMusic] = useState(false);
@@ -201,6 +203,13 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 </div>
                 <p className="mb-6 text-xs leading-6 text-slate-500">{t("settings.providers.description")}</p>
                 <SectionTitle>{t("settings.extensions")}</SectionTitle>
+                <SwitchRow
+                  title="Gemini文风 特化"
+                  description="可选的日轻文学叙事导演：克制意象、潜台词、轻快日常与情绪节奏。仅影响故事模式的正文生成；不修改角色设定、时间线、状态修复或摘要。默认关闭，亦可配合其他模型使用。"
+                  checked={geminiNarrativeStyleEnabled}
+                  onClick={onToggleGeminiNarrativeStyle}
+                  icon={BookOpen}
+                />
                 <SwitchRow title={t("settings.webSearch")} description={t("settings.webSearch.description")} checked={values.webSearch} onClick={() => onToggle("webSearch")} icon={Globe2} />
                 <SwitchRow title={t("settings.imageGen")} description={t("settings.imageGen.description")} checked={values.imageGen} onClick={() => onToggle("imageGen")} icon={ImageIcon} />
                 <div className="mt-4 space-y-3 rounded-2xl border border-[#e0e9df] bg-[#fcfdfb] p-4">
