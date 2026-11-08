@@ -321,7 +321,7 @@ Only JSON belongs between the tags.`;
 [OBJECTIVE]: Write a chapter based on settings.
 ${COLOR_INSTRUCTION}
 [Settings]: Outline: ${typeof nc.outline === "string" ? nc.outline.slice(0, 20000) : ""} | Scenario: ${typeof nc.scenario === "string" ? nc.scenario.slice(0, 1000) : ""} | Action: ${typeof nc.action === "string" ? nc.action.slice(0, 2000) : ""} | Style: ${typeof nc.style === "string" ? nc.style.slice(0, 2000) : ""}
-[CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\d+\s*[-~～至到]\s*\d+|\d+)\s*(?:字|汉字|中文字)/.test(nc.style) ? "Follow the user's explicit word-count instruction in Style; it overrides the default." : "Default: approximately 1000–2000 Chinese characters of narrative prose per chapter. Do not pad mechanically."}
+[CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\d+\s*[-–—~～至到]\s*\d+|\d+)\s*(?:字|汉字|中文字)/.test(nc.style) ? "Follow the user's explicit word-count instruction in Style; it overrides the default." : "Default: approximately 1000–2000 Chinese characters of narrative prose per chapter. Do not pad mechanically."}
 [STORY WORLDLINE — CANON OR AU]
 World: ${novelWorldline.worldName}
 World setting: ${novelWorldline.worldDescription}
