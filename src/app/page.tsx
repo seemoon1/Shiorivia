@@ -649,7 +649,6 @@ export default function Home() {
                 customCharacters={charta.characters}
                 customSelves={selfLibrary.selves}
                 activeNovelSelf={selfLibrary.activeSelf}
-                activeNovelSelfId={selfLibrary.activeId}
                 onOpenCharta={() => { setChartaInitialSection("worlds"); setShowCharta(true); }}
                 stopGeneration={engine.stopGeneration}
                 handleRegenerate={engine.handleRegenerate}
