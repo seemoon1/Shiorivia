@@ -26,13 +26,18 @@ export const MiniPlayer = ({
     const percent = duration > 0 ? (progress / duration) * 100 : 0;
 
     // All main modes share a quiet white surface; only Tela adopts its page palette.
-    const containerStyle = themeMode === 'sage' ? "bg-[#edf3eb]/95 border-[#c3d7c7] text-[#4c6857]"
+    const containerStyle = themeMode === 'sage' ? "bg-[#e1ebdf]/95 border-[#9db6a2] text-[#395845] shadow-[0_3px_12px_rgba(50,86,60,.12)]"
       : themeMode === 'paper' ? "bg-[#f8efd9]/95 border-[#dfd0b0] text-[#725e43]"
       : "bg-white/95 border-slate-200 text-slate-700";
-    const playBtnStyle = themeMode === 'sage' ? "bg-[#d7e6d8] text-[#4b725a] hover:bg-[#c7dccb]"
+    const playBtnStyle = themeMode === 'sage' ? "bg-[#bcd4c0] text-[#2e6041] hover:bg-[#a9c9b0]"
       : themeMode === 'paper' ? "bg-[#eaddc1] text-[#806747] hover:bg-[#ded0b1]"
       : "bg-[#edf2ef] text-[#557a66] hover:bg-[#e1ebe5]";
-    const progressColor = themeMode === 'sage' ? "bg-[#779983]" : themeMode === 'paper' ? "bg-[#c0a06d]" : "bg-[#91ad9c]";
+    const progressColor = themeMode === 'sage' ? "bg-[#608969]" : themeMode === 'paper' ? "bg-[#c0a06d]" : "bg-[#91ad9c]";
+
+    const discStyle = themeMode === "sage"
+      ? "border-[#638a71] bg-[#304a38] ring-[#b7ceb9]"
+      : themeMode === "paper" ? "border-[#b3996d] bg-[#463c2e] ring-[#d6bc8a]"
+      : "border-[#182b3a] bg-[#111e2b] ring-[#c9ae7b]";
 
     return (
         <AnimatePresence mode="wait">
@@ -48,8 +53,8 @@ export const MiniPlayer = ({
 
                     <div className="flex items-center justify-between p-2 px-4 gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={onExpand}>
-                            <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#182b3a] bg-[#111e2b] ring-1 ring-[#c9ae7b]/80 shadow-sm ${isPlaying ? 'animate-spin-slow' : ''}`} style={{ animationDuration: '6s' }}>
-                                {currentTrack.cover ? <><img src={currentTrack.cover} alt="" className="h-full w-full rounded-full object-cover"/><span aria-hidden="true" className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e6d1a5] shadow"/></> : <Disc size={16} className="text-[#d3be93]" />}
+                            <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] ring-1 shadow-sm ${discStyle} ${isPlaying ? 'animate-spin-slow' : ''}`} style={{ animationDuration: '6s' }}>
+                                {currentTrack.cover ? <><img src={currentTrack.cover} alt="" className="h-full w-full rounded-full object-cover"/><span aria-hidden="true" className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e6d1a5] shadow"/></> : <Disc size={16} className={themeMode === "sage" ? "text-[#d1e4d4]" : "text-[#d3be93]"} />}
                             </div>
                             <div className="flex flex-col overflow-hidden">
                                 <div className="text-xs font-bold truncate flex items-center gap-1 opacity-90">
