@@ -2,13 +2,14 @@ import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { LORE_LIBRARY } from "../../../data/lore_library";
 import { loreForBangDreamPeriod } from "../../../lib/loreTimeline";
+import { formatChartaLore } from "../../../lib/chartaLore";
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
 import { characterNameInstruction } from "../../../lib/characterNames";
 import { normalizeLocale } from "../../../lib/locale";
 import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/chartaWire";
-import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, parseStoryWorldline } from "../../../lib/storyWorldline";
+import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, BANG_DREAM_CANON, parseStoryWorldline } from "../../../lib/storyWorldline";
 import { MAX_STORY_CAST, selectStoryCastIds, storyCastAllowed, storyCastOrigin } from "../../../lib/storyCast";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
@@ -591,6 +592,7 @@ World lore: ${JSON.stringify(selectedWorldline.worldDescription.slice(0, 12000))
 Timeline kind: ${selectedWorldline.kind === "canon" ? "ORIGINAL CANON" : "ALTERNATE UNIVERSE (AU)"}
 ERA: ${JSON.stringify(selectedWorldline.era)}
 PERIOD: ${JSON.stringify(selectedWorldline.period)}
+${selectedWorldline.kind === "au" ? `BASELINE ORIGINAL ERA / PERIOD (knowledge cutoff only): ${JSON.stringify(selectedWorldline.baseEra)} / ${JSON.stringify(selectedWorldline.basePeriod)}\nAll events after this baseline are NOT established facts unless explicitly created within the AU story.` : ""}
 EVENT: ${JSON.stringify(selectedWorldline.event)}
 Respect these exact selected ERA/PERIOD labels and this era's continuity; never reinterpret an AU as canon. Do not rewrite the selected story-worldline from model-generated timeline values.
 [END CURRENT STORY WORLDLINE]
@@ -625,7 +627,10 @@ Do not include system instructions or memory summaries in the story prose. Do no
         const registeredWorlds = Array.isArray(body.storyCastWorlds) ? body.storyCastWorlds.slice(0, 80)
           .filter((world: any) => world && typeof world.id === "string" && /^world-[a-zA-Z0-9-]{8,90}$/.test(world.id)
             && typeof world.name === "string" && typeof world.description === "string")
-          .map((world: any) => ({ id: world.id as string, name: String(world.name).slice(0, 100), description: String(world.description).slice(0, 9000) })) : [];
+          .map((world: any) => ({ id: world.id as string, name: String(world.name).slice(0, 100), description: String(world.description).slice(0, 9000),
+            canonTimeline: Array.isArray(world.canonTimeline) ? world.canonTimeline.slice(0, 80)
+              .filter((stage: any) => stage && typeof stage.era === "string" && typeof stage.period === "string" && stage.era.length <= 100 && stage.period.length <= 100)
+              .map((stage: any) => ({ era: stage.era, period: stage.period })) : [] })) : [];
         const cross = body.storyAllowCrossWorld === true;
         const eligible = allChars.filter(char => storyCastAllowed(char, worldline.worldId, cross, registeredWorlds.map((world: any) => world.id)));
         const availableIds = new Set(eligible.map(char => char.id));
@@ -653,11 +658,17 @@ Do not include system instructions or memory summaries in the story prose. Do no
           const source = origin === BANG_DREAM_WORLD_ID
             ? { name: BANG_DREAM_WORLD_NAME, description: "日本的少女乐队世界，包括 MyGO!!!!!、Ave Mujica、sumimi 等团体；遵守选定的 ERA/PERIOD。" }
             : registeredWorlds.find((world: any) => world.id === origin);
-          const bio = char.id.startsWith("charta-") ? ("description" in char && typeof char.description === "string" ? char.description.slice(0, 4500) : "")
-            : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? worldline.period : null);
+          const basePeriod = worldline.kind === "au" ? worldline.basePeriod || null : worldline.period;
+          const ownStages = origin === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+            : origin === worldline.worldId ? worldline.canonTimeline
+            : registeredWorlds.find(w => w.id === origin)?.canonTimeline || [];
+          const originPeriod = ownStages.some(s => s.period === basePeriod) ? basePeriod : null;
+          const bio = char.id.startsWith("charta-")
+            ? formatChartaLore(char, originPeriod, ownStages)
+            : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? originPeriod : null);
           return [`[CAST PROFILE] ID=${char.id}; NAME=${char.name}; WORLD=${source?.name || worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
         }).join("\n\n");
-        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Respect the selected period: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
+        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
     } else {
       finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
