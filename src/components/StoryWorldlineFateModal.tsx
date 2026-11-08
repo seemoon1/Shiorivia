@@ -13,7 +13,7 @@ import {
 const geometric = { fontFamily: 'Bahnschrift, "DIN Alternate", "Arial Narrow", "Yu Gothic", "Noto Sans SC", sans-serif' };
 const inputStyle = "mt-2 w-full rounded-xl border border-[#a8baa9]/50 bg-[#f7faf6] px-4 py-3 text-sm font-medium text-[#233c34] outline-none transition focus:border-[#718a78] focus:ring-2 focus:ring-[#a9c9af]/25";
 
-export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds, onSave, onClose, onOpenCharta, elevated = false }: {
+export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds, onSave, onClose, onOpenCharta, elevated = false, showEvent = true }: {
   isOpen: boolean;
   value?: StoryWorldline;
   legacyTimeline?: { major?: string; medium?: string; minor?: string };
@@ -22,6 +22,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   onClose: () => void;
   onOpenCharta?: () => void;
   elevated?: boolean;
+  showEvent?: boolean;
 }) {
   const [draft, setDraft] = useState<StoryWorldline>(() => value || worldlineFor(null));
   const [error, setError] = useState("");
@@ -55,7 +56,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
     era: !period || prev.canonTimeline.some(stage => stage.era === prev.era && stage.period === period) ? prev.era : "" }));
   const save = () => {
     if (draft.kind === "au" && (!draft.baseEra || !draft.basePeriod)) { setError("AU 必须选择基准 ERA 和 PERIOD。"); return; }
-    const next = parseStoryWorldline(draft);
+    const next = parseStoryWorldline(showEvent ? draft : { ...draft, event: "" });
     if (!next) { setError("世界线尚未成立：请填写对应的 ERA 与 PERIOD。"); return; }
     onSave(next); onClose();
   };
@@ -86,7 +87,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
             <button type="button" onClick={onClose} aria-label="关闭世界线" className="relative rounded-full border border-white/20 p-2 text-[#c7d6cc] transition hover:bg-white/10"><X size={18}/></button>
           </div>
           <div className="relative mt-7 flex items-center gap-3 text-[10px] font-semibold tracking-[.18em] text-[#c6d4c5]" style={geometric}>
-            <CircleDot size={13} className="text-[#e3c992]"/><span>WORLD</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/><span>ERA</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/><span>PERIOD</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/><span>EVENT</span>
+            <CircleDot size={13} className="text-[#e3c992]"/><span>WORLD</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/><span>ERA</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/><span>PERIOD</span><span className="h-px flex-1 bg-gradient-to-r from-[#cfb781]/65 to-[#658777]/20"/>{showEvent && <span>EVENT</span>}
           </div>
         </header>
 
@@ -120,7 +121,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
               {draft.kind==="canon" ? <select value={draft.period} onChange={e=>choosePeriod(e.target.value)} className={inputStyle}><option value="">请选择 PERIOD</option>{periods.map(period=><option key={period} value={period}>{period}</option>)}</select> : <input value={draft.period} maxLength={100} placeholder="另一条时间轴中的时期" onChange={e=>setDraft(p=>({...p,period:e.target.value}))} className={inputStyle}/>}</label>
           </section>
           {draft.kind==="canon" && <button type="button" onClick={()=>setDraft(p=>({...p,era:"",period:""}))} className="flex items-center gap-1 text-[11px] text-[#648370] hover:underline"><RotateCcw size={12}/>重新选择 ERA / PERIOD</button>}
-          <label className="block text-xs font-bold tracking-[.12em]" style={geometric}>05 · EVENT / 命运事件（选填）<textarea value={draft.event} maxLength={500} rows={3} onChange={e=>setDraft(p=>({...p,event:e.target.value}))} placeholder="这一刻会发生什么？也可以交给故事本身。" className={`${inputStyle} resize-y leading-6`}/></label>
+          {showEvent && <label className="block text-xs font-bold tracking-[.12em]" style={geometric}>05 · EVENT / 命运事件（选填）<textarea value={draft.event} maxLength={500} rows={3} onChange={e=>setDraft(p=>({...p,event:e.target.value}))} placeholder="这一刻会发生什么？也可以交给故事本身。" className={`${inputStyle} resize-y leading-6`}/></label>}
           {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">{error}</p>}
         </div>
         <footer className="flex shrink-0 items-center justify-between border-t border-[#dbe3d8] bg-[#f0f4ef] px-5 py-4 sm:px-8"><span className="hidden text-[10px] tracking-[.19em] text-[#879b8b] sm:block" style={geometric}>THE STORY BEGINS WITH A CHOICE.</span><div className="ml-auto flex items-center gap-3"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-xs text-[#6c8174] hover:bg-[#e1e9e1]">取消</button><button type="button" onClick={save} className="flex items-center gap-2 rounded-xl bg-[#284a3d] px-5 py-3 text-xs font-semibold text-[#f5eccc] shadow-lg shadow-[#284a3d]/20 hover:bg-[#193a30]"><Check size={15}/>铭刻世界线</button></div></footer>
