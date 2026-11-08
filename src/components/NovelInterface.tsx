@@ -18,6 +18,7 @@ import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModalV2";
 import { useMusic } from "../context/MusicContext";
 import { smartColorize } from "../lib/textFormatter";
+import { selfName } from "../lib/chartaSelf";
 import { parseDrawTag } from "../lib/parseDraw";
 import { buildDrawRequest } from "../lib/drawRequest";
 import { cleanDrawTag } from "../lib/parseDraw"; 
@@ -78,7 +79,7 @@ const PRESETS = [
     { name: "命运岔路 · 重力", environment: "人生的重大抉择之前", event: "无法两全的选择迫使角色承担后果，避免轻易的圆满结局", style: "沉重、充满张力、因果清晰、保留人物缺点" },
 ];
 
-const NovelContent = ({ content, onOptionClick, onImageOpen, theme }: any) => {
+const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors = {} }: any) => {
     let clean = cleanDrawTag(stripNovelState(content)) 
         .replace(/<meta.*?\/>/g, "")
         .replace(/<audio>.*?<\/audio>/g, "")
@@ -106,7 +107,7 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme }: any) => {
                     );
                 }
 
-                const coloredSegments = smartColorize(part);
+                const coloredSegments = smartColorize(part, selfColors);
 
                 return (
                     <span key={i}>
@@ -168,7 +169,7 @@ export const NovelInterface = ({
     provider, providers = [], onProviderChange,
     selectedModel, customModelId, onModelChange, onCustomModelChange,
     onImportNovelSession,
-    storyWorlds = [], customCharacters = [], customSelves = [], onOpenCharta,
+    storyWorlds = [], customCharacters = [], customSelves = [], activeNovelSelf = null, activeNovelSelfId = null, onOpenCharta,
 }: any) => {
     const { locale } = useLanguage();
     const [leftOpen, setLeftOpen] = useState(true);
@@ -183,8 +184,24 @@ export const NovelInterface = ({
 
     const [directorInput, setDirectorInput] = useState("");
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
-    const [novelSelfId, setNovelSelfId] = useState<string | null>(null);
     const novelWorldline = parseStoryWorldline(currentSession.storyWorldline);
+    const novelRole = currentSession.storyRole === "participant"
+        || (currentSession.storyRole === undefined && Boolean(currentSession.novelDraft?.selfId))
+        ? "participant" : "observer";
+    const novelStarted = currentSession.messages.some((message: any) =>
+        message.role === "user" || (message.role === "assistant" && message.modelName !== "System"
+          && typeof message.content === "string" && Boolean(message.content.trim())));
+    const novelSelf = novelRole === "participant"
+        ? currentSession.storySelfSnapshot
+          || customSelves.find((item: any) => item.id === (currentSession.storySelfId || currentSession.novelDraft?.selfId))
+          || null
+        : null;
+    const novelSelfId = novelRole === "participant" ? novelSelf?.id || null : null;
+    const selfColors: Record<string, string> = novelSelf?.hex && novelSelf?.names
+        ? Object.fromEntries(Object.values(novelSelf.names).map(name => [String(name), novelSelf.hex]))
+        : {};
+    const canParticipate = Boolean(activeNovelSelf && (!activeNovelSelf.worldId
+        || activeNovelSelf.worldId === novelWorldline?.worldId));
     // The same model/provider state powers Engineering, Chat, VIAE and Novel.
     const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
     const [providerModels, setProviderModels] = useState<LocalModelGroup[]>([]);
@@ -210,7 +227,6 @@ export const NovelInterface = ({
         const draft = currentSession?.novelDraft as NovelDraft | undefined;
         setSelectedCharIds(Array.isArray(currentSession?.storyNextCastIds) ? currentSession.storyNextCastIds
             : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : []);
-        setNovelSelfId(typeof draft?.selfId === "string" ? draft.selfId : null);
         setEnvironment(draft?.environment || currentSession?.novelState?.environment || draft?.scenario || "");
         setEvent(draft?.event || currentSession?.novelState?.event || draft?.action || "");
         setManualStateEdit(false);
@@ -404,8 +420,8 @@ export const NovelInterface = ({
             setRightOpen(true);
             return;
         }
-        if (novelSelfId && !customSelves.some((item: any) =>
-            item?.id === novelSelfId && (!item.worldId || item.worldId === novelWorldline.worldId))) {
+        if (novelRole === "participant" && (!novelSelf || (novelSelf.worldId
+            && novelSelf.worldId !== novelWorldline.worldId))) {
             showToast?.("当前自设不属于选定世界观，请重新选择自设主角。");
             return;
         }
@@ -414,7 +430,7 @@ export const NovelInterface = ({
             showToast?.("Environment（环境）和 Event（当前事件）都是必填项。");
             return;
         }
-        const novelConfig = { charNames: targetNames, environment:environment.trim(), event:event.trim(), style, outline, selfId:novelSelfId };
+        const novelConfig = { charNames: targetNames, environment:environment.trim(), event:event.trim(), style, outline, selfId:novelRole === "participant" ? novelSelfId : null };
         saveDraft();
 
         if (type === 'new') {
@@ -453,28 +469,46 @@ export const NovelInterface = ({
 
     const saveDraft = (patch: Partial<NovelDraft> = {}) => {
         updateSessionInfo?.(currentSession.id, {
-            novelDraft: { selectedCharIds, selfId:novelSelfId, environment, event, style, outline, themeMode, ...patch },
+            novelDraft: { selectedCharIds, selfId:novelRole === "participant" ? novelSelfId : null, environment, event, style, outline, themeMode, ...patch },
+            updatedAt: Date.now(),
+        });
+    };
+    const updateNovelRole = (role: "observer" | "participant") => {
+        if (isLoading || novelStarted) return;
+        if (role === "participant" && !canParticipate) {
+            showToast?.("请先在 Charta 创建并启用当前世界观可用的自设。");
+            return;
+        }
+        const self = role === "participant" ? activeNovelSelf : null;
+        updateSessionInfo?.(currentSession.id, {
+            storyRole: role,
+            storySelfId: self?.id || null,
+            storySelfSnapshot: self,
+            novelDraft: {
+                ...(currentSession.novelDraft || {}),
+                selectedCharIds, selfId: self?.id || null, environment, event, style, outline, themeMode,
+            },
             updatedAt: Date.now(),
         });
     };
     const updateWorldline = (next: StoryWorldline) => {
+        const changedWorld = currentSession.storyWorldline?.worldId !== next.worldId;
         updateSessionInfo?.(currentSession.id, {
             storyWorldline: next,
-            ...(currentSession.storyWorldline?.worldId !== next.worldId
-                ? { storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [] } : {}),
+            ...(changedWorld ? {
+                storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [],
+                storyRole: "observer", storySelfId: null, storySelfSnapshot: null,
+                novelDraft: { ...(currentSession.novelDraft || {}), selectedCharIds: [], selfId: null },
+            } : {}),
             updatedAt: Date.now(),
         });
-        if (currentSession.storyWorldline?.worldId !== next.worldId) {
-            setSelectedCharIds([]);
-            setNovelSelfId(null);
-            saveDraft({ selectedCharIds: [], selfId:null });
-        }
+        if (changedWorld) setSelectedCharIds([]);
     };
     const updateCast = (ids: string[], allowCrossWorld: boolean) => {
         setSelectedCharIds(ids);
         updateSessionInfo?.(currentSession.id, {
             storyNextCastIds: ids, storyAllowCrossWorld: allowCrossWorld,
-            novelDraft: { selectedCharIds: ids, selfId:novelSelfId, environment, event, style, outline, themeMode },
+            novelDraft: { selectedCharIds: ids, selfId:novelRole === "participant" ? novelSelfId : null, environment, event, style, outline, themeMode },
             updatedAt: Date.now(),
         });
     };
@@ -581,7 +615,7 @@ export const NovelInterface = ({
                                 <div key={i} id={`chapter-${i}`} className="animate-fade-in-up">
                                     <div className="flex items-center gap-4 mb-8 opacity-30 justify-center"><div className={`h-px ${theme.text} w-12`}></div><span className="font-mono text-xs tracking-widest uppercase">{title}</span><div className={`h-px ${theme.text} w-12`}></div></div>
                                     <div className={`prose ${theme.prose} prose-lg md:prose-xl leading-loose ${theme.text} font-serif whitespace-pre-wrap`}>
-                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} />
+                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} selfColors={selfColors} />
 
                                         {parseDrawTag(msg.content)?.trigger && (
                                             <button type="button" disabled={drawingIndex !== null || isLoading}
@@ -610,7 +644,7 @@ export const NovelInterface = ({
                         <button onClick={() => { if (!confirm("确定要重写本章吗？")) return; const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
 
                         <div className={`flex-1 ${theme.inputBg} backdrop-blur-md border ${theme.border} rounded-2xl flex items-center p-2 shadow-2xl transition-all`}>
-                            <input value={directorInput} onChange={(e) => setDirectorInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleGenerate('continue')} placeholder="导演指令..." className={`flex-1 bg-transparent border-none outline-none text-sm ${theme.title} px-3 font-sans ${theme.placeholder}`} disabled={isLoading} />
+                            <input value={directorInput} onChange={(e) => setDirectorInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !isLoading && novelWorldline && handleGenerate('continue')} placeholder={novelWorldline ? "导演指令..." : "请先在右侧设定世界线..."} className={`flex-1 bg-transparent border-none outline-none text-sm ${theme.title} px-3 font-sans ${theme.placeholder} disabled:cursor-not-allowed disabled:opacity-60`} disabled={isLoading || !novelWorldline} />
 
                             {isLoading ? (
                                 <button
@@ -623,7 +657,8 @@ export const NovelInterface = ({
                             ) : (
                                 <button
                                     onClick={() => handleGenerate('continue')}
-                                    className={`p-2 rounded-xl transition-all shadow-lg ${theme.button}`}
+                                    disabled={!novelWorldline}
+                                    className={`p-2 rounded-xl transition-all shadow-lg ${theme.button} disabled:cursor-not-allowed disabled:opacity-40`}
                                     title="Continue"
                                 >
                                     <ArrowUp size={18} />
@@ -694,17 +729,6 @@ export const NovelInterface = ({
                                         <p className={`text-[10px] ${theme.text} opacity-50`}>{deepText(locale, "novel.current")}：{activeModel || deepText(locale, "novel.manual")} · {deepText(locale, "novel.sync")}</p>
                                     </div>
 
-                                    <NovelArchiveActions
-                                        session={currentSession}
-                                        draft={{ selectedCharIds, selfId:novelSelfId, environment, event, style, outline, themeMode }}
-                                        onImport={onImportNovelSession}
-                                        disabled={isLoading}
-                                        tone={themeMode}
-                                        className={themeMode === "paper"
-                                          ? "rounded-2xl border-2 border-[#c5a97a] bg-[#fffaf0] p-4 text-[#67533a] shadow-[0_6px_22px_rgba(121,89,45,.12)]"
-                                          : "rounded-2xl border-2 border-[#9db7a3] bg-[#fbfdfa] p-4 text-[#405e4a] shadow-[0_6px_22px_rgba(52,92,62,.13)]"}
-                                    />
-
                                     <div>
                                         <button
                                             onClick={onManualSync}
@@ -734,6 +758,17 @@ export const NovelInterface = ({
                                     </div>
                                 </div>
 
+                                <NovelArchiveActions
+                                    session={currentSession}
+                                    draft={{ selectedCharIds, selfId:novelRole === "participant" ? novelSelfId : null, environment, event, style, outline, themeMode }}
+                                    onImport={onImportNovelSession}
+                                    disabled={isLoading}
+                                    tone={themeMode}
+                                    className={themeMode === "paper"
+                                      ? "rounded-2xl border-2 border-[#c5a97a] bg-[#fffaf0] p-4 text-[#67533a] shadow-[0_6px_22px_rgba(121,89,45,.12)]"
+                                      : "rounded-2xl border-2 border-[#9db7a3] bg-[#fbfdfa] p-4 text-[#405e4a] shadow-[0_6px_22px_rgba(52,92,62,.13)]"}
+                                />
+
                                 <section className={`space-y-3 rounded-2xl border ${theme.border} ${theme.inputBg} p-4 shadow-sm`}>
                                     <div className="flex items-center justify-between gap-2">
                                         <span className={`text-xs font-bold ${theme.accent}`}>世界线 · WORLDLINE</span>
@@ -750,25 +785,23 @@ export const NovelInterface = ({
                                 <StoryCastPicker session={currentSession} worlds={storyWorlds}
                                     customCharacters={customCharacters} busy={isLoading}
                                     onApply={updateCast} mode="novel" tone={themeMode} />
-                                <section className={`rounded-2xl border ${theme.border} ${theme.inputBg} p-4 space-y-2`}>
-                                    <label htmlFor="novel-self-select" className={`text-xs font-bold ${theme.accent}`}>自设主角 · 可选</label>
-                                    <select id="novel-self-select" value={novelSelfId || ""}
-                                        onChange={e => {
-                                            const next = e.target.value || null;
-                                            setNovelSelfId(next);
-                                            saveDraft({ selfId:next });
-                                        }}
-                                        disabled={isLoading || !novelWorldline}
-                                        className={`w-full rounded-xl border ${theme.border} ${theme.bg} p-2.5 text-xs ${theme.text} disabled:opacity-50`}>
-                                        <option value="">不使用自设主角 · 普通小说</option>
-                                        {customSelves.filter((item: any) => item && (!item.worldId || item.worldId === novelWorldline?.worldId))
-                                            .map((item: any) => <option key={item.id} value={item.id}>
-                                                {item.names?.[item.primaryLanguage] || Object.values(item.names || {})[0] || item.id}
-                                            </option>)}
-                                        {novelSelfId && !customSelves.some((item: any) => item?.id === novelSelfId && (!item.worldId || item.worldId === novelWorldline?.worldId))
-                                            && <option value={novelSelfId} disabled>自设不属于当前世界观，请重新选择</option>}
-                                    </select>
-                                    <p className={`text-[10px] leading-5 ${theme.text} opacity-65`}>仅注入所选自设的身份与对应时期经历；无自设时不预设主角姓名。</p>
+                                <section className={`rounded-2xl border ${theme.border} ${theme.inputBg} p-4 space-y-3`}>
+                                    <div className={`text-xs font-bold ${theme.accent}`}>故事身份 · STORY ROLE</div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <button type="button" disabled={isLoading || novelStarted}
+                                            aria-pressed={novelRole === "observer"}
+                                            onClick={() => updateNovelRole("observer")}
+                                            className={`rounded-xl border p-2.5 ${novelRole === "observer" ? theme.selectBorder + " " + theme.selectBg : theme.border} disabled:opacity-55`}>旁观模式</button>
+                                        <button type="button" disabled={isLoading || novelStarted || !canParticipate}
+                                            aria-pressed={novelRole === "participant"}
+                                            title={!canParticipate ? "请先在 Charta 创建并启用当前世界观可用的自设" : ""}
+                                            onClick={() => updateNovelRole("participant")}
+                                            className={`rounded-xl border p-2.5 ${novelRole === "participant" ? theme.selectBorder + " " + theme.selectBg : theme.border} disabled:opacity-55`}>参与模式</button>
+                                    </div>
+                                    {novelRole === "participant"
+                                        ? <p className={`text-[11px] leading-5 ${theme.text}`}>使用身份：<span className="font-semibold" style={{ color: novelSelf?.hex || "#799783" }}>{novelSelf ? selfName(novelSelf, locale) : "自设不存在，请检查 Charta"}</span></p>
+                                        : <p className={`text-[11px] leading-5 ${theme.text} opacity-65`}>旁观模式不注入用户自设身份。参与模式使用 Charta 当前启用的自设，不提供主视角选择。</p>}
+                                    {novelStarted && <p className={`text-[10px] ${theme.text} opacity-60`}>小说开始后故事身份保持固定。</p>}
                                 </section>
 
 
