@@ -59,14 +59,97 @@ export function restoreStoryState(session: Session, snapshot: StoryStateSnapshot
   } as Session;
 }
 
-/** A model can return syntactically valid JSON that is not a usable story state.
- * Validate the essential contract BEFORE using it to replace sidebar fields.
+/** Model responses from different gateways can use equivalent, but not identical,
+ * names/shapes. Normalize only well-defined aliases, without inventing missing
+ * required story data or treating every syntactically valid JSON as usable.
+ */
+type StoryObject = Record<string, unknown>;
+const isRecord = (v: unknown): v is StoryObject =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+
+const SUGGESTION_TYPES = ["fun", "rational", "radical"] as const;
+const TIMELINE_TYPES = ["major", "medium", "minor"] as const;
+
+/** Returns a new value; never mutates the untrusted model response. */
+export function normalizeStoryProtocol(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const state: StoryObject = { ...value };
+
+  // Common alternative: [{ tag:"fun", text:"..." }, ...] instead of
+  // { fun:"...", rational:"...", radical:"..." }.
+  if (Array.isArray(state.suggestions)) {
+    const normalized: StoryObject = {};
+    for (const entry of state.suggestions) {
+      if (!isRecord(entry)) continue;
+      const tag = entry.tag ?? entry.type;
+      const text = entry.text ?? entry.description;
+      if (SUGGESTION_TYPES.some(key => key === tag) && typeof text === "string") {
+        normalized[String(tag)] = text;
+      }
+    }
+    state.suggestions = normalized;
+  }
+
+  // Common alternative: [{type:"minor",description:"..."}].
+  // Unknown levels are ignored, and absent levels remain empty strings.
+  if (Array.isArray(state.timeline)) {
+    const normalized: StoryObject = { major:"", medium:"", minor:"" };
+    for (const entry of state.timeline) {
+      if (!isRecord(entry)) continue;
+      const type = entry.type ?? entry.tag;
+      const description = entry.description ?? entry.text;
+      if (TIMELINE_TYPES.some(key => key === type) && typeof description === "string") {
+        normalized[String(type)] = description;
+      }
+    }
+    state.timeline = normalized;
+  }
+
+  // The model may use charId/characterName rather than id/name, and
+  // favorability rather than affection. Do not guess how "trust" maps to
+  // another score; retain it as additional text/state data.
+  if (Array.isArray(state.character)) {
+    state.character = state.character.map(value => {
+      if (!isRecord(value)) return value;
+      const entry: StoryObject = { ...value };
+      if (typeof entry.id !== "string" && typeof entry.charId === "string") entry.id = entry.charId;
+      if (typeof entry.name !== "string" && typeof entry.characterName === "string") entry.name = entry.characterName;
+      if (typeof entry.innerState !== "string" && typeof entry.innerPsychology === "string") {
+        entry.innerState = entry.innerPsychology;
+      }
+      if (typeof entry.bodyState !== "string" && typeof entry.status === "string") {
+        entry.bodyState = entry.status;
+      }
+      if (typeof entry.affection !== "number" && typeof entry.favorability === "number"
+          && Number.isFinite(entry.favorability)) {
+        entry.affection = entry.favorability;
+      }
+      return entry;
+    });
+  }
+  return state;
+}
+
+/** Strict structural errors, primarily for useful diagnostics after a repair. */
+export function storyProtocolIssues(value: unknown): string[] {
+  if (!isRecord(value)) return ["game_state 必须为 JSON 对象"];
+  const issues: string[] = [];
+  if (!("protagonist" in value)) issues.push("缺少 protagonist");
+  if (!Array.isArray(value.character)) issues.push("character 必须为数组");
+  if (!Array.isArray(value.sceneCastIds)) issues.push("sceneCastIds 必须为数组");
+  if (!isRecord(value.suggestions)) {
+    issues.push("suggestions 必须为包含 fun / rational / radical 的对象");
+  } else {
+    for (const key of SUGGESTION_TYPES) {
+      if (typeof value.suggestions[key] !== "string") issues.push("suggestions." + key + " 必须为字符串");
+    }
+  }
+  return issues;
+}
+
+/** Validate AFTER normalizeStoryProtocol. Keep this narrow to avoid turning
+ * harmless missing optional details into extra costly model repair calls.
  */
 export function isUsableStoryProtocol(value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const state = value as Record<string, unknown>;
-  if (!("protagonist" in state) || !Array.isArray(state.character) || !Array.isArray(state.sceneCastIds)) return false;
-  if (!state.suggestions || typeof state.suggestions !== "object" || Array.isArray(state.suggestions)) return false;
-  const suggestions = state.suggestions as Record<string, unknown>;
-  return ["fun", "rational", "radical"].every(key => typeof suggestions[key] === "string");
+  return storyProtocolIssues(value).length === 0;
 }
