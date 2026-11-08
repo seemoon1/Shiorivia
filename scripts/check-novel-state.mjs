@@ -34,11 +34,11 @@ assert.ok(novel.includes('Environment · 环境 *') && novel.includes('Event · 
 assert.ok(!novel.includes('>Scenario</label>') && !novel.includes('>Action / Play</label>'));
 assert.ok(novel.includes('readOnly={inputsLocked}') && novel.includes('window.confirm('));
 assert.ok(novel.includes('if (!environment.trim() || !event.trim())'));
-assert.ok(api.includes('[NOVEL STATE — REQUIRED]'));
+assert.ok(api.includes('**NOVEL STATE — REQUIRED**'));
 assert.ok(api.includes('novelStateRepair === true'));
 assert.ok(!api.includes('Worldline event:'));
 assert.ok(hook.includes('extractNovelState(fullText)') && hook.includes('stripNovelState(currentText)'));
-assert.ok(hook.includes('novelDraft: {') && hook.includes('nextSceneCastIds: novelState.nextSceneCastIds'));
+assert.ok(hook.includes('novelDraft: {') && hook.includes('storyNextCastIds: novelState.nextSceneCastIds'));
 assert.ok(picker.includes('AI 会预测下一章登场角色'));
 assert.ok(archive.includes('["environment", "event"]') && archive.includes('["scenario", "action"]'));
 assert.ok(docx.includes('novel_state'));
