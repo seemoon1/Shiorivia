@@ -345,8 +345,11 @@ ${COLOR_INSTRUCTION}
       const responseIds: string[] = observing ? members : isDirect ? members : members.filter(id => id !== ownerId);
       const cast = members.map((id: string) => {
         const char = allChars.find((c: any) => c.id === id);
-        const lore = LORE_LIBRARY[id] ? loreForBangDreamPeriod(LORE_LIBRARY[id], group.reality === "au" ? null : String(group.timeline || "5-6")) : "";
-        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore || customCast.find(c => c.id === id)?.description || ""}`;
+        const custom = customCast.find(c => c.id === id);
+        const lore = LORE_LIBRARY[id]
+          ? loreForBangDreamPeriod(LORE_LIBRARY[id], group.reality === "au" ? null : String(group.timeline || "5-6"))
+          : custom ? formatChartaLore(custom, null, [], true) : "";
+        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore || ""}`;
       }).join("\n\n");
       const directorTag = "[SCENE_DIRECTION / 场外剧情提示 — NOT SPOKEN IN CHAT]";
       finalSystemPrompt = [
@@ -382,8 +385,10 @@ ${COLOR_INSTRUCTION}
       const activeChar = allChars.find((c: any) => c.id === characterId) || allChars[0];
       const charName = activeChar?.name || "聊天伙伴";
       const charLore = LORE_LIBRARY[activeChar?.id]
-        ? loreForBangDreamPeriod(LORE_LIBRARY[activeChar.id], "T-9-10") // Chat mode has no worldline picker: latest available continuity.
-        : String(activeChar?.lore || "");
+        ? loreForBangDreamPeriod(LORE_LIBRARY[activeChar.id], "T-9-10") // Chat mode has no worldline picker.
+        : activeChar?.id?.startsWith("charta-")
+          ? formatChartaLore(activeChar, null, [], true)
+          : String(activeChar?.lore || "");
       finalSystemPrompt = [
         `[IDENTITY / 角色身份] 你正在扮演 ${charName}（${activeChar?.sub || "Shiorivia"}）。这是用户与角色的一对一聊天，不是通用 AI 客服。`,
         "始终以当前角色的身份和第一人称自然说话。保持角色的性格、语气、人际关系与已知经历；可以帮助用户讨论现实问题，但不要突然切换成工程师或旁白。",
