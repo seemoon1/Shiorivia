@@ -623,13 +623,6 @@ export const NovelInterface = ({
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
                                 <MemoryPreviewButton stm={currentSession.stm} ltm={currentSession.ltm} onOpen={() => setShowMemoryVault(true)} tone={themeMode === "sage" ? "novel-sage" : "novel-paper"} />
-                                <NovelArchiveActions
-                                    session={currentSession}
-                                    draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
-                                    onImport={onImportNovelSession}
-                                    disabled={isLoading}
-                                    className={`rounded-xl border ${theme.border} p-3`}
-                                />
 
                                 <div>
                                     <label className={`text-xs ${theme.accent} font-bold mb-2 block flex items-center gap-2`}><FileText size={14} /> GLOBAL SETTING · {deepText(locale, "novel.outline")}</label>
@@ -662,6 +655,16 @@ export const NovelInterface = ({
                                         <p className={`text-[10px] ${theme.text} opacity-50`}>{deepText(locale, "novel.current")}：{activeModel || deepText(locale, "novel.manual")} · {deepText(locale, "novel.sync")}</p>
                                     </div>
 
+                                    <NovelArchiveActions
+                                        session={currentSession}
+                                        draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
+                                        onImport={onImportNovelSession}
+                                        disabled={isLoading}
+                                        className={themeMode === "paper"
+                                          ? "rounded-2xl border-2 border-[#c5a97a] bg-[#fffaf0] p-4 text-[#67533a] shadow-[0_6px_22px_rgba(121,89,45,.12)]"
+                                          : "rounded-2xl border-2 border-[#9db7a3] bg-[#fbfdfa] p-4 text-[#405e4a] shadow-[0_6px_22px_rgba(52,92,62,.13)]"}
+                                    />
+
                                     <div>
                                         <button
                                             onClick={onManualSync}
@@ -691,48 +694,29 @@ export const NovelInterface = ({
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className={`text-xs ${theme.accent} font-bold mb-3 block uppercase tracking-wider`}>{localText(locale, "novel.cast")}</label>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {chars.map((c: any) => {
-                                            const isSelected = selectedCharIds.includes(c.id);
-                                            return (
-                                                <button
-                                                    key={c.id}
-                                                    onClick={() => toggleChar(c.id)}
-                                                    className={`aspect-square rounded-xl flex items-center justify-center text-2xl transition-all border-2 relative overflow-hidden ${isSelected
-                                                        ? `${theme.selectBorder} ${theme.selectBg} shadow-sm`
-                                                        : `${theme.border} ${theme.hover} opacity-60 hover:opacity-100`
-                                                        }`}
-                                                    title={characterDisplayName(c.id, c.name, locale)}
-                                                >
-                                                    {c.avatar}
-                                                    {isSelected && (
-                                                        <div className={`absolute top-1 right-1 w-2 h-2 rounded-full shadow ${theme.selectDot}`}></div>
-                                                    )}
-                                                </button>
-                                            )
-                                        })}
+                                <section className={`space-y-3 rounded-2xl border ${theme.border} ${theme.inputBg} p-4 shadow-sm`}>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`text-xs font-bold ${theme.accent}`}>世界线 · WORLDLINE</span>
+                                        <span className={`text-[10px] ${theme.text} opacity-60`}>小说背景</span>
                                     </div>
-                                </div>
+                                    <p className={`text-[11px] leading-5 ${theme.text}`}>
+                                        {novelWorldline ? describeStoryWorldline(novelWorldline) : "尚未设定 · 请先选择世界观与时期"}
+                                    </p>
+                                    <button type="button" onClick={() => setWorldlineOpen(true)} disabled={isLoading}
+                                        className={`w-full rounded-xl border ${theme.border} px-3 py-2 text-xs font-semibold transition ${theme.hover} disabled:opacity-50`}>
+                                        {novelWorldline ? "编辑世界线" : "创建世界线"}
+                                    </button>
+                                </section>
+                                <StoryCastPicker session={currentSession} worlds={storyWorlds}
+                                    customCharacters={customCharacters} busy={isLoading}
+                                    onApply={updateCast} mode="novel" />
 
-                                <div><label className={`text-xs ${theme.text} opacity-50 font-bold mb-2 block uppercase`}>Quick Presets</label><div className="flex flex-wrap gap-2">{PRESETS.map((p, i) => (<button key={i} onClick={() => { setScenario(p.scenario); setAction(p.action); setStyle(p.style); }} className={`px-3 py-1.5 rounded-lg ${theme.inputBg} border ${theme.border} text-[10px] ${theme.text} hover:border-purple-500/50 transition-all`}>{p.name}</button>))}</div></div>
+                                <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-2 block uppercase`}>Quick Presets · 六种剧情方向</label><div className="grid grid-cols-2 gap-2">{PRESETS.map((p, i) => (<button key={i} type="button" onClick={() => { setScenario(p.scenario); setAction(p.action); setStyle(p.style); saveDraft({ scenario:p.scenario, action:p.action, style:p.style }); }} className={`px-3 py-2.5 rounded-xl text-left ${theme.inputBg} border ${theme.border} text-[11px] ${theme.text} hover:shadow-sm transition-all`}>{p.name}</button>))}</div></div>
 
                                 <div className="space-y-4">
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Scenario</label><input value={scenario} onChange={e => setScenario(e.target.value)} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Action / Play</label><textarea value={action} onChange={e => setAction(e.target.value)} className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-none`} /></div>
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => setUseMusicControl(!useMusicControl)}
-                                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${useMusicControl ? 'bg-rose-900/20 border-rose-500/50 text-rose-400' : 'bg-black/20 border-white/5 text-gray-600'}`}
-                                    >
-                                        <Disc size={14} />
-                                        <span className="text-[10px] font-bold">Auto DJ</span>
-                                        <span className="text-xs">{useMusicControl ? "ON" : "OFF"}</span>
-                                    </button>
                                 </div>
 
                                 <button onClick={() => handleGenerate('new')} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 生成新梦境 (New)</button>
@@ -741,6 +725,13 @@ export const NovelInterface = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+            <StoryWorldlineFateModal isOpen={worldlineOpen}
+                value={novelWorldline || undefined}
+                worlds={storyWorlds}
+                onSave={updateWorldline}
+                onClose={() => setWorldlineOpen(false)}
+                onOpenCharta={onOpenCharta}
+            />
             {/* Mobile Overlay Mask */}
             {(leftOpen || rightOpen) && isMobile && (
                 <motion.div
