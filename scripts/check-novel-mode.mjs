@@ -25,9 +25,9 @@ assert.ok(novel.indexOf("<NovelArchiveActions") > novel.indexOf("AI Architect ·
 assert.ok(novel.indexOf("世界线 · WORLDLINE") < novel.indexOf("<StoryCastPicker"));
 assert.ok(novel.includes("onBlur={() => saveDraft()}"));
 assert.match(archive, /tone\?: "paper" \| "sage"/);
-assert.match(archive, /border-2/); // optional visual affordances must not make contents unreadable
+assert.match(archive, /actionStyle/); // themed import/export contrast
 assert.match(player, /discStyle/);
-assert.match(cast, /mode \?:/); // verified below by literal check
+
 assert.ok(cast.includes('mode?: "story" | "novel"'));
 assert.ok(page.includes("storyWorlds={worldLibrary.worlds}"));
 assert.ok(page.includes("customSelves={selfLibrary.selves}"));
