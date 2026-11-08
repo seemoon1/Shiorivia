@@ -84,7 +84,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
       {world && mode === "novel" && <p className="mt-1 text-[10px] text-[#927b57]">小说按选定阵容注入档案，可随章节调整；不会自动预测下一章角色</p>}
     </section>
     {typeof document !== "undefined" && createPortal(<AnimatePresence>
-      {open && world && <motion.div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#152a20]/35 p-4"
+      {open && world && <motion.div className={`fixed inset-0 ${mode === "novel" ? "z-[800]" : "z-[200]"} flex items-center justify-center bg-[#152a20]/35 p-4`}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }}>
           <motion.div initial={{ y: 10, scale: .98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: .98 }}
             role="dialog" aria-modal="true" aria-label="下一轮登场角色"
