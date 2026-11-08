@@ -42,6 +42,8 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   const stages = draft.canonTimeline || [];
   const eras = [...new Set(stages.filter(s => !draft.period || s.period === draft.period).map(s => s.era))];
   const periods = [...new Set(stages.filter(s => !draft.era || s.era === draft.era).map(s => s.period))];
+  const baseEras = [...new Set(stages.map(s => s.era))];
+  const basePeriods = stages.filter(s => !draft.baseEra || s.era === draft.baseEra);
   const chooseWorld = (id: string) => {
     const world = worlds.find(item => item.id === id) || null;
     setDraft(worldlineFor(world)); setError("");
@@ -97,10 +99,18 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
           <section className="space-y-3">
             <h3 className="text-xs font-bold tracking-[.14em]" style={geometric}><Compass size={15} className="mr-2 inline text-[#9d8859]"/>02 · DESTINY / 时间线分歧</h3>
             <div className="grid grid-cols-2 gap-3">
-              {([{id:"canon",title:"ORIGINAL / 原作",hint:"遵循既定时间轴"},{id:"au",title:"ALTERNATE / AU",hint:"书写另一种可能"}] as const).map(mode=><button key={mode.id} type="button" disabled={mode.id==="canon"&&!stages.length} onClick={()=>setDraft(p=>({...p,kind:mode.id,era:"",period:""}))} className={`relative rounded-xl border px-4 py-4 text-left transition disabled:opacity-35 ${draft.kind===mode.id ? "border-[#ab925e] bg-[#f1ede3] shadow-[inset_0_0_0_1px_#d8c79d]" : "border-[#d6dfd5] bg-white hover:border-[#b1c6b4]"}`}><span className="block text-xs font-bold tracking-wider" style={geometric}>{mode.title}</span><span className="mt-1 block text-[10px] text-[#7e9284]">{mode.hint}</span>{draft.kind===mode.id && <CircleDot size={13} className="absolute right-3 top-3 text-[#ae9364]"/>}</button>)}
+              {([{id:"canon",title:"ORIGINAL / 原作",hint:"遵循既定时间轴"},{id:"au",title:"ALTERNATE / AU",hint:"书写另一种可能"}] as const).map(mode=><button key={mode.id} type="button" disabled={mode.id==="canon"&&!stages.length} disabled={mode.id==="au"&&!stages.length || mode.id==="canon"&&!stages.length} onClick={()=>setDraft(p=>({...p,kind:mode.id,era:"",period:"",baseEra:undefined,basePeriod:undefined}))} className={`relative rounded-xl border px-4 py-4 text-left transition disabled:opacity-35 ${draft.kind===mode.id ? "border-[#ab925e] bg-[#f1ede3] shadow-[inset_0_0_0_1px_#d8c79d]" : "border-[#d6dfd5] bg-white hover:border-[#b1c6b4]"}`}><span className="block text-xs font-bold tracking-wider" style={geometric}>{mode.title}</span><span className="mt-1 block text-[10px] text-[#7e9284]">{mode.hint}</span>{draft.kind===mode.id && <CircleDot size={13} className="absolute right-3 top-3 text-[#ae9364]"/>}</button>)}
             </div>
-            {!stages.length && <p className="text-[11px] text-[#a17855]">该世界未定义原作时间线，可前往 Charta 添加，或选择 AU。</p>}
+            {!stages.length && <p className="text-[11px] text-[#a17855]">这个世界尚未定义时间线，请先去 Charta 创建。AU 也需要原作基准时间线。</p>}
           </section>
+          {draft.kind === "au" && <section className="space-y-3 rounded-2xl border border-[#bed2bf] bg-[#eef5ed] p-4">
+            <h3 className="text-xs font-bold tracking-[.12em] text-[#456b57]" style={geometric}>AU ONLY · 基准时间线 *</h3>
+            <p className="text-[11px] leading-6 text-[#718c7a]">决定人物从原作继承至哪个时期。AU 自己的 ERA / PERIOD 与此独立，不会提前注入后期经历。</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold">基准 ERA *<select className={inputStyle} value={draft.baseEra || ""} onChange={e=>setDraft(p=>({...p,baseEra:e.target.value,basePeriod:""}))}><option value="">请选择基准 ERA</option>{baseEras.map(era=><option key={era} value={era}>{era}</option>)}</select></label>
+              <label className="text-xs font-semibold">基准 PERIOD *<select className={inputStyle} value={draft.basePeriod || ""} onChange={e=>setDraft(p=>({...p,basePeriod:e.target.value,baseEra:p.canonTimeline.find(stage=>stage.period===e.target.value)?.era || p.baseEra}))}><option value="">请选择基准 PERIOD</option>{basePeriods.map(stage=><option key={stage.period} value={stage.period}>{stage.period}</option>)}</select></label>
+            </div>
+          </section>}
           <section className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-bold tracking-[.12em]" style={geometric}>03 · ERA / 时代 *
               {draft.kind==="canon" ? <select value={draft.era} onChange={e=>chooseEra(e.target.value)} className={inputStyle}><option value="">请选择 ERA</option>{eras.map(era=><option key={era} value={era}>{era}</option>)}</select> : <input value={draft.era} maxLength={100} placeholder="另一条时间轴中的时代" onChange={e=>setDraft(p=>({...p,era:e.target.value}))} className={inputStyle}/>}</label>
