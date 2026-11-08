@@ -436,7 +436,8 @@ export const NovelInterface = ({
         });
         if (currentSession.storyWorldline?.worldId !== next.worldId) {
             setSelectedCharIds([]);
-            saveDraft({ selectedCharIds: [] });
+            setNovelSelfId(null);
+            saveDraft({ selectedCharIds: [], selfId:null });
         }
     };
     const updateCast = (ids: string[], allowCrossWorld: boolean) => {
@@ -716,6 +717,9 @@ export const NovelInterface = ({
                                         {novelWorldline ? "编辑世界线" : "创建世界线"}
                                     </button>
                                 </section>
+                                <StoryCastPicker session={currentSession} worlds={storyWorlds}
+                                    customCharacters={customCharacters} busy={isLoading}
+                                    onApply={updateCast} mode="novel" tone={themeMode} />
                                 <section className={`rounded-2xl border ${theme.border} ${theme.inputBg} p-4 space-y-2`}>
                                     <label htmlFor="novel-self-select" className={`text-xs font-bold ${theme.accent}`}>自设主角 · 可选</label>
                                     <select id="novel-self-select" value={novelSelfId || ""}
@@ -736,9 +740,7 @@ export const NovelInterface = ({
                                     </select>
                                     <p className={`text-[10px] leading-5 ${theme.text} opacity-65`}>仅注入所选自设的身份与对应时期经历；无自设时不预设主角姓名。</p>
                                 </section>
-                                <StoryCastPicker session={currentSession} worlds={storyWorlds}
-                                    customCharacters={customCharacters} busy={isLoading}
-                                    onApply={updateCast} mode="novel" />
+
 
                                 <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-2 block uppercase`}>Quick Presets · 六种剧情方向</label><div className="grid grid-cols-2 gap-2">{PRESETS.map((p, i) => (<button key={i} type="button" onClick={() => { setScenario(p.scenario); setAction(p.action); setStyle(p.style); saveDraft({ scenario:p.scenario, action:p.action, style:p.style }); }} className={`px-3 py-2.5 rounded-xl text-left ${theme.inputBg} border ${theme.border} text-[11px] ${theme.text} hover:shadow-sm transition-all`}>{p.name}</button>))}</div></div>
 
