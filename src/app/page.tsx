@@ -102,6 +102,7 @@ export default function Home() {
         terminalRequestLog: false,
         terminalLog: false,
         engineeringTransition: false,
+        geminiNarrativeStyle: false,
         storyTheme: "sky" as StoryTheme,
         imageSettings: DEFAULT_IMAGE_SETTINGS,
         selectedModel: "google/gemini-3-flash-preview",
@@ -141,6 +142,7 @@ export default function Home() {
                     terminalRequestLog: saved.terminalRequestLog === true,
                     terminalLog: saved.terminalLog === true,
                     engineeringTransition: typeof saved.engineeringTransition === "boolean" ? saved.engineeringTransition : false,
+                    geminiNarrativeStyle: saved.geminiNarrativeStyle === true,
                     storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
                 }));
             }
@@ -154,12 +156,12 @@ export default function Home() {
     useEffect(() => {
         if (!settingsHydrated) return;
         try {
-            const { webSearch, imageGen, tts, musicControl, terminalRequestLog, terminalLog, engineeringTransition, storyTheme, imageSettings } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalRequestLog, terminalLog, engineeringTransition, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
+            const { webSearch, imageGen, tts, musicControl, terminalRequestLog, terminalLog, engineeringTransition, geminiNarrativeStyle, storyTheme, imageSettings } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalRequestLog, terminalLog, engineeringTransition, geminiNarrativeStyle, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalRequestLog, config.terminalLog, config.engineeringTransition, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalRequestLog, config.terminalLog, config.engineeringTransition, config.geminiNarrativeStyle, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
 
     const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders.filter(p => !p.custom || capabilityFor(p.id, providerCapabilities).llm), disabledProviders), [allProviders, disabledProviders, providerCapabilities]);
     useEffect(() => { fetch('/api/check_env').then(r => r.json()).then(d => setFalConfigured(Boolean(d.hasFal))).catch(() => {}); }, []);
@@ -527,6 +529,8 @@ export default function Home() {
                     terminalLogEnabled={config.terminalLog}
                     onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
+                    geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
+                    onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                     onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                     onTestEffect={ui.setEffect}
                     isStory={false}
@@ -585,6 +589,8 @@ export default function Home() {
                     terminalLogEnabled={config.terminalLog}
                     onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
+                    geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
+                    onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                     onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                     onTestEffect={ui.setEffect}
                     isStory={false}
@@ -677,6 +683,8 @@ export default function Home() {
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}
+                    geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
+                    onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                 onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                 onTestEffect={ui.setEffect}
                 isStory={false}
@@ -982,6 +990,8 @@ export default function Home() {
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}
+                    geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
+                    onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                 onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
                 onTestEffect={ui.setEffect}
                 isStory={currentSession?.memoryMode === 'sliding'}
