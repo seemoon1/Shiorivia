@@ -211,8 +211,8 @@ export const NovelInterface = ({
         setSelectedCharIds(Array.isArray(currentSession?.storyNextCastIds) ? currentSession.storyNextCastIds
             : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : []);
         setNovelSelfId(typeof draft?.selfId === "string" ? draft.selfId : null);
-        setEnvironment(currentSession?.novelState?.environment || draft?.environment || draft?.scenario || "");
-        setEvent(currentSession?.novelState?.event || draft?.event || draft?.action || "");
+        setEnvironment(draft?.environment || currentSession?.novelState?.environment || draft?.scenario || "");
+        setEvent(draft?.event || currentSession?.novelState?.event || draft?.action || "");
         setManualStateEdit(false);
         setStyle(draft?.style || "温馨、细腻、富有生活感");
         setOutline(currentSession?.localWorldInfo || draft?.outline || "");
@@ -221,6 +221,9 @@ export const NovelInterface = ({
     // AI state updates arrive after every chapter; reflect them in the editor.
     useEffect(() => {
         if (!currentSession?.novelState) return;
+        // A saved, confirmed manual override may differ from the last AI output.
+        // Do not erase that pending override when re-opening a novel archive.
+        if (currentSession.novelDraft?.environment && currentSession.novelDraft.environment !== currentSession.novelState.environment) return;
         setEnvironment(currentSession.novelState.environment);
         setEvent(currentSession.novelState.event);
         setSelectedCharIds(Array.isArray(currentSession.storyNextCastIds)
@@ -736,7 +739,7 @@ export const NovelInterface = ({
                                         <span className={`text-[10px] ${theme.text} opacity-60`}>小说背景</span>
                                     </div>
                                     <p className={`text-[11px] leading-5 ${theme.text}`}>
-                                        {novelWorldline ? describeStoryWorldline(novelWorldline) : "尚未设定 · 请先选择世界观与时期"}
+                                        {novelWorldline ? describeStoryWorldline({ ...novelWorldline, event:"" }) : "尚未设定 · 请先选择世界观与时期"}
                                     </p>
                                     <button type="button" onClick={() => setWorldlineOpen(true)} disabled={isLoading}
                                         className={`w-full rounded-xl border ${theme.border} px-3 py-2 text-xs font-semibold transition ${theme.hover} disabled:opacity-50`}>
