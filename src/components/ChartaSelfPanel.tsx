@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, Plus, Save, Trash2 } from "lucide-react";
+import { Check, Download, Plus, Save, Trash2 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { type ChartaGender } from "../lib/charta";
 import { newChartaSelf, parseChartaSelf, selfGenderLabel, selfName, SELF_LANGUAGES, type ChartaSelf } from "../lib/chartaSelf";
+import { encodeChartaSelfExport, saveChartaJsonFile } from "../lib/chartaJson";
 import { type ChartaCharacter } from "../lib/charta";
 import { type ChartaWorld } from "../lib/chartaWorld";
 import { ChartaLoreEditor } from "./ChartaLoreEditor";
@@ -68,6 +69,14 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
       if (await saveSelf(parsed)) { setDraft(parsed); setDirty(false); setMessage("已保存自设资料"); onSaved?.(parsed.id); }
     } catch (e) { setMessage(e instanceof Error ? e.message : "保存失败"); }
     finally { setBusy(false); }
+  };
+  const exportSelf = () => {
+    if (!draft) return;
+    try {
+      const parsed = parseChartaSelf(draft);
+      saveChartaJsonFile(`charta-self-${parsed.id}.json`, encodeChartaSelfExport(parsed));
+      setMessage("自设 JSON 已导出");
+    } catch (e) { setMessage(e instanceof Error ? e.message : "自设导出失败"); }
   };
   const remove = async () => {
     if (!draft || busy || !selves.some(s => s.id === draft.id)) return;
@@ -135,7 +144,7 @@ export function ChartaSelfPanel({ selves, activeId, loaded, error, saveSelf, rem
           stages={timelineFor(draft.worldId)}
           worldId={draft.worldId} currentId={draft.id} selfId={draft.id}
           selves={selves} characters={characters}/>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={busy || !selves.some(s => s.id === draft.id)} onClick={remove} className="flex items-center gap-2 text-xs text-[#bd7777] disabled:opacity-30"><Trash2 size={14}/>删除</button><div className="flex gap-2"><button type="button" disabled={busy || dirty || !selves.some(s => s.id === draft.id)} onClick={async () => {setBusy(true); if(await selectSelf(draft.id)) setMessage("现在使用这个自设啦");setBusy(false);}} className="rounded-xl border border-[#9fbaa3] px-4 py-2 text-xs text-[#41694d] disabled:opacity-40">{activeId===draft.id ? "正在使用 ✓" : "设为当前使用"}</button><button type="button" disabled={busy} onClick={save} className="flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-2 text-xs text-white disabled:opacity-40"><Save size={14}/>保存自设</button></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0e9] pt-5"><button type="button" disabled={busy || !selves.some(s => s.id === draft.id)} onClick={remove} className="flex items-center gap-2 text-xs text-[#bd7777] disabled:opacity-30"><Trash2 size={14}/>删除</button><div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={exportSelf} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdacc] px-4 py-2 text-xs text-[#456b57]"><Download size={14}/>导出 JSON</button><button type="button" disabled={busy || dirty || !selves.some(s => s.id === draft.id)} onClick={async () => {setBusy(true); if(await selectSelf(draft.id)) setMessage("现在使用这个自设啦");setBusy(false);}} className="rounded-xl border border-[#9fbaa3] px-4 py-2 text-xs text-[#41694d] disabled:opacity-40">{activeId===draft.id ? "正在使用 ✓" : "设为当前使用"}</button><button type="button" disabled={busy} onClick={save} className="flex items-center gap-2 rounded-xl bg-[#456b57] px-4 py-2 text-xs text-white disabled:opacity-40"><Save size={14}/>保存自设</button></div></div>
       </div>}
       {(message || error) && <p role="status" className="mt-4 text-xs text-[#9a6e54]">{message || error}</p>}
     </section>
