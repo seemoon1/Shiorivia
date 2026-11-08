@@ -265,6 +265,14 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
           </> : <span className="text-xs text-[#7b8e80]">CHARTA EDITOR</span>}
         </div>
       </header>
+      {cabinetHome && (
+        <section aria-label="Charta 档案创建与导入建议" className="mx-auto mt-6 max-w-3xl rounded-2xl border border-[#dce7dd] bg-[#f0f6ef] px-4 py-4 sm:px-5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#446c53]"><FilePlus2 size={17} />开始之前的小建议</h2>
+          <p className="mt-2 text-xs leading-6 text-[#607d69]">建议先创建<strong className="mx-1 text-[#436b50]">世界观和对应时间线</strong>，再创建自设或角色，这样人物关系、经历就能直接关联正确的时期。</p>
+          <p className="mt-1 text-xs leading-6 text-[#607d69]">从 JSON 恢复档案时，也建议<strong className="mx-1 text-[#436b50]">先导入世界观</strong>，再导入自设或角色，避免找不到原本绑定的世界观。</p>
+          <p className="mt-2 text-[11px] text-[#879b88]">这是推荐顺序，不限制自由创建；没有现成世界观，也可以先整理角色构思。</p>
+        </section>
+      )}
       <div className={cabinetHome ? "mt-6 mx-auto max-w-3xl" : "mt-6 grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]"}>
         <ChartaArchiveList characters={characters} selves={selfLibrary.selves} worlds={worldLibrary.worlds}
           activeSelfId={selfLibrary.activeId} selection={cabinetSelection} locale={locale}
