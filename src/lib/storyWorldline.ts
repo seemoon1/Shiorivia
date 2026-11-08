@@ -23,6 +23,9 @@ export type StoryWorldline = {
   worldDescription: string;
   canonTimeline: ChartaTimelineStage[];
   kind: "canon" | "au";
+  /** AU-only required reference into the selected world\x27s canonical stages. */
+  baseEra?: string;
+  basePeriod?: string;
   era: string;
   period: string;
   event: string;
@@ -57,10 +60,26 @@ export function parseStoryWorldline(input: unknown): StoryWorldline | null {
     stages.push({ era: stage.era.trim(), period: stage.period.trim() });
   }
   if (kind === "canon" && !stages.some(stage => stage.era === era && stage.period === period)) return null;
-  return { worldId: value.worldId, worldName, worldDescription, canonTimeline: stages, kind, era, period, event };
+  // For AU, the story's creative ERA/PERIOD remains free-form, while the
+  // baseline MUST reference an actual canonical period of this world.
+  // Legacy AU saves without a baseline remain readable if their old period
+  // happens to match a canonical period; otherwise they require reselection.
+  const baseEra = text("baseEra");
+  const basePeriod = text("basePeriod");
+  const legacyBase = stages.find(stage => stage.period === period);
+  const reference = kind === "au"
+    ? stages.find(stage => stage.period === (basePeriod || legacyBase?.period)
+        && stage.era === (baseEra || legacyBase?.era))
+    : undefined;
+  if (kind === "au" && !reference) return null;
+  return {
+    worldId: value.worldId, worldName, worldDescription, canonTimeline: stages,
+    kind, era, period, event,
+    ...(kind === "au" ? { baseEra: reference!.era, basePeriod: reference!.period } : {}),
+  };
 }
 
 /** An existing legacy timeline is never silently discarded or rewritten. */
 export function describeStoryWorldline(value: StoryWorldline): string {
-  return `${value.worldName} · ${value.kind === "canon" ? "原作" : "AU"} · ${value.era} / ${value.period}${value.event ? ` · ${value.event}` : ""}`;
+  return `${value.worldName} · ${value.kind === "canon" ? "原作" : "AU"} · ${value.era} / ${value.period}${value.kind === "au" && value.basePeriod ? ` · 基准：${value.baseEra || ""} / ${value.basePeriod}` : ""}${value.event ? ` · ${value.event}` : ""}`;
 }
