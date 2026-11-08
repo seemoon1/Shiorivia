@@ -169,7 +169,7 @@ export const NovelInterface = ({
     provider, providers = [], onProviderChange,
     selectedModel, customModelId, onModelChange, onCustomModelChange,
     onImportNovelSession,
-    storyWorlds = [], customCharacters = [], customSelves = [], activeNovelSelf = null, activeNovelSelfId = null, onOpenCharta,
+    storyWorlds = [], customCharacters = [], customSelves = [], activeNovelSelf = null, onOpenCharta,
 }: any) => {
     const { locale } = useLanguage();
     const [leftOpen, setLeftOpen] = useState(true);
@@ -640,8 +640,13 @@ export const NovelInterface = ({
                 </div>
 
                 <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${themeMode === 'sage' ? 'from-[#edf2ea] via-[#edf2ea]' : 'from-[#fdf6e3] via-[#fdf6e3]'} to-transparent p-4 pb-6 z-20`}>
-                    <div className="max-w-2xl mx-auto flex items-end gap-2">
-                        <button onClick={() => { if (!confirm("确定要重写本章吗？")) return; const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
+                    <div className="max-w-2xl mx-auto">
+                        {!novelWorldline && <div role="status" className={`mb-3 flex items-center justify-between gap-3 rounded-xl border ${theme.border} ${theme.inputBg} px-3 py-2 text-xs ${theme.text}`}>
+                            <span>请先设定世界线，才能开始或续写小说。</span>
+                            <button type="button" onClick={() => { setRightOpen(true); setWorldlineOpen(true); }} className={`shrink-0 rounded-lg border ${theme.border} px-3 py-1.5 font-semibold ${theme.hover}`}>设置世界线</button>
+                        </div>}
+                        <div className="flex items-end gap-2">
+                        <button onClick={() => { if (!confirm("确定要重写本章吗？")) return; const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading || !novelWorldline} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
 
                         <div className={`flex-1 ${theme.inputBg} backdrop-blur-md border ${theme.border} rounded-2xl flex items-center p-2 shadow-2xl transition-all`}>
                             <input value={directorInput} onChange={(e) => setDirectorInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !isLoading && novelWorldline && handleGenerate('continue')} placeholder={novelWorldline ? "导演指令..." : "请先在右侧设定世界线..."} className={`flex-1 bg-transparent border-none outline-none text-sm ${theme.title} px-3 font-sans ${theme.placeholder} disabled:cursor-not-allowed disabled:opacity-60`} disabled={isLoading || !novelWorldline} />
@@ -665,6 +670,7 @@ export const NovelInterface = ({
                                 </button>
                             )}
 
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -818,7 +824,7 @@ export const NovelInterface = ({
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} onBlur={() => saveDraft()} placeholder="默认正文 1000–2000 字；可在此自行指定字数" className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
                                 </div>
 
-                                <button onClick={() => handleGenerate('new')} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 生成新梦境 (New)</button>
+                                <button onClick={() => handleGenerate('new')} disabled={isLoading || !novelWorldline} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 生成新梦境 (New)</button>
                             </div>
                         </div>
                     </motion.div>
