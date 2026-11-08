@@ -52,8 +52,8 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
   if (!isHex(input.hex) || !isAvatar(input.avatar)) throw new Error("A theme color and avatar are required.");
   if (input.description !== undefined && (typeof input.description !== "string" || input.description.length > 20000)) throw new Error("Character notes exceed the limit.");
   const description = typeof input.description === "string" ? input.description : "";
-  const profile = parseChartaLoreProfile(input.profile) || { intro: description, personality: "", relationshipNotes: "", relationships: [], experienceNotes: "", experiences: [], guidance: "" };
-  if (input.profile !== undefined && !profile.intro.trim()) throw new Error("请先填写角色简介（必填）；其他四类设定均为选填");
+  const profile = parseChartaLoreProfile(input.profile) || (description.trim() ? { intro: description, personality: "", relationshipNotes: "", relationships: [], experienceNotes: "", experiences: [], guidance: "" } : undefined);
+  if (input.profile !== undefined && !profile?.intro.trim()) throw new Error("请先填写角色简介（必填）；其他四类设定均为选填");
   const identity = parseChartaIdentityExtras(input);
   const gender = ["male", "female", "undisclosed", "custom"].includes(String(input.gender)) ? input.gender as ChartaGender : "undisclosed";
   const genderCustom = typeof input.genderCustom === "string" ? input.genderCustom.trim().slice(0, 100) : "";
