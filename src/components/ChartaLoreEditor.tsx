@@ -41,18 +41,19 @@ export function ChartaTimelineRangePicker({ periods, stages, onChange }: {
   </div>;
 }
 
-export function ChartaLoreEditor({ value, onChange, stages, characters, currentId, worldId }: {
+export function ChartaLoreEditor({ value, onChange, stages, characters, currentId }: {
   value: ChartaLoreProfile;
   onChange: (next: ChartaLoreProfile) => void;
   stages: readonly ChartaTimelineStage[];
   characters: ChartaCharacter[];
   currentId: string;
-  worldId?: string;
 }) {
+  // Relationship targets can come from ANY project world; ONLY the linked
+  // timeline is constrained to the character's own world.
   const eligible = useMemo(() => characters
-    .filter(c=>c.id!==currentId && (!worldId || !c.worldId || c.worldId===worldId))
+    .filter(c=>c.id!==currentId)
     .map(c=>({ id:c.id, name:c.names[c.primaryLanguage] || Object.values(c.names)[0] || c.id })),
-    [characters,currentId,worldId]);
+    [characters,currentId]);
   const patch = (key: keyof ChartaLoreProfile, content: string) => onChange({ ...value, [key]: content });
   const newRelation = () => onChange({...value, relationships:[...value.relationships,{
     id:uid("relation"), targetName:"", content:"", periods:[]
