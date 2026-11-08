@@ -13,7 +13,7 @@ import {
 const geometric = { fontFamily: 'Bahnschrift, "DIN Alternate", "Arial Narrow", "Yu Gothic", "Noto Sans SC", sans-serif' };
 const inputStyle = "mt-2 w-full rounded-xl border border-[#a8baa9]/50 bg-[#f7faf6] px-4 py-3 text-sm font-medium text-[#233c34] outline-none transition focus:border-[#718a78] focus:ring-2 focus:ring-[#a9c9af]/25";
 
-export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds, onSave, onClose, onOpenCharta }: {
+export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds, onSave, onClose, onOpenCharta, elevated = false }: {
   isOpen: boolean;
   value?: StoryWorldline;
   legacyTimeline?: { major?: string; medium?: string; minor?: string };
@@ -21,6 +21,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   onSave: (worldline: StoryWorldline) => void;
   onClose: () => void;
   onOpenCharta?: () => void;
+  elevated?: boolean;
 }) {
   const [draft, setDraft] = useState<StoryWorldline>(() => value || worldlineFor(null));
   const [error, setError] = useState("");
@@ -62,7 +63,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   if (typeof document === "undefined") return null;
   return createPortal(<AnimatePresence>
     {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] flex items-center justify-center overflow-y-auto bg-[#101d1d]/75 p-3 backdrop-blur-[8px] sm:p-6"
+      className={`fixed inset-0 ${elevated ? "z-[800]" : "z-[110]"} flex items-center justify-center overflow-y-auto bg-[#101d1d]/75 p-3 backdrop-blur-[8px] sm:p-6`}
       onClick={onClose}>
       <motion.section role="dialog" aria-modal="true" aria-label="世界线 · 命运航图"
         initial={{ opacity: 0, scale: .96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
