@@ -53,6 +53,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   const choosePeriod = (period: string) => setDraft(prev => ({ ...prev, period,
     era: !period || prev.canonTimeline.some(stage => stage.era === prev.era && stage.period === period) ? prev.era : "" }));
   const save = () => {
+    if (draft.kind === "au" && (!draft.baseEra || !draft.basePeriod)) { setError("AU 必须选择基准 ERA 和 PERIOD。"); return; }
     const next = parseStoryWorldline(draft);
     if (!next) { setError("世界线尚未成立：请填写对应的 ERA 与 PERIOD。"); return; }
     onSave(next); onClose();
