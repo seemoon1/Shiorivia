@@ -629,6 +629,7 @@ export const NovelInterface = ({
                                     <textarea
                                         value={outline}
                                         onChange={e => handleOutlineChange(e.target.value)}
+                                        onBlur={() => saveDraft()}
                                         placeholder={deepText(locale, "novel.outlinePlaceholder")}
                                         className={`w-full h-32 ${theme.inputBg} border ${theme.border} rounded p-3 text-xs ${theme.text} ${theme.focus} outline-none resize-none font-mono ${theme.placeholder}`}
                                     />
@@ -660,6 +661,7 @@ export const NovelInterface = ({
                                         draft={{ selectedCharIds, scenario, action, style, outline, themeMode }}
                                         onImport={onImportNovelSession}
                                         disabled={isLoading}
+                                        tone={themeMode}
                                         className={themeMode === "paper"
                                           ? "rounded-2xl border-2 border-[#c5a97a] bg-[#fffaf0] p-4 text-[#67533a] shadow-[0_6px_22px_rgba(121,89,45,.12)]"
                                           : "rounded-2xl border-2 border-[#9db7a3] bg-[#fbfdfa] p-4 text-[#405e4a] shadow-[0_6px_22px_rgba(52,92,62,.13)]"}
@@ -714,9 +716,9 @@ export const NovelInterface = ({
                                 <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-2 block uppercase`}>Quick Presets · 六种剧情方向</label><div className="grid grid-cols-2 gap-2">{PRESETS.map((p, i) => (<button key={i} type="button" onClick={() => { setScenario(p.scenario); setAction(p.action); setStyle(p.style); saveDraft({ scenario:p.scenario, action:p.action, style:p.style }); }} className={`px-3 py-2.5 rounded-xl text-left ${theme.inputBg} border ${theme.border} text-[11px] ${theme.text} hover:shadow-sm transition-all`}>{p.name}</button>))}</div></div>
 
                                 <div className="space-y-4">
-                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Scenario</label><input value={scenario} onChange={e => setScenario(e.target.value)} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
-                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Action / Play</label><textarea value={action} onChange={e => setAction(e.target.value)} className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-none`} /></div>
-                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
+                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Scenario</label><input value={scenario} onChange={e => setScenario(e.target.value)} onBlur={() => saveDraft()} className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
+                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Action / Play</label><textarea value={action} onChange={e => setAction(e.target.value)} onBlur={() => saveDraft()} className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-none`} /></div>
+                                    <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} onBlur={() => saveDraft()} placeholder="默认正文 1000–2000 字；可在此自行指定字数" className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
                                 </div>
 
                                 <button onClick={() => handleGenerate('new')} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 生成新梦境 (New)</button>
