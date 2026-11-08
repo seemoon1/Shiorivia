@@ -645,6 +645,9 @@ export default function Home() {
                 isLoading={engine.isLoading}
                 createNewSession={createNewSession}
                 dbChars={allChars}
+                storyWorlds={worldLibrary.worlds}
+                customCharacters={charta.characters}
+                onOpenCharta={() => { setChartaInitialSection("worlds"); setShowCharta(true); }}
                 stopGeneration={engine.stopGeneration}
                 handleRegenerate={engine.handleRegenerate}
                 onGenerateDraw={engine.generateDraw} imageSettings={config.imageSettings} debugMode={ui.debugMode} useImageGen={config.imageGen} showToast={ui.showToast}
