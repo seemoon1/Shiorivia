@@ -157,6 +157,7 @@ export const useChatEngine = ({
                     uiLanguage: locale,
                     debugRequestPayload: config.terminalRequestLog === true,
                     debugFullOutput: config.terminalLog === true,
+                    geminiNarrativeStyle: config.geminiNarrativeStyle === true,
                     ...(currentSession.memoryMode === "sliding" ? {
                         storyRole,
                         storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.sceneCastIds ?? [],
