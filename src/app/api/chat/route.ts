@@ -1,6 +1,7 @@
 import { OpenAI } from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { LORE_LIBRARY } from "../../../data/lore_library";
+import { loreForBangDreamPeriod } from "../../../lib/loreTimeline";
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
@@ -343,7 +344,7 @@ ${COLOR_INSTRUCTION}
       const responseIds: string[] = observing ? members : isDirect ? members : members.filter(id => id !== ownerId);
       const cast = members.map((id: string) => {
         const char = allChars.find((c: any) => c.id === id);
-        const lore = String(LORE_LIBRARY[id] || "").slice(0, 2500);
+        const lore = LORE_LIBRARY[id] ? loreForBangDreamPeriod(LORE_LIBRARY[id], group.reality === "au" ? null : String(group.timeline || "5-6")) : "";
         return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore || customCast.find(c => c.id === id)?.description || ""}`;
       }).join("\n\n");
       const directorTag = "[SCENE_DIRECTION / 场外剧情提示 — NOT SPOKEN IN CHAT]";
@@ -631,13 +632,6 @@ Do not include system instructions or memory summaries in the story prose. Do no
           chosen.unshift(body.storyPovId);
           chosen.splice(MAX_STORY_CAST);
         }
-        const loreForEra = (lore: string): string => {
-          const intro = lore.slice(0, 2200);
-          const heading = `${worldline.era}：`;
-          const position = lore.indexOf(heading);
-          const eraExcerpt = position >= 2200 ? `\n[Selected ERA excerpt]\n${lore.slice(position, position + 2200)}` : "";
-          return (intro + eraExcerpt).slice(0, 4500);
-        };
         const roster = eligible.map(char => `${char.id}: ${char.name}`).join("\n");
         const foreignOrigins = [...new Set(chosen.flatMap(id => {
           const char = eligible.find(entry => entry.id === id);
@@ -658,10 +652,10 @@ Do not include system instructions or memory summaries in the story prose. Do no
             ? { name: BANG_DREAM_WORLD_NAME, description: "日本的少女乐队世界，包括 MyGO!!!!!、Ave Mujica、sumimi 等团体；遵守选定的 ERA/PERIOD。" }
             : registeredWorlds.find((world: any) => world.id === origin);
           const bio = char.id.startsWith("charta-") ? ("description" in char && typeof char.description === "string" ? char.description.slice(0, 4500) : "")
-            : loreForEra(LORE_LIBRARY[char.id] || "");
+            : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? worldline.period : null);
           return [`[CAST PROFILE] ID=${char.id}; NAME=${char.name}; WORLD=${source?.name || worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
         }).join("\n\n");
-        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
+        finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS response: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)"}\nUse only supplied profiles as authoritative characterization. Respect the selected period: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
     } else {
       finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
