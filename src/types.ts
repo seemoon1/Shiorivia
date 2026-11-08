@@ -125,11 +125,11 @@ export type Session = {
   localWorldInfo?: string;
   
   memoryMode?: 'infinite' | 'sliding' | 'novel' | 'chat' | 'lime';
-  /** Via Lata: observer directs the story; participant enters as a saved Charta self. */
+  /** Via Lata / Tela: observer directs the story; participant uses a saved Charta self. */
   storyRole?: 'observer' | 'participant';
   storySelfId?: string | null;
   storySelfSnapshot?: ChartaSelf | null;
-  /** Observer POV can be chosen once after the first story round, before the next send. */
+  /** Via Lata only: observer POV can be chosen once after the first story round. */
   storyPovId?: string | null;
   storyPovLocked?: boolean;
   /** Worldline snapshot is bound to a story session; legacy timeline remains compatible. */
@@ -147,6 +147,7 @@ export type Session = {
   stmBackup?: string; 
   ltm?: string;
   novelDraft?: NovelDraft;
+  /** Novel participation reuses storyRole/storySelfId/storySelfSnapshot; old novelDraft.selfId is still accepted. */
   /** Most recent AI-derived chapter state, not the global worldline event. */
   novelState?: NovelState;
   turnCount?: number;
