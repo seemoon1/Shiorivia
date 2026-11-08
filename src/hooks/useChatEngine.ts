@@ -75,7 +75,7 @@ export const useChatEngine = ({
     ) => {
         if (isLoading || !currentSession) return;
 
-        if (currentSession.memoryMode === "sliding" && !parseStoryWorldline(currentSession.storyWorldline)) {
+        if ((currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") && !parseStoryWorldline(currentSession.storyWorldline)) {
             showToast("请先打开右侧世界线，设置世界观、ERA 和 PERIOD，再开始故事。");
             return;
         }
@@ -146,7 +146,7 @@ export const useChatEngine = ({
                     stm: currentSession.stm,
                     ltm: currentSession.ltm,
                     timeline: currentSession.timeline,
-                    storyWorldline: currentSession.memoryMode === "sliding" ? currentSession.storyWorldline : undefined,
+                    storyWorldline: (currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") ? currentSession.storyWorldline : undefined,
                     novelConfig: configOverride?.novelConfig, 
                     useWebSearch: config.webSearch,
                     useMusicControl: configOverride?.useMusicControl ?? config.musicControl,
@@ -158,6 +158,11 @@ export const useChatEngine = ({
                     debugRequestPayload: config.terminalRequestLog === true,
                     debugFullOutput: config.terminalLog === true,
                     geminiNarrativeStyle: config.geminiNarrativeStyle === true,
+                    ...(currentSession.memoryMode === "novel" ? {
+                        storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.novelDraft?.selectedCharIds ?? [],
+                        storyAllowCrossWorld: currentSession.storyAllowCrossWorld === true,
+                        storyCastWorlds: storyWorlds.map((world: any) => ({ id: world.id, name: world.name, description: world.description, canonTimeline: world.canonTimeline })),
+                    } : {}),
                     ...(currentSession.memoryMode === "sliding" ? {
                         storyRole,
                         storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.sceneCastIds ?? [],
