@@ -797,7 +797,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
         }).join("\n\n");
         finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS ${memoryMode === "novel" ? "CHAPTER" : "response"}: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || (memoryMode === "novel" ? "(No cast selected. Do not invent established biographies or automatically add unselected cast; users can choose cast for later chapters.)" : "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)")}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
-    } else {
+    } else if (body.novelStateRepair !== true) {
       finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
     }
     const selectedProvider = getServerLocalProvider(provider);
