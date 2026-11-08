@@ -320,7 +320,7 @@ Only JSON belongs between the tags.`;
 [ROLE]: You are an immersive novelist.
 [OBJECTIVE]: Write a chapter based on settings.
 ${COLOR_INSTRUCTION}
-[Settings]: Outline: ${typeof nc.outline === "string" ? nc.outline.slice(0, 20000) : ""} | Scenario: ${typeof nc.scenario === "string" ? nc.scenario.slice(0, 1000) : ""} | Action: ${typeof nc.action === "string" ? nc.action.slice(0, 2000) : ""} | Style: ${typeof nc.style === "string" ? nc.style.slice(0, 2000) : ""}
+[Settings]: Outline: ${typeof nc.outline === "string" ? nc.outline.slice(0, 20000) : ""} | Environment: ${typeof (nc.environment ?? nc.scenario) === "string" ? String(nc.environment ?? nc.scenario).slice(0, 2000) : ""} | Event: ${typeof (nc.event ?? nc.action) === "string" ? String(nc.event ?? nc.action).slice(0, 2000) : ""} | Style: ${typeof nc.style === "string" ? nc.style.slice(0, 2000) : ""}
 [CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\d+\s*[-–—~～至到]\s*\d+|\d+)\s*(?:字|汉字|中文字)/.test(nc.style) ? "Follow the user's explicit word-count instruction in Style; it overrides the default." : "Default: approximately 1000–2000 Chinese characters of narrative prose per chapter. Do not pad mechanically."}
 [STORY WORLDLINE — CANON OR AU]
 World: ${novelWorldline.worldName}
@@ -328,7 +328,6 @@ World setting: ${novelWorldline.worldDescription}
 Mode: ${novelWorldline.kind === "au" ? "AU" : "Original timeline"}
 Current ERA / PERIOD: ${novelWorldline.era} / ${novelWorldline.period}
 ${novelWorldline.kind === "au" ? `Canonical baseline (character knowledge cutoff): ${novelWorldline.baseEra} / ${novelWorldline.basePeriod}. Later canon events are not automatic AU facts.` : ""}
-Worldline event: ${novelWorldline.event || "No additional event"}
 Use this worldline as the novel's established background. Do not replace it with another era or invent knowledge from future events.
 [END STORY WORLDLINE]
 
@@ -336,7 +335,13 @@ Use this worldline as the novel's established background. Do not replace it with
 1. **METADATA**: First line MUST be: <meta title="NOVEL_TITLE" chapter="CHAPTER_TITLE" />.
 2. **ILLUSTRATION**: If the scene changes or reaches a climax, output a drawing prompt tag: <draw>tags...</draw>.
 3. **Music**: Output <audio>{"trackId": "ID"}</audio> if BGM changes.
-4. **Interactive**: End with 3 plot options.
+4. **Interactive**: End the prose with 3 plot options.
+5. **NOVEL STATE — REQUIRED**: After the chapter and its 3 options, append ONE complete <novel_state> JSON object. It must be the very LAST block in every novel response. Keep it outside any draw/audio/markdown fences.
+<novel_state>{"environment":"current location, weather, temperature and significant surroundings as established by THIS chapter","event":"what is happening NOW at the chapter's endpoint, not the whole historical plot","nextSceneCastIds":["character IDs expected in the NEXT chapter"]}</novel_state>
+- All three keys are REQUIRED. environment and event must be nonempty strings describing the scene AT THE END of the chapter, rather than merely echoing the opening settings if it moved. nextSceneCastIds must be an array of 0–6 IDs chosen ONLY from the eligible cast roster provided. Use [] if no established character is expected; do not invent character IDs.
+- Forecast a small, plausible next-chapter cast grounded in who is present or expected to enter; do not list every available character. The next chapter will receive full profiles ONLY for selected predicted IDs.
+- Treat the selected worldline's WORLD / ERA / PERIOD / AU baseline as immutable context. The novel state MUST NOT set or modify that worldline, and must not reveal future canon knowledge.
+- The novel state is structured metadata, not part of the prose, not an invitation to narrate the user's decisions, and never a replacement for the mandatory first-line <meta> chapter title.
 [SYSTEM]: EXECUTE NOVEL MODE. GENERATE METADATA FIRST. IF SCENE IS VIVID, GENERATE <draw> TAG.
 `;
 
