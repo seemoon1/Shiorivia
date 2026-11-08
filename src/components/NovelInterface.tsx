@@ -4,13 +4,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Book, Sparkles, Settings2, PanelRight, AlignLeft,
     LogOut, RefreshCw, X, Edit2, Trash2, Check, 
-    Disc, Save, ArrowUp, Sun, Moon, FileText, Square,
+    Save, ArrowUp, Sun, Moon, FileText, Square,
     AlertTriangle, HardDrive,
 } from "lucide-react";
 import { CHARACTERS, type NovelDraft } from "../types";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
 import { useSavedModels } from "../hooks/useSavedModels";
 import { NovelArchiveActions } from "./NovelArchiveActions";
+import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
+import { StoryCastPicker } from "./StoryCastPicker";
+import { parseStoryWorldline, describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModalV2";
 import { useMusic } from "../context/MusicContext";
@@ -66,10 +69,13 @@ const THEMES = {
 };
 
 const PRESETS = [
-        { name: "日常 (Daily)", scenario: "放学后的教室", action: "练习吉他 & 闲聊", style: "轻松, 有趣, 互动多" },
-        { name: "重逢 (Drama)", scenario: "雨中的天桥", action: "互相倾诉 & 和解", style: "感动, 细腻, 氛围感强" },
-        { name: "梦境 (Fantasy)", scenario: "漂浮在空中的花园", action: "探险 & 寻找出口", style: "奇幻, 唯美, 意识流" },
-    ];
+    { name: "放学闲谈 · 日常", scenario: "放学后的街角", action: "围绕一件微不足道的小事拌嘴、闲聊，发展自然的关系互动", style: "轻快、生活感、自然幽默、群像互动" },
+    { name: "周末小冒险 · 日常", scenario: "休息日的街道与小店", action: "一次随性的外出计划带来意外的小发现", style: "明朗、轻松、富有生活气息、节奏活泼" },
+    { name: "未寄出的信 · 哀伤", scenario: "傍晚的房间", action: "某件旧物勾起遗憾，让人物小心触碰未说出口的话", style: "哀而不伤、克制留白、怀念与遗憾" },
+    { name: "雨后告别 · 哀伤", scenario: "雨停后的车站", action: "一段关系正面临分别，人物必须面对现实而非仓促和解", style: "低回、细腻、真实而有余韵" },
+    { name: "秘密的重量 · 重力", scenario: "深夜的排练室", action: "一个被长期掩藏的秘密将各人的信任推向临界点", style: "高压心理博弈、复杂动机、情绪拉扯" },
+    { name: "命运岔路 · 重力", scenario: "人生的重大抉择之前", action: "无法两全的选择迫使角色承担后果，避免轻易的圆满结局", style: "沉重、充满张力、因果清晰、保留人物缺点" },
+];
 
 const NovelContent = ({ content, onOptionClick, onImageOpen, theme }: any) => {
     let clean = cleanDrawTag(content) 
@@ -161,20 +167,22 @@ export const NovelInterface = ({
     provider, providers = [], onProviderChange,
     selectedModel, customModelId, onModelChange, onCustomModelChange,
     onImportNovelSession,
+    storyWorlds = [], customCharacters = [], onOpenCharta,
 }: any) => {
     const { locale } = useLanguage();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [themeMode, setThemeMode] = useState<'sage' | 'paper'>('sage');
+    const [themeMode, setThemeMode] = useState<'sage' | 'paper'>('paper');
     const theme = THEMES[themeMode];
 
     const [showFullPlayer, setShowFullPlayer] = useState(false);
-    const [useMusicControl, setUseMusicControl] = useState(false);
+    const [worldlineOpen, setWorldlineOpen] = useState(false);
 
     const [directorInput, setDirectorInput] = useState("");
-    const [selectedCharIds, setSelectedCharIds] = useState<string[]>(["sakiko"]);
+    const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
+    const novelWorldline = parseStoryWorldline(currentSession.storyWorldline);
     // The same model/provider state powers Engineering, Chat, VIAE and Novel.
     const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
     const [providerModels, setProviderModels] = useState<LocalModelGroup[]>([]);
@@ -191,18 +199,19 @@ export const NovelInterface = ({
     const savedIds = savedModels[provider] || [];
     const [scenario, setScenario] = useState("午后的红茶店"); 
     const [action, setAction] = useState("谈心");
-    const [style, setStyle] = useState("温馨, 治愈, 心理描写细腻, 2000字");
+    const [style, setStyle] = useState("温馨、细腻、富有生活感");
 
     const [outline, setOutline] = useState(currentSession.localWorldInfo || "");
     // Restore the draft carried by an imported Novel JSON when its new session opens.
     useEffect(() => {
         const draft = currentSession?.novelDraft as NovelDraft | undefined;
-        setSelectedCharIds(Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : ["sakiko"]);
+        setSelectedCharIds(Array.isArray(currentSession?.storyNextCastIds) ? currentSession.storyNextCastIds
+            : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : []);
         setScenario(draft?.scenario || "午后的红茶店");
         setAction(draft?.action || "谈心");
-        setStyle(draft?.style || "温馨, 治愈, 心理描写细腻, 2000字");
+        setStyle(draft?.style || "温馨、细腻、富有生活感");
         setOutline(currentSession?.localWorldInfo || draft?.outline || "");
-        setThemeMode(draft?.themeMode === "paper" ? "paper" : "sage");
+        setThemeMode(draft?.themeMode === "sage" ? "sage" : "paper");
     }, [currentSession?.id]);
     const { currentTrack } = useMusic();
     const lastDrawPromptRef = useRef("");
@@ -400,8 +409,31 @@ export const NovelInterface = ({
         if (isMobile) { setLeftOpen(false); setRightOpen(false); }
     };
 
-    const toggleChar = (id: string) => {
-        setSelectedCharIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    const saveDraft = (patch: Partial<NovelDraft> = {}) => {
+        updateSessionInfo?.(currentSession.id, {
+            novelDraft: { selectedCharIds, scenario, action, style, outline, themeMode, ...patch },
+            updatedAt: Date.now(),
+        });
+    };
+    const updateWorldline = (next: StoryWorldline) => {
+        updateSessionInfo?.(currentSession.id, {
+            storyWorldline: next,
+            ...(currentSession.storyWorldline?.worldId !== next.worldId
+                ? { storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [] } : {}),
+            updatedAt: Date.now(),
+        });
+        if (currentSession.storyWorldline?.worldId !== next.worldId) {
+            setSelectedCharIds([]);
+            saveDraft({ selectedCharIds: [] });
+        }
+    };
+    const updateCast = (ids: string[], allowCrossWorld: boolean) => {
+        setSelectedCharIds(ids);
+        updateSessionInfo?.(currentSession.id, {
+            storyNextCastIds: ids, storyAllowCrossWorld: allowCrossWorld,
+            novelDraft: { selectedCharIds: ids, scenario, action, style, outline, themeMode },
+            updatedAt: Date.now(),
+        });
     };
 
     const chapters = currentSession?.messages.map((m: any, i: number) => ({ ...m, realIndex: i })).filter((m: any) => m.role === 'assistant' && !m.content.includes("（...正在")) || [];
