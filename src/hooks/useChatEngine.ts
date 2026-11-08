@@ -159,6 +159,12 @@ export const useChatEngine = ({
                     debugFullOutput: config.terminalLog === true,
                     geminiNarrativeStyle: config.geminiNarrativeStyle === true,
                     ...(currentSession.memoryMode === "novel" ? {
+                        novelSelf: typeof configOverride?.novelConfig?.selfId === "string"
+                            ? (() => {
+                                const candidate = customSelves.find((self: any) => self.id === configOverride.novelConfig.selfId);
+                                return candidate ? asChartaSelfPromptData(candidate) : null;
+                            })()
+                            : null,
                         storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.novelDraft?.selectedCharIds ?? [],
                         storyAllowCrossWorld: currentSession.storyAllowCrossWorld === true,
                         storyCastWorlds: storyWorlds.map((world: any) => ({ id: world.id, name: world.name, description: world.description, canonTimeline: world.canonTimeline })),
