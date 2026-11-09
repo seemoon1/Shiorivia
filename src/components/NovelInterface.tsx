@@ -30,25 +30,26 @@ import { isUntitledNovel } from "../lib/sessionTitles";
 import { deepText } from "../lib/i18nDeep";
 import { IllustratedImage, ImageLightbox } from "./IllustrationImage";
 import { stripNovelState } from "../lib/novelState";
+import { extractNovelSuggestions, stripNovelSuggestions } from "../lib/novelSuggestions";
 
 const THEMES = {
     sage: {
-        bg: "bg-[#edf2ea]",
-        sidebar: "bg-[#e3eae0]",
-        accent: "text-[#527966]",
-        border: "border-[#bfcec1]",
-        text: "text-[#40584c]",
-        title: "text-[#294c3b]",
-        inputBg: "bg-[#fafcf8]/90",
-        placeholder: "placeholder-[#758d7b]/55",
-        hover: "hover:bg-[#d8e5da]",
+        bg: "bg-[#f1f4ee]",
+        sidebar: "bg-[#e6ece3]",
+        accent: "text-[#486d5b]",
+        border: "border-[#cad7c9]",
+        text: "text-[#3b5146]",
+        title: "text-[#263e34]",
+        inputBg: "bg-[#fffefa]/95",
+        placeholder: "placeholder-[#758779]/70",
+        hover: "hover:bg-[#dce7da]",
         prose: "",
-        button: "bg-[#527966] hover:bg-[#406650] text-white shadow-[#527966]/20",
-        subButton: "bg-[#537c61]/10 text-[#527966]/70 hover:text-[#294c3b]",
-        selectBorder: "border-[#719a82]",
-        selectBg: "bg-[#bdd6c4]/40",
-        selectDot: "bg-[#719a82]",
-        focus: "focus:border-[#719a82]"
+        button: "bg-[#385f50] hover:bg-[#294d40] text-[#fffdf6] shadow-[#385f50]/20",
+        subButton: "bg-[#e0e9df] text-[#3c6251] hover:bg-[#d4e3d4] hover:text-[#263e34]",
+        selectBorder: "border-[#638e75]",
+        selectBg: "bg-[#d9e9dc]",
+        selectDot: "bg-[#638e75]",
+        focus: "focus:border-[#638e75]"
     },
     paper: {
         bg: "bg-[#fdf6e3]",
@@ -85,12 +86,13 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors =
         .replace(/<audio>.*?<\/audio>/g, "")
         .trim();
 
-    const optionRegex = /> \*\*Option (\d+)\*\*: (.*)/g;
-    const options: string[] = [];
-    let match;
-    while ((match = optionRegex.exec(clean)) !== null) {
-        options.push(match[2]);
-    }
+    const suggestions = extractNovelSuggestions(clean);
+    clean = stripNovelSuggestions(clean);
+    const options = suggestions ? [
+        { label: "趣味 · FUN", text: suggestions.fun, icon: "✦" },
+        { label: "理智 · RATIONAL", text: suggestions.rational, icon: "◇" },
+        { label: "激进 · RADICAL", text: suggestions.radical, icon: "◆" },
+    ] : [];
 
     const parts = clean.split(/(!\[.*?\]\(.*?\))/g);
 
@@ -142,11 +144,11 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors =
                     {options.map((opt, i) => (
                         <button
                             key={i}
-                            onClick={() => onOptionClick(opt)}
-                            className={`text-left p-4 rounded-xl ${theme.inputBg} border ${theme.border} hover:border-purple-500/50 transition-all group flex gap-4 active:scale-[0.98]`}
+                            onClick={() => onOptionClick(opt.text)}
+                            className={`text-left p-4 rounded-xl ${theme.inputBg} border ${theme.border} ${theme.hover} transition-all group flex gap-4 active:scale-[0.98]`}
                         >
-                            <span className={`font-bold ${theme.accent} shrink-0`}>0{i + 1}</span>
-                            <span className={`text-sm ${theme.text} font-bold leading-relaxed`}>{opt}</span>
+                            <span className={`font-bold ${theme.accent} shrink-0`}>{opt.icon}</span>
+                            <span className="min-w-0"><span className={`block text-[10px] font-semibold tracking-widest ${theme.accent} mb-1`}>{opt.label}</span><span className={`block text-sm ${theme.text} font-medium leading-relaxed`}>{opt.text}</span></span>
                         </button>
                     ))}
                 </div>
@@ -236,17 +238,16 @@ export const NovelInterface = ({
     }, [currentSession?.id]);
     // AI state updates arrive after every chapter; reflect them in the editor.
     useEffect(() => {
-        if (!currentSession?.novelState) return;
-        // A saved, confirmed manual override may differ from the last AI output.
-        // Do not erase that pending override when re-opening a novel archive.
-        if ((currentSession.novelDraft?.environment && currentSession.novelDraft.environment !== currentSession.novelState.environment)
-            || (currentSession.novelDraft?.event && currentSession.novelDraft.event !== currentSession.novelState.event)) return;
-        setEnvironment(currentSession.novelState.environment);
-        setEvent(currentSession.novelState.event);
+        // Synchronize the editor after a completed chapter or checkpoint restoration.
+        // Style is global and deliberately never rewound.
+        const draft = currentSession.novelDraft;
+        setEnvironment(draft?.environment ?? currentSession.novelState?.environment ?? draft?.scenario ?? "");
+        setEvent(draft?.event ?? currentSession.novelState?.event ?? draft?.action ?? "");
         setSelectedCharIds(Array.isArray(currentSession.storyNextCastIds)
-            ? currentSession.storyNextCastIds : currentSession.novelState.nextSceneCastIds);
+            ? currentSession.storyNextCastIds
+            : Array.isArray(draft?.selectedCharIds) ? draft.selectedCharIds : currentSession.novelState?.nextSceneCastIds ?? []);
         setManualStateEdit(false);
-    }, [currentSession?.id, currentSession?.novelState]);
+    }, [currentSession?.id, currentSession?.messages?.length, currentSession?.novelState]);
     const hasNovelChapters = currentSession?.messages?.some((message: any) =>
         message.role === "assistant" && typeof message.content === "string"
           && !message.content.includes("（...正在") && Boolean(message.content.trim()));
@@ -526,7 +527,7 @@ export const NovelInterface = ({
     return (
         <div
             className={`fixed inset-0 z-[500] ${theme.bg} ${theme.text} flex overflow-hidden font-serif transition-colors duration-500 h-[100dvh] w-screen overscroll-none`}
-            style={{ backgroundColor: themeMode === 'paper' ? '#fdf6e3' : '#edf2ea' }}
+            style={{ backgroundColor: themeMode === 'paper' ? '#fdf6e3' : '#f1f4ee' }}
         >
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <AnimatePresence>
@@ -542,7 +543,7 @@ export const NovelInterface = ({
                         />
                     )}
                 </AnimatePresence>
-                <div className={`absolute inset-0 ${themeMode === 'sage' ? 'bg-[#edf2ea]/75' : 'bg-white/60'}`}></div>
+                <div className={`absolute inset-0 ${themeMode === 'sage' ? 'bg-[#f1f4ee]/85' : 'bg-white/60'}`}></div>
             </div>
             <AnimatePresence>
                 {leftOpen && (
@@ -628,7 +629,7 @@ export const NovelInterface = ({
                                         {parseDrawTag(msg.content)?.trigger && (
                                             <button type="button" disabled={drawingIndex !== null || isLoading}
                                                 onClick={() => void confirmNovelDraw(msg.realIndex)}
-                                                className="mt-5 flex items-center gap-3 rounded-xl border border-[#d7ccb4] bg-[#fffdf8]/80 px-4 py-3 text-xs text-[#7b6a4d] transition hover:bg-[#f7f1df] disabled:opacity-50">
+                                                className={`mt-5 flex items-center gap-3 rounded-xl border ${theme.border} ${theme.inputBg} px-4 py-3 text-xs ${theme.text} transition ${theme.hover} disabled:opacity-50`}>
                                                 <Sparkles size={15}/><span>插图待生成</span>
                                                 <span className="ml-auto text-[11px]">{drawingIndex === msg.realIndex ? '生成中…' : '点击生成'}</span>
                                             </button>
@@ -647,14 +648,14 @@ export const NovelInterface = ({
                     </div>
                 </div>
 
-                <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${themeMode === 'sage' ? 'from-[#edf2ea] via-[#edf2ea]' : 'from-[#fdf6e3] via-[#fdf6e3]'} to-transparent p-4 pb-6 z-20`}>
+                <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${themeMode === 'sage' ? 'from-[#f1f4ee] via-[#f1f4ee]' : 'from-[#fdf6e3] via-[#fdf6e3]'} to-transparent p-4 pb-6 z-20`}>
                     <div className="max-w-2xl mx-auto">
                         {!novelWorldline && <div role="status" className={`mb-3 flex items-center justify-between gap-3 rounded-xl border ${theme.border} ${theme.inputBg} px-3 py-2 text-xs ${theme.text}`}>
                             <span>请先设定世界线，才能开始或续写小说。</span>
                             <button type="button" onClick={() => { setRightOpen(true); setWorldlineOpen(true); }} className={`shrink-0 rounded-lg border ${theme.border} px-3 py-1.5 font-semibold ${theme.hover}`}>设置世界线</button>
                         </div>}
                         <div className="flex items-end gap-2">
-                        <button onClick={() => { if (!confirm("确定要重写本章吗？")) return; const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading || !novelWorldline} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
+                        <button onClick={() => { const lastAssistIdx = currentSession.messages.map((m: any, i: number) => ({ ...m, i })).filter((m: any) => m.role === 'assistant').pop()?.i; if (lastAssistIdx) handleRegenerate(lastAssistIdx); }} disabled={isLoading || !novelWorldline} className={`p-3 mb-1 rounded-full ${theme.inputBg} backdrop-blur border ${theme.border} opacity-60 hover:opacity-100 hover:text-red-400 transition-all shadow-lg ${theme.subButton}`}><RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /></button>
 
                         <div className={`flex-1 ${theme.inputBg} backdrop-blur-md border ${theme.border} rounded-2xl flex items-center p-2 shadow-2xl transition-all`}>
                             <input value={directorInput} onChange={(e) => setDirectorInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !isLoading && novelWorldline && handleGenerate('continue')} placeholder={novelWorldline ? "导演指令..." : "请先在右侧设定世界线..."} className={`flex-1 bg-transparent border-none outline-none text-sm ${theme.title} px-3 font-sans ${theme.placeholder} disabled:cursor-not-allowed disabled:opacity-60`} disabled={isLoading || !novelWorldline} />
