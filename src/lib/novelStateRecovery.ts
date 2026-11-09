@@ -44,8 +44,8 @@ export function restoreNovelState(session: Session, snapshot?: NovelStateSnapsho
       sceneCastIds: [], stm: "", ltm: "", stmBackup: undefined, turnCount: 0,
       novelDraft: {
         selectedCharIds: [], selfId: session.novelDraft?.selfId ?? null,
-        environment: session.novelDraft?.environment ?? session.novelDraft?.scenario ?? "",
-        event: session.novelDraft?.event ?? session.novelDraft?.action ?? "",
+        environment: session.novelInitialScene?.environment ?? session.novelDraft?.environment ?? session.novelDraft?.scenario ?? "",
+        event: session.novelInitialScene?.event ?? session.novelDraft?.event ?? session.novelDraft?.action ?? "",
         style: session.novelDraft?.style ?? "", outline: session.novelDraft?.outline ?? "",
         themeMode: session.novelDraft?.themeMode ?? "paper",
       },
