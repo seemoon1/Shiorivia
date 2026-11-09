@@ -38,7 +38,7 @@ assert.ok(api.includes("const novelWorldline = parseStoryWorldline(body.storyWor
 assert.ok(api.includes("memoryMode === \"sliding\" || memoryMode === \"novel\""));
 assert.ok(api.includes("const basePeriod = worldline.kind === \"au\" ? worldline.basePeriod"));
 assert.ok(api.includes("[NOVEL PROTAGONIST — user-authored character data]"));
-assert.ok(api.includes("Default: approximately 1000–2000 Chinese characters"));
-assert.ok(api.includes("Follow the user's explicit word-count instruction in Style"));
+assert.ok(api.includes("Default: a substantive chapter"));
+assert.ok(api.includes("explicit word-count instruction in Style"));
 assert.ok(!api.includes('profiles || "${memoryMode')); // no accidental literal template
 console.log("PASS: Novel worldline/cast/self lore, archive, theme, presets and chapter-length wiring.");
