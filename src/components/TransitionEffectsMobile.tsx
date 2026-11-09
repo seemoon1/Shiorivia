@@ -22,15 +22,16 @@ const TransitionEffectsMobile = ({ effect, onComplete }: { effect: EffectType, o
   return (
     <AnimatePresence>
       {effect === "curtain" && (
-        <motion.div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col justify-center items-center bg-black">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="text-white font-serif text-xl tracking-[0.2em]"
-          >
-            ACTA EST FABULA
-          </motion.div>
+        <motion.div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center overflow-hidden">
+          <motion.div initial={{ x: "-100%" }} animate={{ x: "0%" }} exit={{ x: "-100%" }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-y-0 left-0 w-1/2 bg-[#1a0505] border-r-2 border-[#4a0e0e]" />
+          <motion.div initial={{ x: "100%" }} animate={{ x: "0%" }} exit={{ x: "100%" }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-y-0 right-0 w-1/2 bg-[#1a0505] border-l-2 border-[#4a0e0e]" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ delay: 0.6, duration: 0.4 }}
+            className="relative text-white font-serif text-lg tracking-[0.2em]">ACTA EST FABULA</motion.div>
         </motion.div>
       )}
 
