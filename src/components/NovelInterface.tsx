@@ -27,7 +27,6 @@ import { MemoryPreviewButton, MemoryVaultModal } from "./MemoryVaultModal";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { localText } from "../lib/i18nLocal";
-import { isUntitledNovel } from "../lib/sessionTitles";
 import { deepText } from "../lib/i18nDeep";
 import { IllustratedImage, ImageLightbox } from "./IllustrationImage";
 import { stripNovelState } from "../lib/novelState";
@@ -409,19 +408,6 @@ export const NovelInterface = ({
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-
-        const lastMsg = currentSession?.messages[currentSession.messages.length - 1];
-
-        if (lastMsg?.role === 'assistant' && !isLoading) { 
-
-            const metaRegex = /<meta title="(.*?)" chapter="(.*?)" \/>/;
-            const match = lastMsg.content.match(metaRegex);
-            if (match && updateSessionTitle && isUntitledNovel(currentSession.title)) {
-                updateSessionTitle(currentSession.id, match[1]);
-            }
-
-            // Illustrations remain as pending <draw> instructions until the user confirms.
-        }
     }, [currentSession?.messages, isLoading]);
 
     const handleGenerate = (type: 'new' | 'continue', optionText?: string) => {
