@@ -15,7 +15,7 @@ import { stripNovelSuggestions } from "../lib/novelSuggestions";
 import { storyCastAllowed, selectStoryCastIds } from "../lib/storyCast";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol, normalizeStoryProtocol, storyProtocolIssues } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
-import { isDefaultSessionTitle } from "../lib/sessionTitles";
+import { mayReviewSessionTitle, shouldReviewTitleAtTurn } from "../lib/titleReview";
 
 export const useChatEngine = ({
     currentSession, currentSessionId, setSessions,
@@ -43,13 +43,11 @@ export const useChatEngine = ({
 
     const requestAutomaticTitle = (history: any[], answer: string, modelName: string, generationId: string) => {
         const mode = currentSession?.memoryMode;
-        if (!(mode === "sliding" || mode === "infinite" || mode === "chat" || mode === "novel")) return;
-        // Never adopt a title if the user changed it, including legacy sessions with no management flag.
+        // Review all four conversation modes; never overwrite user-authored titles.
         const originalTitle = currentSession.title;
-        if (currentSession.titleAutoManaged === false ||
-            (currentSession.titleAutoManaged !== true && !isDefaultSessionTitle(originalTitle, mode))) return;
+        if (!mayReviewSessionTitle(currentSession, mode)) return;
         const userTurns = history.filter(message => message.role === "user").length;
-        if (userTurns !== 1 && (userTurns - 1) % 5 !== 0) return;
+        if (!shouldReviewTitleAtTurn(userTurns)) return;
         const recent = [...history, { role: "assistant", content: answer }].slice(-12)
             .map(message => {
                 const role = message.role === "assistant" ? "ASSISTANT" : "USER";
@@ -70,9 +68,8 @@ export const useChatEngine = ({
             const title = typeof result?.summary === "string" ? result.summary.trim().slice(0, 60) : "";
             if (!title || title === "KEEP" || title === originalTitle || title.length < 2) return;
             setSessions((prev: Session[]) => prev.map(session => {
-                if (session.id !== currentSessionId || session.titleAutoManaged === false ||
+                if (session.id !== currentSessionId || !mayReviewSessionTitle(session, mode) ||
                     session.title !== originalTitle ||
-                    !(session.titleAutoManaged === true || isDefaultSessionTitle(session.title, mode)) ||
                     !session.messages.some((message: any) => message.storyGenerationId === generationId) ||
                     session.messages.filter(message => message.role === "user").length !== userTurns) return session;
                 return { ...session, title, titleAutoManaged: true };
