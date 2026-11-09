@@ -65,6 +65,7 @@ export default function Home() {
     const [showModeHub, setShowModeHub] = useState(true);
     const [showCharta, setShowCharta] = useState(false);
     const [showSettingsCenter, setShowSettingsCenter] = useState(false);
+    const [curtainCycle, setCurtainCycle] = useState(0);
     const [showMemoryVault, setShowMemoryVault] = useState(false);
     const [worldlineOpenSignal, setWorldlineOpenSignal] = useState(0);
 
@@ -102,6 +103,7 @@ export default function Home() {
         terminalRequestLog: false,
         terminalLog: false,
         engineeringTransition: false,
+        curtainTransition: true,
         geminiNarrativeStyle: false,
         storyTheme: "sky" as StoryTheme,
         imageSettings: DEFAULT_IMAGE_SETTINGS,
@@ -142,6 +144,7 @@ export default function Home() {
                     terminalRequestLog: saved.terminalRequestLog === true,
                     terminalLog: saved.terminalLog === true,
                     engineeringTransition: typeof saved.engineeringTransition === "boolean" ? saved.engineeringTransition : false,
+                    curtainTransition: saved.curtainTransition !== false,
                     geminiNarrativeStyle: saved.geminiNarrativeStyle === true,
                     storyTheme: (["sky", "sage", "rose"].includes(saved.storyTheme) ? saved.storyTheme : prev.storyTheme) as StoryTheme,
                 }));
@@ -156,12 +159,12 @@ export default function Home() {
     useEffect(() => {
         if (!settingsHydrated) return;
         try {
-            const { webSearch, imageGen, tts, musicControl, terminalRequestLog, terminalLog, engineeringTransition, geminiNarrativeStyle, storyTheme, imageSettings } = config;
-            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalRequestLog, terminalLog, engineeringTransition, geminiNarrativeStyle, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
+            const { webSearch, imageGen, tts, musicControl, terminalRequestLog, terminalLog, engineeringTransition, curtainTransition, geminiNarrativeStyle, storyTheme, imageSettings } = config;
+            window.localStorage.setItem("shiorivia_local_preferences_v1", JSON.stringify({ webSearch, imageGen, tts: false, musicControl, terminalRequestLog, terminalLog, engineeringTransition, curtainTransition, geminiNarrativeStyle, storyTheme, imageSettings, disabledProviders, apiProvider, providerCapabilities }));
         } catch {
             // Local settings are best-effort; chat saves use their own storage.
         }
-    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalRequestLog, config.terminalLog, config.engineeringTransition, config.geminiNarrativeStyle, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
+    }, [settingsHydrated, config.webSearch, config.imageGen, config.tts, config.musicControl, config.terminalRequestLog, config.terminalLog, config.engineeringTransition, config.curtainTransition, config.geminiNarrativeStyle, config.storyTheme, config.imageSettings, disabledProviders, apiProvider, providerCapabilities]);
 
     const visibleProviders = useMemo(() => getVisibleLocalProviders(allProviders.filter(p => !p.custom || capabilityFor(p.id, providerCapabilities).llm), disabledProviders), [allProviders, disabledProviders, providerCapabilities]);
     useEffect(() => { fetch('/api/check_env').then(r => r.json()).then(d => setFalConfigured(Boolean(d.hasFal))).catch(() => {}); }, []);
@@ -337,6 +340,12 @@ export default function Home() {
         return finalChar;
     }, [activeCharacterId, voiceVariant, allChars]);
 
+    const triggerCurtain = () => {
+        if (!config.curtainTransition) return;
+        setCurtainCycle(value => value + 1);
+        ui.setEffect("curtain");
+    };
+
     const createNewSession = (charId: string = activeCharacterId, targetMode?: 'sliding' | 'infinite' | 'novel' | 'chat' | 'lime') => {
         const newId = Date.now().toString();
         const currentMode = currentSession?.memoryMode || 'sliding';
@@ -360,7 +369,7 @@ export default function Home() {
         const newSession: Session = {
             id: newId,
             title: nextMode === 'lime' ? "VIAE Workspace" : defaultSessionTitle(nextMode, locale),
-            titleAutoManaged: nextMode === "sliding" || nextMode === "infinite" || nextMode === "chat",
+            titleAutoManaged: nextMode === "sliding" || nextMode === "infinite" || nextMode === "chat" || nextMode === "novel",
             folderId: null,
             characterId: charId,
             voiceVariant: "default",
@@ -376,7 +385,7 @@ export default function Home() {
 
         if (targetMode) {
             if (targetMode === 'infinite' && config.engineeringTransition) ui.setEffect("math");
-            else if (targetMode === 'novel') ui.setEffect("curtain");
+            // Novel entry is handled by enterMode so new/existing sessions share one transition.
         }
     };
 
@@ -389,6 +398,7 @@ export default function Home() {
             createNewSession(activeCharacterId, mode);
         }
         setShowModeHub(false);
+        if (mode === "novel") triggerCurtain();
     };
 
     const deleteSession = (e: any, id: string) => {
@@ -529,6 +539,8 @@ export default function Home() {
                     terminalLogEnabled={config.terminalLog}
                     onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
+                    curtainTransitionEnabled={config.curtainTransition}
+                    onToggleCurtainTransition={() => setConfig(prev => ({ ...prev, curtainTransition: !prev.curtainTransition }))}
                     geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
                     onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                     onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
@@ -550,7 +562,7 @@ export default function Home() {
                         onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
                         falConfigured={falConfigured}
                 />
-                <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+                <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
             </>
         );
     }
@@ -589,6 +601,8 @@ export default function Home() {
                     terminalLogEnabled={config.terminalLog}
                     onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                     engineeringTransitionEnabled={config.engineeringTransition}
+                    curtainTransitionEnabled={config.curtainTransition}
+                    onToggleCurtainTransition={() => setConfig(prev => ({ ...prev, curtainTransition: !prev.curtainTransition }))}
                     geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
                     onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                     onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
@@ -670,12 +684,13 @@ export default function Home() {
                 syncStatus={cloud.status}
 
                 setSessions={cloud.setSessions}
-                onExit={() => setShowModeHub(true)}
+                onExit={() => { setShowModeHub(true); triggerCurtain(); }}
                 onOpenSettings={() => setShowSettingsCenter(true)}
                 updateSessionTitle={(id: string, t: string) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, title: t } : s))}
                 deleteMessage={engine.handleDeleteMessage}
                 updateSessionInfo={(id: string, up: any) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, ...up } : s))}
             />
+            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
             <SettingsCenter
                 open={showSettingsCenter}
                 onClose={() => setShowSettingsCenter(false)}
@@ -688,6 +703,8 @@ export default function Home() {
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}
+                curtainTransitionEnabled={config.curtainTransition}
+                onToggleCurtainTransition={() => setConfig(prev => ({ ...prev, curtainTransition: !prev.curtainTransition }))}
                     geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
                     onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                 onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
@@ -941,7 +958,7 @@ export default function Home() {
                 />
             </div>
 
-            <TransitionEffects effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
 
             <CodeRepositoryModal isOpen={ui.showCodeRepo} onClose={() => ui.setShowCodeRepo(false)} repository={currentSession?.codeRepository || {}} onUpdate={engine.handleRepoUpdate} />
             <SyncConflictModal
@@ -995,6 +1012,8 @@ export default function Home() {
                 terminalLogEnabled={config.terminalLog}
                 onToggleTerminalLog={() => setConfig(prev => ({ ...prev, terminalLog: !prev.terminalLog }))}
                 engineeringTransitionEnabled={config.engineeringTransition}
+                curtainTransitionEnabled={config.curtainTransition}
+                onToggleCurtainTransition={() => setConfig(prev => ({ ...prev, curtainTransition: !prev.curtainTransition }))}
                     geminiNarrativeStyleEnabled={config.geminiNarrativeStyle}
                     onToggleGeminiNarrativeStyle={() => setConfig(prev => ({ ...prev, geminiNarrativeStyle: !prev.geminiNarrativeStyle }))}
                 onToggleEngineeringTransition={() => setConfig(prev => ({ ...prev, engineeringTransition: !prev.engineeringTransition }))}
