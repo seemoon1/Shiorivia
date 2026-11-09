@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    const { text, previousLtm, mode, provider = "openrouter", model, uiLanguage } = await req.json();
+    const { text, previousLtm, mode, provider = "openrouter", model, uiLanguage, currentTitle } = await req.json();
 
     if (!text) return new Response(JSON.stringify({ error: "No text provided" }), { status: 400 });
     const selectedProvider = getServerLocalProvider(provider);
@@ -20,11 +20,12 @@ export async function POST(req: Request) {
     let userPrompt = "";
 
     if (mode === "title") {
-        systemPrompt = `You name Shiorivia sessions. Return ONE natural, specific, concise title (2-12 words or 4-18 CJK characters) in the user's selected language. No quotes, markdown, punctuation-only answer, commentary, generic title or invented details. For programming, identify the task; for stories, identify the established scene; for character chat, identify the topic. Use only the provided conversation excerpt.`;
-        userPrompt = `[Recent conversation excerpt]:
+        systemPrompt = `You review titles for Shiorivia conversations. Compare the CURRENT title with the recent conversation and choose whether to keep it. If it accurately describes the conversation, return exactly KEEP. If it is vague, outdated, generic, or no longer matches the topic, generate ONE natural, specific, concise replacement (2–12 words or 4–18 CJK characters) in the selected UI language. For engineering, name the actual task; for stories/novels, reflect the established scene; for chat, reflect the topic. Use only the provided context. No quotes, markdown, explanations, fabricated details or punctuation-only answer. A former title may be stale after previous turns are deleted. An unchanged title is preferable whenever it remains accurate.`;
+        userPrompt = `[Current title]: ${typeof currentTitle === "string" ? currentTitle.slice(0, 160) : ""}
+[Recent conversation excerpt]:
 ${String(text).slice(0, 3500)}
 
-Output ONLY the session title:`;
+Output KEEP or a single suitable replacement title:`;
     } else if (mode === 'novel_chapter') {
         systemPrompt = `
 You are a 'Novel Plot Recorder'.
