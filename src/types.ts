@@ -2,6 +2,7 @@ import type { ChartaSelf } from "./lib/chartaSelf";
 import type { StoryWorldline } from "./lib/storyWorldline";
 import type { NovelState } from "./lib/novelState";
 import type { StoryStateSnapshot } from "./lib/storyStateRecovery";
+import type { NovelStateSnapshot } from "./lib/novelStateRecovery";
 
 export type Message = { 
   role: string; 
@@ -11,6 +12,8 @@ export type Message = {
   voiceVariant?: string;
   /** Saved before each completed story reply; used to undo the last turn. */
   storyStateBefore?: StoryStateSnapshot;
+  /** Tela pre-chapter checkpoint; preserved in JSON archives for deletion and regeneration. */
+  novelStateBefore?: NovelStateSnapshot;
   storyGenerationId?: string;
   storyProtocolMissing?: boolean;
 };
@@ -150,6 +153,8 @@ export type Session = {
   /** Novel participation reuses storyRole/storySelfId/storySelfSnapshot; old novelDraft.selfId is still accepted. */
   /** Most recent AI-derived chapter state, not the global worldline event. */
   novelState?: NovelState;
+  /** Initial user-authored scene, preserved independently from AI-updated chapters. */
+  novelInitialScene?: { environment: string; event: string };
   turnCount?: number;
 
   protagonist?: ProtagonistState;
