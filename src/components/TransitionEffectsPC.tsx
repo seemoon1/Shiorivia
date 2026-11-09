@@ -60,7 +60,7 @@ const TransitionEffectsPC = ({ effect, onComplete }: { effect: EffectType, onCom
   return (
     <AnimatePresence>
       {effect === "curtain" && (
-        <motion.div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col justify-center items-center">
+        <motion.div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col justify-center items-center" exit={{ opacity: 1, transition: { duration: 0.85 } }}>
           <motion.div initial={{ x: "-100%" }} animate={{ x: "0%" }} exit={{ x: "-100%" }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="absolute left-0 top-0 w-1/2 h-full bg-[#1a0505] z-10 border-r-4 border-[#4a0e0e] shadow-2xl" />
           <motion.div initial={{ x: "100%" }} animate={{ x: "0%" }} exit={{ x: "100%" }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="absolute right-0 top-0 w-1/2 h-full bg-[#1a0505] z-10 border-l-4 border-[#4a0e0e] shadow-2xl" />
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ delay: 0.6, duration: 0.5 }} className="z-20 text-white font-serif text-3xl tracking-[0.5em] uppercase drop-shadow-lg">Acta Est Fabula</motion.div>
