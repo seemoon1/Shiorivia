@@ -30,6 +30,11 @@ This change updates **Shiorivia Local**, not Shiorivia_Cloud.
 - Every generation saves a per-turn `novelStateBefore` checkpoint of the scene, selected next cast and STM/LTM memory. Deleting or rewriting the latest chapter restores that checkpoint while preserving the user-selected WORLD/ERA/PERIOD, story identity, outline and **Style**. The original scene is also saved in `novelInitialScene` for initial-chapter/old-format fallback. Old archives without snapshots cannot reconstruct arbitrary past AI states.
 - `useImageGen=false` suppresses visualizer guidance and explicitly forbids model-produced draw tags; the reading view also hides the drawing action when image generation is disabled.
 - The system prompt emphasizes novelistic momentum, non-OOC characterization and scene-based storytelling. Both regular chapter generation and state-only repair explicitly demand user-visible Environment/Event VALUES in the selected UI language; JSON keys and IDs stay stable.
+- Tela's right-panel primary button is **编织新篇章**. Clicking a novel plot option now opens a confirmation dialog before sending. A separate **填入输入框** action inserts its text into the director input for editing without dispatch. Via Lata story suggestions now follow the same primary-card-click-to-confirm/send pattern, with a separate one-click insert action.
+- Tela participant identity may be selected before the worldline is configured when Charta has an active self. A later incompatible worldline resets the pre-start self rather than binding an invalid participant; the worldline and self must still be valid when generation begins.
+- Environment/Event can be manually unlocked after confirmation, edited, then saved and **locked again**. Style stays independently editable.
+- Shiorivia's four conversation spaces (Officina, Via Lata, Umbra, Tela) review AI-managed titles after turn 1 and every five subsequent user turns (1, 6, 11, ...). The title model gets the current title and recent context, returns `KEEP` when suitable, or a new title when stale; user-renamed titles and pre-existing unmarked custom titles remain protected.
+- Tela curtains now run on both entering an existing/new novel and exiting to the hub. A **default-enabled Tela 幕布转场** option lives below the Officina entrance transition toggle in Developer settings and is persisted locally. Curtain instances are restarted consistently, and mobile curtains animate opening/closing rather than presenting a static overlay.
 
 ## Local checks
 
@@ -37,6 +42,7 @@ This change updates **Shiorivia Local**, not Shiorivia_Cloud.
 node scripts/check-novel-mode.mjs
 node --experimental-strip-types scripts/check-novel-state.mjs
 node --experimental-strip-types scripts/check-tela-novel-improvements.mjs
+node scripts/check-tela-interaction-title-transition.mjs
 node --experimental-strip-types scripts/check-tela-story-role.mjs
 npm run build
 ```
@@ -65,3 +71,9 @@ Manual smoke test matrix:
 21. Switch UI locale among zh-CN/zh-TW/en/ja/ko and verify Environment/Event, three choices and chapter text follow it, while `novel_state` JSON keys remain English.
 22. Generate a chapter with three `novel_choices`: cards should be clickable and hidden from literary prose and DOCX. Import an older archive with the three legacy Option lines and verify cards also appear.
 23. Compare sage and parchment themes for reading contrast, action controls, chapter list and mobile sidebars.
+
+24. Click any of the last Tela chapter's three option cards: confirm dialog must open; Cancel must not send; Confirm must dispatch exactly one continuation. Use **填入输入框** and check it only populates editable director text. Repeat the send/insert split in Via Lata.
+25. Before selecting a worldline, enable an active Charta self and select Tela Participant; it must be selectable. Choose a compatible worldline and ensure identity persists; incompatible worlds must not silently keep an invalid self.
+26. Generate a chapter, manually unlock Environment/Event, change both, use **保存并锁定**, and verify the fields become read-only again. Style must remain editable.
+27. For each conversation mode (Officina, Via Lata, Umbra, Tela), use turn 1, then 6, then 11: check AI keeps an accurate title or replaces one rendered stale after deleting/restarting turns. A manually renamed title must never change. Also test old imported sessions without `titleAutoManaged`.
+28. Toggle **Tela 幕布转场** off/on in Developer settings. Enter both existing and fresh Tela sessions and exit to the hub repeatedly on desktop and mobile; only enabled mode should play curtain animations.
