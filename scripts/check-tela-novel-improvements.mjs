@@ -57,7 +57,7 @@ assert.ok(tela.includes("disabled={disabled}"));
 assert.ok(tela.includes("useImageGen && parseDrawTag"));
 assert.ok(tela.includes("bg-[#f1f4ee]"));
 assert.ok(hook.includes("novelStateBefore: snapshotNovelState"));
-assert.ok(hook.includes("restoreNovelState(s, fallback)"));
+assert.ok(hook.includes("restoreNovelState(s, checkpoint)"));
 assert.ok(hook.includes("rewindNovelTurn(keptMessages"));
 assert.ok(hook.includes('s.memoryMode === "novel"'));
 assert.ok(hook.includes('s.messages.some((message: any) => message.storyGenerationId === generationId)'));
