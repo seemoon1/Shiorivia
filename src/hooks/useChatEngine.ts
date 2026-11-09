@@ -869,7 +869,7 @@ export const useChatEngine = ({
         const target = currentSession.messages[idx];
         if (!target || target.role !== "assistant") return;
         if ((currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") && idx !== currentSession.messages.length - 1) {
-            showToast("故事模式请从最后一轮开始刷新，以便正确回退状态与记忆。"); return;
+            showToast("请从最后一轮开始刷新，以便正确回退状态与记忆。"); return;
         }
         if (!window.confirm(currentSession.memoryMode === "sliding"
             ? "确认刷新这轮故事吗？将恢复本轮之前的自身状态、角色数值、剧情引导与记忆，然后重新生成。"
@@ -920,10 +920,12 @@ export const useChatEngine = ({
         const latestAssistant = role === "assistant" ? oldMessages[idx] : oldMessages[idx + 1]?.role === "assistant" ? oldMessages[idx + 1] : null;
         const lastTurn = idx === oldMessages.length - 1 || (role === "user" && idx === oldMessages.length - 2);
         if ((currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") && !lastTurn) {
-            showToast("故事模式目前仅支持从最后一轮向前删除，以确保状态与记忆同步回退。");
+            showToast("故事／小说模式仅支持从最后一轮向前删除，以确保状态与记忆同步回退。");
             return;
         }
-        if (!confirm("确定删除最后一条消息并回退故事状态与记忆吗？")) return;
+        if (!confirm(currentSession.memoryMode === "novel"
+            ? "确定删除最新章节并回退环境、事件、下章阵容和记忆吗？世界线与 Style 会保留。"
+            : "确定删除最后一条消息并回退故事状态与记忆吗？")) return;
         const newMsgs = [...oldMessages];
         if (role === "assistant") newMsgs.splice(idx, 1);
         else if (role === "user") newMsgs.splice(idx, newMsgs[idx + 1]?.role === "assistant" ? 2 : 1);
@@ -931,9 +933,9 @@ export const useChatEngine = ({
             if (s.id !== currentSessionId) return s;
             if (s.memoryMode === "novel") {
                 const checkpoint = latestAssistant?.novelStateBefore || (role === "user" ? oldMessages[idx]?.novelStateBefore : undefined);
-                const fallback = !checkpoint && !newMsgs.some((m: any) => m.role === "user") && s.novelInitialScene
-                    ? snapshotNovelState(s, s.novelInitialScene) : checkpoint;
-                return { ...restoreNovelState(s, fallback), messages: newMsgs, updatedAt: Date.now() };
+                // Old archives may lack checkpoints: clear the stale AI state rather than
+                // snapshotting the state of a chapter that is being deleted.
+                return { ...restoreNovelState(s, checkpoint), messages: newMsgs, updatedAt: Date.now() };
             }
             if (s.memoryMode !== "sliding") return { ...s, messages: newMsgs, updatedAt: Date.now() };
             // Prefer the saved pre-turn snapshot even when deleting the FIRST turn:
