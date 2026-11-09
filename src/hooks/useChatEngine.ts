@@ -43,28 +43,41 @@ export const useChatEngine = ({
 
     const requestAutomaticTitle = (history: any[], answer: string, modelName: string, generationId: string) => {
         const mode = currentSession?.memoryMode;
-        if (!(mode === "sliding" || mode === "infinite" || mode === "chat")) return;
+        if (!(mode === "sliding" || mode === "infinite" || mode === "chat" || mode === "novel")) return;
+        // Never adopt a title if the user changed it, including legacy sessions with no management flag.
+        const originalTitle = currentSession.title;
         if (currentSession.titleAutoManaged === false ||
-            (currentSession.titleAutoManaged !== true && !isDefaultSessionTitle(currentSession.title, mode))) return;
+            (currentSession.titleAutoManaged !== true && !isDefaultSessionTitle(originalTitle, mode))) return;
         const userTurns = history.filter(message => message.role === "user").length;
-        if (userTurns !== 1 && userTurns % 5 !== 0) return;
-        const lastUser = [...history].reverse().find(message => message.role === "user");
-        const userText = typeof lastUser?.content === "string" ? lastUser.content : JSON.stringify(lastUser?.content || "");
-        const cleanedAnswer = answer.replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, " [code] ")
-            .replace(/<game_state>[\s\S]*?<\/game_state>/gi, "").slice(0, 1400);
+        if (userTurns !== 1 && (userTurns - 1) % 5 !== 0) return;
+        const recent = [...history, { role: "assistant", content: answer }].slice(-12)
+            .map(message => {
+                const role = message.role === "assistant" ? "ASSISTANT" : "USER";
+                const raw = typeof message.content === "string" ? message.content : JSON.stringify(message.content || "");
+                const clean = stripNovelSuggestions(stripNovelState(raw))
+                    .replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, " [code] ")
+                    .replace(/<game_state\b[^>]*>[\s\S]*?<\/game_state>/gi, "")
+                    .replace(/<draw\b[^>]*>[\s\S]*?<\/draw>/gi, "")
+                    .replace(/<meta\b[^>]*\/?\s*>/gi, "")
+                    .replace(/<audio\b[^>]*>[\s\S]*?<\/audio>/gi, "").trim();
+                return `${role}: ${clean.slice(0, 500)}`;
+            }).join("\n");
         void fetch("/api/summarize", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "title", text: `USER: ${userText.slice(0, 1200)}\nASSISTANT: ${cleanedAnswer}`,
-                model: modelName, provider: apiProvider, uiLanguage: locale }),
+            body: JSON.stringify({ mode: "title", currentTitle: originalTitle,
+                text: recent.slice(-3500), model: modelName, provider: apiProvider, uiLanguage: locale }),
         }).then(response => response.ok ? response.json() : null).then(result => {
             const title = typeof result?.summary === "string" ? result.summary.trim().slice(0, 60) : "";
-            if (!title || title.length < 2) return;
-            setSessions((prev: any) => prev.map((session: any) => session.id !== currentSessionId ||
-                session.titleAutoManaged === false ||
-                !(session.titleAutoManaged === true || isDefaultSessionTitle(session.title, mode)) ||
-                !session.messages.some((message: any) => message.storyGenerationId === generationId)
-                ? session : { ...session, title, titleAutoManaged: true }));
-        }).catch(error => console.warn("Automatic title skipped:", error));
+            if (!title || title === "KEEP" || title === originalTitle || title.length < 2) return;
+            setSessions((prev: Session[]) => prev.map(session => {
+                if (session.id !== currentSessionId || session.titleAutoManaged === false ||
+                    session.title !== originalTitle ||
+                    !(session.titleAutoManaged === true || isDefaultSessionTitle(session.title, mode)) ||
+                    !session.messages.some((message: any) => message.storyGenerationId === generationId) ||
+                    session.messages.filter(message => message.role === "user").length !== userTurns) return session;
+                return { ...session, title, titleAutoManaged: true };
+            }));
+        }).catch(error => console.warn("Automatic title review skipped:", error));
     };
 
     const handleSend = async (
