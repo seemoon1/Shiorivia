@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,6 +62,7 @@ export default function Home() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     const ui = useUI();
+    const handleEffectComplete = useCallback(() => ui.setEffect("none"), [ui.setEffect]);
     const [showModeHub, setShowModeHub] = useState(true);
     const [showCharta, setShowCharta] = useState(false);
     const [showSettingsCenter, setShowSettingsCenter] = useState(false);
@@ -562,7 +563,7 @@ export default function Home() {
                         onProviderCapabilitiesChange={(id, capability) => setProviderCapabilities(prev => ({ ...prev, [id]: { ...capabilityFor(id, prev), ...capability } }))}
                         falConfigured={falConfigured}
                 />
-                <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+                <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={handleEffectComplete} />
             </>
         );
     }
@@ -690,7 +691,7 @@ export default function Home() {
                 deleteMessage={engine.handleDeleteMessage}
                 updateSessionInfo={(id: string, up: any) => cloud.setSessions(p => p.map(s => s.id === id ? { ...s, ...up } : s))}
             />
-            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={handleEffectComplete} />
             <SettingsCenter
                 open={showSettingsCenter}
                 onClose={() => setShowSettingsCenter(false)}
@@ -958,7 +959,7 @@ export default function Home() {
                 />
             </div>
 
-            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={() => ui.setEffect("none")} />
+            <TransitionEffects key={curtainCycle} effect={ui.effect} onComplete={handleEffectComplete} />
 
             <CodeRepositoryModal isOpen={ui.showCodeRepo} onClose={() => ui.setShowCodeRepo(false)} repository={currentSession?.codeRepository || {}} onUpdate={engine.handleRepoUpdate} />
             <SyncConflictModal
