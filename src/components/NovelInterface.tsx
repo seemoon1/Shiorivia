@@ -80,7 +80,7 @@ const PRESETS = [
     { name: "命运岔路 · 重力", environment: "人生的重大抉择之前", event: "无法两全的选择迫使角色承担后果，避免轻易的圆满结局", style: "沉重、充满张力、因果清晰、保留人物缺点" },
 ];
 
-const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors = {} }: any) => {
+const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors = {}, locale = "zh-CN", disabled = false }: any) => {
     let clean = cleanDrawTag(stripNovelState(content)) 
         .replace(/<meta.*?\/>/g, "")
         .replace(/<audio>.*?<\/audio>/g, "")
@@ -88,10 +88,15 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors =
 
     const suggestions = extractNovelSuggestions(clean);
     clean = stripNovelSuggestions(clean);
+    const labels: Record<string, [string, string, string]> = {
+        "zh-CN": ["趣味", "理智", "激进"], "zh-TW": ["趣味", "理智", "激進"],
+        en: ["Playful", "Rational", "Bold"], ja: ["遊び心", "理性的", "大胆"], ko: ["흥미", "이성적", "과감"],
+    };
+    const translated = labels[locale] || labels["zh-CN"];
     const options = suggestions ? [
-        { label: "趣味 · FUN", text: suggestions.fun, icon: "✦" },
-        { label: "理智 · RATIONAL", text: suggestions.rational, icon: "◇" },
-        { label: "激进 · RADICAL", text: suggestions.radical, icon: "◆" },
+        { label: translated[0], text: suggestions.fun, icon: "✦" },
+        { label: translated[1], text: suggestions.rational, icon: "◇" },
+        { label: translated[2], text: suggestions.radical, icon: "◆" },
     ] : [];
 
     const parts = clean.split(/(!\[.*?\]\(.*?\))/g);
@@ -139,13 +144,14 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors =
             {options.length > 0 && (
                 <div className={`grid grid-cols-1 gap-3 mt-10 pt-8 border-t ${theme.border}`}>
                     <div className={`text-xs font-mono ${theme.accent} tracking-widest uppercase mb-2 opacity-70`}>
-                        Decision Point
+                        {locale === "en" ? "Next possibilities" : locale === "ja" ? "次の展開" : locale === "ko" ? "다음 전개" : locale === "zh-TW" ? "後續發展" : "后续发展"}
                     </div>
                     {options.map((opt, i) => (
                         <button
                             key={i}
                             onClick={() => onOptionClick(opt.text)}
-                            className={`text-left p-4 rounded-xl ${theme.inputBg} border ${theme.border} ${theme.hover} transition-all group flex gap-4 active:scale-[0.98]`}
+                            disabled={disabled}
+                            className={`text-left p-4 rounded-xl ${theme.inputBg} border ${theme.border} ${theme.hover} transition-all group flex gap-4 active:scale-[0.98] disabled:opacity-55 disabled:cursor-not-allowed`}
                         >
                             <span className={`font-bold ${theme.accent} shrink-0`}>{opt.icon}</span>
                             <span className="min-w-0"><span className={`block text-[10px] font-semibold tracking-widest ${theme.accent} mb-1`}>{opt.label}</span><span className={`block text-sm ${theme.text} font-medium leading-relaxed`}>{opt.text}</span></span>
@@ -624,9 +630,9 @@ export const NovelInterface = ({
                                 <div key={i} id={`chapter-${i}`} className="animate-fade-in-up">
                                     <div className="flex items-center gap-4 mb-8 opacity-30 justify-center"><div className={`h-px ${theme.text} w-12`}></div><span className="font-mono text-xs tracking-widest uppercase">{title}</span><div className={`h-px ${theme.text} w-12`}></div></div>
                                     <div className={`prose ${theme.prose} prose-lg md:prose-xl leading-loose ${theme.text} font-serif whitespace-pre-wrap`}>
-                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} selfColors={selfColors} />
+                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} selfColors={selfColors} locale={locale} disabled={isLoading || i !== chapters.length - 1} />
 
-                                        {parseDrawTag(msg.content)?.trigger && (
+                                        {useImageGen && parseDrawTag(msg.content)?.trigger && (
                                             <button type="button" disabled={drawingIndex !== null || isLoading}
                                                 onClick={() => void confirmNovelDraw(msg.realIndex)}
                                                 className={`mt-5 flex items-center gap-3 rounded-xl border ${theme.border} ${theme.inputBg} px-4 py-3 text-xs ${theme.text} transition ${theme.hover} disabled:opacity-50`}>
