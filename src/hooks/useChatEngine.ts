@@ -10,6 +10,8 @@ import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
 import { parseStoryWorldline } from "../lib/storyWorldline";
 import { extractNovelState, stripNovelState } from "../lib/novelState";
+import { snapshotNovelState, restoreNovelState } from "../lib/novelStateRecovery";
+import { stripNovelSuggestions } from "../lib/novelSuggestions";
 import { storyCastAllowed, selectStoryCastIds } from "../lib/storyCast";
 import { snapshotStoryState, restoreStoryState, emptyStoryState, isUsableStoryProtocol, normalizeStoryProtocol, storyProtocolIssues } from "../lib/storyStateRecovery";
 import { completeStoryProtagonist } from "../lib/storyProtagonist";
@@ -106,6 +108,7 @@ export const useChatEngine = ({
         const assistantMeta = {
             storyGenerationId: generationId,
             ...(currentSession.memoryMode === "sliding" ? { storyStateBefore: snapshotStoryState(currentSession) } : {}),
+            ...(currentSession.memoryMode === "novel" ? { novelStateBefore: snapshotNovelState(currentSession, configOverride?.novelConfig) } : {}),
         };
 
         if (!isRegen) { setInput(""); setSelectedFile(null); }
@@ -126,6 +129,12 @@ export const useChatEngine = ({
         setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
             ...s,
             messages: [...msgs, { role: "assistant", content: "", modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta }],
+            ...(s.memoryMode === "novel" && !s.novelInitialScene ? {
+                novelInitialScene: {
+                    environment: configOverride?.novelConfig?.environment ?? s.novelDraft?.environment ?? s.novelState?.environment ?? "",
+                    event: configOverride?.novelConfig?.event ?? s.novelDraft?.event ?? s.novelState?.event ?? "",
+                },
+            } : {}),
             ...((s.memoryMode === "sliding" || s.memoryMode === "novel") ? {
                 storyRole, storySelfId: storyRole === "participant" ? selectedSelf?.id || selectedSelfId : null,
                 storySelfSnapshot: storyRole === "participant" ? selectedSelf : null,
@@ -161,7 +170,13 @@ export const useChatEngine = ({
                     ltm: currentSession.ltm,
                     timeline: currentSession.timeline,
                     storyWorldline: (currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") ? currentSession.storyWorldline : undefined,
-                    novelConfig: configOverride?.novelConfig, 
+                    novelConfig: configOverride?.novelConfig ?? (currentSession.memoryMode === "novel" ? {
+                        environment: currentSession.novelDraft?.environment ?? currentSession.novelState?.environment ?? "",
+                        event: currentSession.novelDraft?.event ?? currentSession.novelState?.event ?? "",
+                        charNames: "", style: currentSession.novelDraft?.style ?? "",
+                        outline: currentSession.novelDraft?.outline ?? currentSession.localWorldInfo ?? "",
+                        selfId: currentSession.storySelfId ?? currentSession.novelDraft?.selfId ?? null,
+                    } : undefined), 
                     useWebSearch: config.webSearch,
                     useMusicControl: configOverride?.useMusicControl ?? config.musicControl,
                     useImageGen: config.imageGen,
@@ -733,7 +748,7 @@ export const useChatEngine = ({
 
             if (currentText.trim()) requestAutomaticTitle(msgs, currentText, modelToUse, generationId);
             if ((currentSession.memoryMode === 'sliding' && !storyProtocolMissing) || currentSession.memoryMode === 'novel') {
-                const textToSummarize = currentSession.memoryMode === 'novel' ? currentText : `User: ${txt}\nAI: ${currentText}\n`;
+                const textToSummarize = currentSession.memoryMode === 'novel' ? stripNovelSuggestions(currentText) : `User: ${txt}\nAI: ${currentText}\n`;
                 const summarizeMode = currentSession.memoryMode === 'novel' ? 'novel_chapter' : 'micro';
 
                 fetch("/api/summarize", {
@@ -747,7 +762,7 @@ export const useChatEngine = ({
                         const summaryLine = `${prefix}${microData.summary}\n`;
                         
                         setSessions((prev: any) => prev.map((s: any) => {
-                            if (s.id === currentSessionId && (s.memoryMode !== "sliding" ||
+                            if (s.id === currentSessionId && ((s.memoryMode !== "sliding" && s.memoryMode !== "novel") ||
                                 s.messages.some((message: any) => message.storyGenerationId === generationId))) {
                                 const newStm = (s.stm || "") + summaryLine;
                                 const newCount = (s.turnCount || 0) + 1;
@@ -758,7 +773,7 @@ export const useChatEngine = ({
                                         body: JSON.stringify({ text: newStm, previousLtm: s.ltm, mode: 'macro', provider: apiProvider, model: modelToUse, uiLanguage: locale })
                                     }).then(r => r.json()).then(macroData => {
                                         if (macroData.summary) {
-                                            setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId && (innerS.memoryMode !== "sliding" || innerS.messages.some((message: any) => message.storyGenerationId === generationId)) ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));
+                                            setSessions((inner: any) => inner.map((innerS: any) => innerS.id === currentSessionId && ((innerS.memoryMode !== "sliding" && innerS.memoryMode !== "novel") || innerS.messages.some((message: any) => message.storyGenerationId === generationId)) ? { ...innerS, ltm: macroData.summary, stm: "", turnCount: 0 } : innerS));
                                             showToast("✨ Memory Consolidated");
                                         }
                                     });
@@ -830,6 +845,13 @@ export const useChatEngine = ({
         setPendingStoryRegeneration({ sessionId: currentSessionId, messagesLength: messages.length });
     };
 
+    const rewindNovelTurn = (messages: Session["messages"], snapshot?: Session["messages"][number]["novelStateBefore"]) => {
+        setSessions((prev: Session[]) => prev.map(session => session.id === currentSessionId
+            ? { ...restoreNovelState(session, snapshot), messages, updatedAt: Date.now() }
+            : session));
+        setPendingStoryRegeneration({ sessionId: currentSessionId, messagesLength: messages.length });
+    };
+
     // This effect runs only after the previous story state AND message history have committed.
     useEffect(() => {
         if (!pendingStoryRegeneration || isLoading || !currentSession ||
@@ -846,13 +868,15 @@ export const useChatEngine = ({
         if (!currentSession || isLoading) return;
         const target = currentSession.messages[idx];
         if (!target || target.role !== "assistant") return;
-        if (currentSession.memoryMode === "sliding" && idx !== currentSession.messages.length - 1) {
+        if ((currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") && idx !== currentSession.messages.length - 1) {
             showToast("故事模式请从最后一轮开始刷新，以便正确回退状态与记忆。"); return;
         }
         if (!window.confirm(currentSession.memoryMode === "sliding"
             ? "确认刷新这轮故事吗？将恢复本轮之前的自身状态、角色数值、剧情引导与记忆，然后重新生成。"
-            : "确认重新生成这条 AI 回复吗？当前回复会被替换。")) return;
-        if (currentSession.memoryMode !== "sliding") {
+            : currentSession.memoryMode === "novel"
+              ? "确认重写最后一章吗？将回退本章的环境、事件、下章阵容与记忆，保留世界线和 Style。"
+              : "确认重新生成这条 AI 回复吗？当前回复会被替换。")) return;
+        if (currentSession.memoryMode !== "sliding" && currentSession.memoryMode !== "novel") {
             void handleSend(undefined, currentSession.messages.slice(0, idx));
             return;
         }
@@ -862,7 +886,11 @@ export const useChatEngine = ({
             return;
         }
         const snapshot = target.storyStateBefore || currentSession.messages[idx - 1]?.storyStateBefore;
-        rewindStoryTurn(keptMessages, snapshot);
+        if (currentSession.memoryMode === "novel") {
+            rewindNovelTurn(keptMessages, target.novelStateBefore || currentSession.messages[idx - 1]?.novelStateBefore);
+        } else {
+            rewindStoryTurn(keptMessages, snapshot);
+        }
     };
 
     const handleEditMessage = (idx: number, revisedText: string) => {
@@ -891,7 +919,7 @@ export const useChatEngine = ({
         const oldMessages = currentSession.messages as any[];
         const latestAssistant = role === "assistant" ? oldMessages[idx] : oldMessages[idx + 1]?.role === "assistant" ? oldMessages[idx + 1] : null;
         const lastTurn = idx === oldMessages.length - 1 || (role === "user" && idx === oldMessages.length - 2);
-        if (currentSession.memoryMode === "sliding" && !lastTurn) {
+        if ((currentSession.memoryMode === "sliding" || currentSession.memoryMode === "novel") && !lastTurn) {
             showToast("故事模式目前仅支持从最后一轮向前删除，以确保状态与记忆同步回退。");
             return;
         }
@@ -901,6 +929,12 @@ export const useChatEngine = ({
         else if (role === "user") newMsgs.splice(idx, newMsgs[idx + 1]?.role === "assistant" ? 2 : 1);
         setSessions((prev: any) => prev.map((s: any) => {
             if (s.id !== currentSessionId) return s;
+            if (s.memoryMode === "novel") {
+                const checkpoint = latestAssistant?.novelStateBefore || (role === "user" ? oldMessages[idx]?.novelStateBefore : undefined);
+                const fallback = !checkpoint && !newMsgs.some((m: any) => m.role === "user") && s.novelInitialScene
+                    ? snapshotNovelState(s, s.novelInitialScene) : checkpoint;
+                return { ...restoreNovelState(s, fallback), messages: newMsgs, updatedAt: Date.now() };
+            }
             if (s.memoryMode !== "sliding") return { ...s, messages: newMsgs, updatedAt: Date.now() };
             // Prefer the saved pre-turn snapshot even when deleting the FIRST turn:
             // this restores the user's original cast selection, not the AI's forecast.
