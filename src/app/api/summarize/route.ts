@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     let userPrompt = "";
 
     if (mode === "title") {
-        systemPrompt = `You review titles for Shiorivia conversations. Compare the CURRENT title with the recent conversation and choose whether to keep it. If it accurately describes the conversation, return exactly KEEP. If it is vague, outdated, generic, or no longer matches the topic, generate ONE natural, specific, concise replacement (2–12 words or 4–18 CJK characters) in the selected UI language. For engineering, name the actual task; for stories/novels, reflect the established scene; for chat, reflect the topic. Use only the provided context. No quotes, markdown, explanations, fabricated details or punctuation-only answer. A former title may be stale after previous turns are deleted. An unchanged title is preferable whenever it remains accurate.`;
+        systemPrompt = `You review titles for Shiorivia conversations. Compare the CURRENT title with the recent conversation and choose whether to keep it. If it accurately describes the conversation, return exactly KEEP. If it is vague, outdated, generic, or no longer matches the topic, generate ONE natural, specific, concise replacement (2–12 words or 4–18 CJK characters) in the selected UI language. For engineering, name the actual task; for stories/novels, reflect the established scene; for chat, reflect the topic. Use only the provided context. No quotes, markdown, explanations, fabricated details or punctuation-only answer. A former title may be stale after previous turns are deleted. An unchanged title is preferable whenever it remains accurate. KEEP is a fixed machine protocol token and MUST NOT be translated into the UI language.`;
         userPrompt = `[Current title]: ${typeof currentTitle === "string" ? currentTitle.slice(0, 160) : ""}
 [Recent conversation excerpt]:
 ${String(text).slice(0, 3500)}
@@ -80,6 +80,7 @@ Rules:
     }
     if (mode === "title") {
         summary = String(summary).split(/\r?\n/)[0].replace(/<[^>]+>/g, "").replace(/^[\s\"'`*#]+|[\s\"'`*#]+$/g, "").trim().slice(0, 60);
+        if (/^KEEP[.!]?$/i.test(summary)) summary = "KEEP";
     }
     return new Response(JSON.stringify({ summary }), { status: 200 });
 
