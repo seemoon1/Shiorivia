@@ -29,6 +29,8 @@ type Props = {
   onToggleTerminalLog: () => void;
   engineeringTransitionEnabled: boolean;
   onToggleEngineeringTransition: () => void;
+  curtainTransitionEnabled: boolean;
+  onToggleCurtainTransition: () => void;
   geminiNarrativeStyleEnabled: boolean;
   onToggleGeminiNarrativeStyle: () => void;
   onTestEffect: (name: "rain" | "curtain" | "math" | "glitch") => void;
@@ -90,7 +92,7 @@ function SwitchRow({ title, description, checked, onClick, icon: Icon }: {
   );
 }
 
-export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, terminalRequestLogEnabled, onToggleTerminalRequestLog, terminalLogEnabled, onToggleTerminalLog, engineeringTransitionEnabled, onToggleEngineeringTransition, geminiNarrativeStyleEnabled, onToggleGeminiNarrativeStyle, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
+export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onToggleDebug, terminalRequestLogEnabled, onToggleTerminalRequestLog, terminalLogEnabled, onToggleTerminalLog, engineeringTransitionEnabled, onToggleEngineeringTransition, curtainTransitionEnabled, onToggleCurtainTransition, geminiNarrativeStyleEnabled, onToggleGeminiNarrativeStyle, onTestEffect, isStory, storyTheme, onStoryThemeChange, activeProvider, providers, disabledProviders, onToggleProvider, autoSync, autoSyncInterval, onAutoSyncChange, onAutoSyncIntervalChange, imageSettings, onImageSettingsChange, providerCapabilities, onProviderCapabilitiesChange, falConfigured }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { refreshLibrary, allTracks } = useMusic();
   const [scanningMusic, setScanningMusic] = useState(false);
@@ -257,6 +259,7 @@ export function SettingsCenter({ open, onClose, values, onToggle, debugMode, onT
                 <SwitchRow title="终端输出发送给 AI 的完整请求" description="默认关闭；在 Node.js 终端查看最终 System Prompt、对话内容及模型参数（不含 API Key）。可能包含私密设定、对话和图片数据。" checked={terminalRequestLogEnabled} onClick={onToggleTerminalRequestLog} icon={Bug} />
                 <SwitchRow title="终端输出 AI 完整原文" description="默认关闭；开启后在运行 Shiorivia 的终端打印模型的完整流式原文（包括隐藏标签与状态 JSON）。可能包含私人对话，请勿分享终端日志。" checked={terminalLogEnabled} onClick={onToggleTerminalLog} icon={Bug} />
                 <SwitchRow title={t("settings.transition")} description={t("settings.transition.description")} checked={engineeringTransitionEnabled} onClick={onToggleEngineeringTransition} icon={Sparkles} />
+                <SwitchRow title="Tela 幕布转场" description="进入或退出小说模式时播放幕布动画。默认开启，关闭后直接切换界面。" checked={curtainTransitionEnabled} onClick={onToggleCurtainTransition} icon={Sparkles} />
                 <SectionTitle>{t("settings.preview")}</SectionTitle>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {([
