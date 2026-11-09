@@ -12,6 +12,7 @@ const engine = read("src/hooks/useChatEngine.ts");
 const summarizer = read("src/app/api/summarize/route.ts");
 const review = read("src/lib/titleReview.ts");
 const mobile = read("src/components/TransitionEffectsMobile.tsx");
+const desktop = read("src/components/TransitionEffectsPC.tsx");
 
 assert.ok(novel.includes("编织新篇章"));
 assert.ok(!novel.includes("生成新梦境 (New)"));
@@ -55,5 +56,7 @@ assert.equal((page.match(/<TransitionEffects key=\{curtainCycle\}/g) || []).leng
 assert.ok(settings.indexOf('title={t("settings.transition")}') < settings.indexOf('title="Tela 幕布转场"'));
 assert.ok(settings.includes("curtainTransitionEnabled"));
 assert.ok(mobile.includes('initial={{ x: "-100%" }}'));
+assert.ok(mobile.includes("exit={{ opacity: 1, transition: { duration: 0.75 } }}"));
+assert.ok(desktop.includes("exit={{ opacity: 1, transition: { duration: 0.85 } }}"));
 
 console.log("PASS: Tela/story suggestion confirmation, role selection, scene re-lock, title review and curtain controls.");
