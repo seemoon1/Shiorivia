@@ -8,7 +8,7 @@ import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
 import { characterNameInstruction } from "../../../lib/characterNames";
-import { normalizeLocale } from "../../../lib/locale";
+import { normalizeLocale, OUTPUT_LANGUAGE_NAME } from "../../../lib/locale";
 import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/chartaWire";
 import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, BANG_DREAM_CANON, parseStoryWorldline } from "../../../lib/storyWorldline";
 import { MAX_STORY_CAST, selectStoryCastIds, storyCastAllowed, storyCastOrigin } from "../../../lib/storyCast";
@@ -312,6 +312,7 @@ Only JSON belongs between the tags.`;
       const repairWorldline = parseStoryWorldline(body.storyWorldline);
       if (!repairWorldline) return Response.json({ error: "Invalid novel worldline for state recovery" }, { status: 400 });
       finalSystemPrompt = `You are a strict novel chapter-state extractor, NOT a novelist.
+All user-visible JSON string VALUES (environment and event) MUST be written in ${OUTPUT_LANGUAGE_NAME[normalizeLocale(body.uiLanguage)]}, matching the UI language, not the language of the instructions. Never translate JSON keys or character IDs.
 Return ONLY a single valid JSON object inside <novel_state>...</novel_state>. No explanations, markdown or chapter prose.
 Required JSON shape: {"environment":"nonempty location, weather, temperature and other environmental facts","event":"nonempty CURRENT event at the end of the chapter","nextSceneCastIds":["known character ID"]}
 All three keys are mandatory; environment/event must be plain strings, each at most 2000 characters, and nextSceneCastIds an array of 0–6 unique character IDs.
@@ -328,13 +329,19 @@ Worldline: ${JSON.stringify({ worldId: repairWorldline.worldId, era: repairWorld
       }), { status: 400, headers: { "Content-Type": "application/json" } });
       const nc = novelConfig || {};
 
-      finalSystemPrompt = VISUAL_INSTRUCTION;
+      finalSystemPrompt = useImageGen ? VISUAL_INSTRUCTION : "";
       finalSystemPrompt += `
-[ROLE]: You are an immersive novelist.
-[OBJECTIVE]: Write a chapter based on settings.
+[ROLE / NARRATIVE CRAFT]: You are a professional novelist, not an assistant summarizing plot or reporting game turns.
+[PRIMARY GOAL]: Write an entertaining, vivid NOVEL CHAPTER with compelling choices, momentum, friction and specific sensory details. Never write a monotonous, flat or perfunctory story.
+- Start in the action; build scenes through dialogue, actions, conflict, discovery, stakes and character-specific motivations rather than reciting the outline or explaining instructions.
+- Give the chapter a distinct dramatic progression: opening tension, concrete development or revelation, and a satisfying beat that sets up the next scene. Vary pacing and paragraph length naturally. Not every chapter must be high-stakes; even quiet scenes need an intriguing change.
+- Preserve each character's distinctive voice, boundaries, relationships and flaws. Interesting is not the same as reckless, random, melodramatic or OOC.
+- Show rather than merely narrating that characters are sad, happy or conflicted; avoid generic filler, repetitive introspection and sterile step-by-step recap.
+- Produce polished continuous literary prose, not a screenplay, chat transcript, game master response, branching outline, checklist or analysis.
+[UI LANGUAGE — REQUIRED]: The current user-facing UI language is ${OUTPUT_LANGUAGE_NAME[normalizeLocale(body.uiLanguage)]}. Write the chapter, chapter title, all three suggestions and the text VALUES of novel_state.environment and novel_state.event in this language. Do NOT output English environment/event values just because protocol keys and system instructions are in English. Keep all JSON keys, machine tags, IDs and established proper names unchanged.
 ${COLOR_INSTRUCTION}
 [Settings]: Outline: ${typeof nc.outline === "string" ? nc.outline.slice(0, 20000) : ""} | Environment: ${typeof (nc.environment ?? nc.scenario) === "string" ? String(nc.environment ?? nc.scenario).slice(0, 2000) : ""} | Event: ${typeof (nc.event ?? nc.action) === "string" ? String(nc.event ?? nc.action).slice(0, 2000) : ""} | Style: ${typeof nc.style === "string" ? nc.style.slice(0, 2000) : ""}
-[CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\d+\s*[-–—~～至到]\s*\d+|\d+)\s*(?:字|汉字|中文字)/.test(nc.style) ? "Follow the user's explicit word-count instruction in Style; it overrides the default." : "Default: approximately 1000–2000 Chinese characters of narrative prose per chapter. Do not pad mechanically."}
+[CHAPTER LENGTH]: ${typeof nc.style === "string" && /(?:\d+\s*[-–—~～至到]\s*\d+|\d+)\s*(?:字|汉字|中文字|words?)/i.test(nc.style) ? "Follow the user\'s explicit word-count instruction in Style; it overrides the default." : "Default: a substantive chapter (roughly 1000–2000 Chinese characters when writing Chinese, or a comparable length in the chosen language). Do not pad mechanically."}
 [STORY WORLDLINE — CANON OR AU]
 World: ${novelWorldline.worldName}
 World setting: ${novelWorldline.worldDescription}
@@ -346,16 +353,16 @@ Use this worldline as the novel's established background. Do not replace it with
 
 [MANDATORY FORMATTING RULES]:
 1. **METADATA**: First line MUST be: <meta title="NOVEL_TITLE" chapter="CHAPTER_TITLE" />.
-2. **ILLUSTRATION**: If the scene changes or reaches a climax, output a drawing prompt tag: <draw>tags...</draw>.
-3. **Music**: Output <audio>{"trackId": "ID"}</audio> if BGM changes.
-4. **Interactive**: End the prose with 3 plot options.
-5. **NOVEL STATE — REQUIRED**: After the chapter and its 3 options, append ONE complete <novel_state> JSON object. It must be the very LAST block in every novel response. Keep it outside any draw/audio/markdown fences.
+2. **ILLUSTRATION**: ${useImageGen ? "The image-generation setting is ENABLED. Only when an illustration would genuinely improve the scene may you output ONE valid JSON <draw>...</draw> tag using the provided visualizer protocol." : "Image generation is DISABLED. Do NOT output <draw>, <draw_log>, image descriptions intended as tool commands, image JSON or illustration instructions."}
+3. **Music**: ${useMusicControl ? 'Optional: output <audio>{"trackId": "ID"}</audio> only when the music context calls for a change.' : "Do not output audio control tags."}
+4. **NOVEL CHOICES — REQUIRED**: Finish the literary prose with exactly three grounded, distinct, clickable next-plot suggestions in ONE <novel_choices> JSON block; never print them as ordinary chapter paragraphs or markdown lists. Shape: <novel_choices>{"fun":"...","rational":"...","radical":"..."}</novel_choices>. Each VALUE must be a concrete, compelling potential NEXT action/event in the active UI language. 'fun' is playful/unexpected but plausible, 'rational' is smart/cautious with consequences, 'radical' is a bold/high-risk but psychologically believable choice. All three must respect the chosen worldline, agency, motivations and established canon; NEVER force OOC behavior or pre-decide a participant protagonist's major actions. Do not reveal future facts.
+5. **NOVEL STATE — REQUIRED**: After the prose and <novel_choices> block, append ONE complete <novel_state> JSON object. It must be the very LAST block in every novel response. Keep it outside any draw/audio/markdown fences.
 <novel_state>{"environment":"current location, weather, temperature and significant surroundings as established by THIS chapter","event":"what is happening NOW at the chapter's endpoint, not the whole historical plot","nextSceneCastIds":["character IDs expected in the NEXT chapter"]}</novel_state>
 - All three keys are REQUIRED. environment and event must be nonempty strings describing the scene AT THE END of the chapter, rather than merely echoing the opening settings if it moved. nextSceneCastIds must be an array of 0–6 IDs chosen ONLY from the eligible cast roster provided. Use [] if no established character is expected; do not invent character IDs.
 - Forecast a small, plausible next-chapter cast grounded in who is present or expected to enter; do not list every available character. The next chapter will receive full profiles ONLY for selected predicted IDs.
 - Treat the selected worldline's WORLD / ERA / PERIOD / AU baseline as immutable context. The novel state MUST NOT set or modify that worldline, and must not reveal future canon knowledge.
 - The novel state is structured metadata, not part of the prose, not an invitation to narrate the user's decisions, and never a replacement for the mandatory first-line <meta> chapter title.
-[SYSTEM]: EXECUTE NOVEL MODE. GENERATE METADATA FIRST. IF SCENE IS VIVID, GENERATE <draw> TAG.
+[SYSTEM]: EXECUTE NOVEL MODE. BEGIN WITH <meta>, WRITE ACTUAL LITERARY FICTION, THEN <novel_choices>, THEN <novel_state>. NEVER EXPOSE THE STRUCTURED BLOCKS AS PROSE.
 `;
 
       const novelParticipant = body.storyRole === "participant"
