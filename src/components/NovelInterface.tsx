@@ -11,6 +11,7 @@ import { CHARACTERS, type NovelDraft } from "../types";
 import { fallbackModelGroups, type LocalModelGroup, type PublicLocalProvider } from "../lib/localProviders";
 import { useSavedModels } from "../hooks/useSavedModels";
 import { NovelArchiveActions } from "./NovelArchiveActions";
+import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { StoryCastPicker } from "./StoryCastPicker";
 import { parseStoryWorldline, describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
@@ -80,7 +81,7 @@ const PRESETS = [
     { name: "命运岔路 · 重力", environment: "人生的重大抉择之前", event: "无法两全的选择迫使角色承担后果，避免轻易的圆满结局", style: "沉重、充满张力、因果清晰、保留人物缺点" },
 ];
 
-const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors = {}, locale = "zh-CN", disabled = false }: any) => {
+const NovelContent = ({ content, onOptionClick, onOptionInsert, onImageOpen, theme, selfColors = {}, locale = "zh-CN", disabled = false }: any) => {
     let clean = cleanDrawTag(stripNovelState(content)) 
         .replace(/<meta.*?\/>/g, "")
         .replace(/<audio>.*?<\/audio>/g, "")
@@ -147,15 +148,17 @@ const NovelContent = ({ content, onOptionClick, onImageOpen, theme, selfColors =
                         {locale === "en" ? "Next possibilities" : locale === "ja" ? "次の展開" : locale === "ko" ? "다음 전개" : locale === "zh-TW" ? "後續發展" : "后续发展"}
                     </div>
                     {options.map((opt, i) => (
-                        <button
-                            key={i}
-                            onClick={() => onOptionClick(opt.text)}
-                            disabled={disabled}
-                            className={`text-left p-4 rounded-xl ${theme.inputBg} border ${theme.border} ${theme.hover} transition-all group flex gap-4 active:scale-[0.98] disabled:opacity-55 disabled:cursor-not-allowed`}
-                        >
-                            <span className={`font-bold ${theme.accent} shrink-0`}>{opt.icon}</span>
-                            <span className="min-w-0"><span className={`block text-[10px] font-semibold tracking-widest ${theme.accent} mb-1`}>{opt.label}</span><span className={`block text-sm ${theme.text} font-medium leading-relaxed`}>{opt.text}</span></span>
-                        </button>
+                        <div key={i} className={`rounded-xl border ${theme.border} ${theme.inputBg} overflow-hidden`}>
+                            <button type="button" onClick={() => onOptionClick(opt.text)} disabled={disabled}
+                                className={`text-left w-full p-4 ${theme.hover} transition-all flex gap-4 disabled:opacity-55 disabled:cursor-not-allowed`}>
+                                <span className={`font-bold ${theme.accent} shrink-0`}>{opt.icon}</span>
+                                <span className="min-w-0"><span className={`block text-[10px] font-semibold tracking-widest ${theme.accent} mb-1`}>{opt.label}</span><span className={`block text-sm ${theme.text} font-medium leading-relaxed`}>{opt.text}</span></span>
+                            </button>
+                            <div className={`border-t ${theme.border} px-3 py-2 flex justify-end`}>
+                                <button type="button" disabled={disabled} onClick={() => onOptionInsert(opt.text)}
+                                    className={`rounded-lg border ${theme.border} px-3 py-1.5 text-[11px] font-semibold ${theme.accent} ${theme.hover} disabled:opacity-40`}>填入输入框</button>
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
@@ -191,6 +194,7 @@ export const NovelInterface = ({
     const [worldlineOpen, setWorldlineOpen] = useState(false);
 
     const [directorInput, setDirectorInput] = useState("");
+    const [pendingNovelChoice, setPendingNovelChoice] = useState<string | null>(null);
     const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
     const novelWorldline = parseStoryWorldline(currentSession.storyWorldline);
     const novelRole = currentSession.storyRole === "participant"
@@ -208,8 +212,9 @@ export const NovelInterface = ({
     const selfColors: Record<string, string> = novelSelf?.hex && novelSelf?.names
         ? Object.fromEntries(Object.values(novelSelf.names).map(name => [String(name), novelSelf.hex]))
         : {};
-    const canParticipate = Boolean(activeNovelSelf && (!activeNovelSelf.worldId
-        || activeNovelSelf.worldId === novelWorldline?.worldId));
+    // Identity can be chosen before worldline setup; compatibility is checked after world selection.
+    const canParticipate = Boolean(activeNovelSelf && (!novelWorldline || !activeNovelSelf.worldId
+        || activeNovelSelf.worldId === novelWorldline.worldId));
     // The same model/provider state powers Engineering, Chat, VIAE and Novel.
     const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
     const [providerModels, setProviderModels] = useState<LocalModelGroup[]>([]);
@@ -483,7 +488,7 @@ export const NovelInterface = ({
     const updateNovelRole = (role: "observer" | "participant") => {
         if (isLoading || novelStarted) return;
         if (role === "participant" && !canParticipate) {
-            showToast?.("请先在 Charta 创建并启用当前世界观可用的自设。");
+            showToast?.("请先在 Charta 创建并启用自设；世界线确定后再验证所属世界观。");
             return;
         }
         const self = role === "participant" ? activeNovelSelf : null;
@@ -509,10 +514,11 @@ export const NovelInterface = ({
             storyWorldline: next,
             ...(changedWorld ? {
                 storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [],
-                ...(!novelStarted ? { storyRole: "observer", storySelfId: null, storySelfSnapshot: null } : {}),
+                ...(!novelStarted && novelRole === "participant" && novelSelf?.worldId && novelSelf.worldId !== next.worldId
+                    ? { storyRole: "observer", storySelfId: null, storySelfSnapshot: null } : {}),
                 novelDraft: {
                     ...(currentSession.novelDraft || {}), selectedCharIds: [],
-                    selfId: novelStarted && novelRole === "participant" ? novelSelfId : null,
+                    selfId: novelRole === "participant" && (!novelSelf?.worldId || novelSelf.worldId === next.worldId) ? novelSelfId : null,
                 },
             } : {}),
             updatedAt: Date.now(),
@@ -630,7 +636,11 @@ export const NovelInterface = ({
                                 <div key={i} id={`chapter-${i}`} className="animate-fade-in-up">
                                     <div className="flex items-center gap-4 mb-8 opacity-30 justify-center"><div className={`h-px ${theme.text} w-12`}></div><span className="font-mono text-xs tracking-widest uppercase">{title}</span><div className={`h-px ${theme.text} w-12`}></div></div>
                                     <div className={`prose ${theme.prose} prose-lg md:prose-xl leading-loose ${theme.text} font-serif whitespace-pre-wrap`}>
-                                        <NovelContent content={msg.content} onOptionClick={(opt: string) => handleGenerate('continue', opt)} onImageOpen={setPreviewImage} theme={theme} selfColors={selfColors} locale={locale} disabled={isLoading || i !== chapters.length - 1} />
+                                        <NovelContent content={msg.content}
+                                            onOptionClick={(opt: string) => setPendingNovelChoice(opt)}
+                                            onOptionInsert={(opt: string) => { setDirectorInput(opt); showToast?.("剧情建议已填入导演输入框，可继续修改。"); }}
+                                            onImageOpen={setPreviewImage} theme={theme} selfColors={selfColors} locale={locale}
+                                            disabled={isLoading || i !== chapters.length - 1} />
 
                                         {useImageGen && parseDrawTag(msg.content)?.trigger && (
                                             <button type="button" disabled={drawingIndex !== null || isLoading}
@@ -832,19 +842,28 @@ export const NovelInterface = ({
                                     <div className="flex items-center justify-between gap-2">
                                         <span className={`text-[10px] ${theme.text} opacity-75`}>{hasNovelChapters ? "每章结束由 AI 自动更新环境、事件和下章阵容" : "第一章开始前请填写环境与当前事件"}</span>
                                         {inputsLocked && <button type="button" onClick={allowSceneEdit} className={`shrink-0 rounded-lg border ${theme.border} px-2 py-1 text-[10px] font-semibold ${theme.hover}`}>确认后修改</button>}
-                                        {manualStateEdit && <span className="text-[10px] text-amber-700">手动编辑中</span>}
+                                        {manualStateEdit && <button type="button" disabled={isLoading || !environment.trim() || !event.trim()}
+                                            onClick={() => { saveDraft(); setManualStateEdit(false); showToast?.("环境与事件已保存并重新锁定。"); }}
+                                            className={`shrink-0 rounded-lg border ${theme.selectBorder} ${theme.selectBg} px-3 py-1 text-[10px] font-semibold ${theme.title} disabled:opacity-40`}>保存并锁定</button>
                                     </div>
                                     <div><label className={`text-xs ${theme.text} opacity-80 font-bold mb-1 block`}>Environment · 环境 *</label><textarea required value={environment} readOnly={inputsLocked} onChange={e => setEnvironment(e.target.value)} onBlur={() => saveDraft()} placeholder="地点、天气、温度及周边环境" className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-y read-only:opacity-65`} /></div>
                                     <div><label className={`text-xs ${theme.text} opacity-80 font-bold mb-1 block`}>Event · 当前事件 *</label><textarea required value={event} readOnly={inputsLocked} onChange={e => setEvent(e.target.value)} onBlur={() => saveDraft()} placeholder="当前正在发生的事情" className={`w-full h-20 ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none resize-y read-only:opacity-65`} /></div>
                                     <div><label className={`text-xs ${theme.text} opacity-70 font-bold mb-1 block`}>Style</label><input value={style} onChange={e => setStyle(e.target.value)} onBlur={() => saveDraft()} placeholder="默认正文 1000–2000 字；可在此自行指定字数" className={`w-full ${theme.inputBg} border ${theme.border} rounded p-2 text-xs ${theme.text} ${theme.focus} outline-none`} /></div>
                                 </div>
 
-                                <button onClick={() => handleGenerate('new')} disabled={isLoading || !novelWorldline} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 生成新梦境 (New)</button>
+                                <button onClick={() => handleGenerate('new')} disabled={isLoading || !novelWorldline} className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg ${theme.button}`}><Sparkles size={16} /> 编织新篇章</button>
                             </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+            <SuggestionModal isOpen={pendingNovelChoice !== null} content={pendingNovelChoice || ""}
+                mode="send" onClose={() => setPendingNovelChoice(null)}
+                onConfirm={() => {
+                    const choice = pendingNovelChoice;
+                    setPendingNovelChoice(null);
+                    if (choice && !isLoading) handleGenerate("continue", choice);
+                }} />
             <StoryWorldlineFateModal elevated isOpen={worldlineOpen}
                 value={novelWorldline ? { ...novelWorldline, event:"" } : undefined}
                 worlds={storyWorlds}
