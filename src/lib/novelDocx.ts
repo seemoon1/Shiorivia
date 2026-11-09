@@ -2,6 +2,8 @@
  * A DOCX is an Open Packaging Convention ZIP containing WordprocessingML.
  * Store-mode ZIP keeps this entirely client-side without extra npm packages.
  */
+import { stripNovelSuggestions } from "./novelSuggestions";
+
 export type NovelChapter = { title: string; body: string };
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
@@ -17,7 +19,7 @@ export function extractNovelChapters(messages: Array<{ role: string; content: un
       const source = m.content as string;
       const meta = source.match(/<meta\b[^>]*\bchapter\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/i);
       const title = meta?.[1]?.trim() || `第 ${index + 1} 章`;
-      const body = source
+      const body = stripNovelSuggestions(source)
         .replace(/<meta\b[^>]*\/?>/gi, "")
         .replace(/<draw\b[^>]*>[\s\S]*?<\/draw\s*>/gi, "")
         .replace(/<draw\b[^>]*\/\s*>/gi, "")
@@ -26,7 +28,6 @@ export function extractNovelChapters(messages: Array<{ role: string; content: un
         .replace(/<novel_state\b[^>]*>[\s\S]*$/gi, "")
         .replace(/<(thinking|game_state|memory_update|file)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
         .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
-        .replace(/^\s*>\s*\*\*Option\s+\d+\*\*\s*:\s*.*$/gim, "")
         .replace(/^\s*\[\s*(?:SYSTEM|Director Instruction|User Choice|Instruction)\s*\]\s*:.*$/gim, "")
         .replace(/\r\n?/g, "\n").trim();
       return { title, body };
