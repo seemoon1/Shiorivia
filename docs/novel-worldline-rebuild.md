@@ -10,7 +10,7 @@ This change updates **Shiorivia Local**, not Shiorivia_Cloud.
 - Novel does **not** emit Story `<game_state>`. Instead, the novelist ends each chapter with `<novel_state>` containing `environment`, `event`, and `nextSceneCastIds`. AI predicts the next chapter cast; the shared picker shows its prediction and requires confirmation before a manual override after the novel has started.
 - The selected cast and worldline are saved on the novel session. Replacing the world with a different world clears the old cast selection and the optional self protagonist.
 - Built-in BanG Dream character biographies and Charta's five-section profiles are injected through the same period-aware logic as Story. In AU, the baseline period is the knowledge cutoff.
-- A selected optional Charta self protagonist is scoped to the current worldline/baseline; the self is not added as an ordinary cast member. An unbound self receives only unscoped data.
+- The **Story Role** card offers Observer (default; user is an outside director) and Participant. Participant is available only with a currently active Charta self compatible with the chosen world; the selected self is snapshotted in the novel session before writing begins and never added as an ordinary cast member. A world-neutral self receives unscoped data. The role locks after writing starts; unlike Via Lata, Tela has no selectable POV. Legacy novel drafts with a `selfId` continue to load as Participant when `storyRole` was not saved.
 - No worldline means no chapter generation. Older novel saves can still open; they require a worldline selection before a new chapter can be generated.
 - Invalid or omitted `<novel_state>` triggers one *state-only* recovery request. On failure, the finished prose and last valid state are preserved; the app warns instead of silently corrupting scene context. New state values and selected cast persist in the session JSON. Legacy `scenario` / `action` values still import as initial Environment / Event.
 
@@ -20,15 +20,19 @@ This change updates **Shiorivia Local**, not Shiorivia_Cloud.
 - **Environment** (location, weather, temperature, surroundings) and **Event** (what is currently happening) are required before chapter one; Style is optional. When a chapter completes, the AI updates both fields from the completed prose and predicts `nextSceneCastIds`. After the first chapter, manual changes require explicit confirmation.
 - Novel worldlines only choose WORLD / ERA / PERIOD / AU baseline: the worldline Event field is hidden for novels; Story mode retains its own worldline Event.
 - Six plot presets: two everyday, two melancholy, and two emotionally heavy. Presets update Environment/Event/Style only, not the worldline or cast. Once the novel has started, confirm an override before applying a preset.
-- Novel archive JSON/DOCX import/export lives immediately beneath model selection, with a more legible themed card.
+- Novel archive JSON/DOCX import/export is an **independent card below** the complete AI Architect / Shared Model card. The JSON archive retains session role and self snapshots; old exports keep their legacy self ID fallback.
 - Default theme for new novels is parchment; older saves explicitly using sage retain it.
 - The mini music player's sage theme now uses muted green controls, progress bar and album ring. The Auto DJ toggle has been removed from the novel sidebar; the global Settings music control remains authoritative.
+- Until WORLD / ERA / PERIOD (and AU baseline where applicable) is configured, Tela disables its director input, Continue and new-chapter generation and offers a direct link to the worldline editor. Both the chat hook and server also refuse generation without a valid worldline.
+- The same optional writing-style optimization now applies to both Via Lata story prose and Tela novel prose, while state-only repairs, summaries, and non-story modes remain excluded. It must never rewrite `<novel_state>` or `<game_state>`.
+- Participant self names render in the novel reading view with the same Charta theme-color logic as Via Lata.
 
 ## Local checks
 
 ```bash
 node scripts/check-novel-mode.mjs
 node --experimental-strip-types scripts/check-novel-state.mjs
+node --experimental-strip-types scripts/check-tela-story-role.mjs
 npm run build
 ```
 
@@ -45,3 +49,8 @@ Manual smoke test matrix:
 10. Try a Style field with `3000字` and another with no explicit count; check the two different length instructions.
 11. Confirm six presets, archive contrast and miniature player colors under parchment and sage.
 12. Check global Auto DJ setting remains available although the novel-specific toggle is absent.
+13. On a new novel with no worldline, verify the director input and both generation controls are disabled. Setting a valid worldline unlocks them.
+14. In Story Role, Observer has no self injected; Participant is unavailable until a compatible Charta self is active. Select Participant, generate, switch Charta's active self, and verify the novel continues with its snapshotted identity and correct name color. Neither role can be changed after writing begins.
+15. Import an older novel archive containing `novelDraft.selfId` but no `storyRole`; verify its selected self is still used and shown if available.
+16. Verify style optimization changes the novel's prose instructions without contaminating its `<novel_state>` response or one-shot repair.
+17. Confirm the Archive card is visually separate and below the complete AI Architect / Shared Model card.

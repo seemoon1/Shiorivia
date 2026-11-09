@@ -83,11 +83,22 @@ export const useChatEngine = ({
         const isRegen = overrideMessages !== undefined;
         const txt = overrideInput !== undefined ? overrideInput : input.trim();
         if (!isRegen && !txt && !selectedFile) return;
-        const storyRole = currentSession.memoryMode === "sliding" && currentSession.storyRole === "participant" ? "participant" : "observer";
-        const selectedSelfId = currentSession.storySelfId || activeSelfId;
-        const selectedSelf = storyRole === "participant" ? (currentSession.storySelfSnapshot || customSelves.find((self: any) => self.id === selectedSelfId)) : null;
-        if (currentSession.memoryMode === "sliding" && storyRole === "participant" && !selectedSelf) {
+        const novelMode = currentSession.memoryMode === "novel";
+        const novelLegacySelfId = novelMode && currentSession.storyRole === undefined ? currentSession.novelDraft?.selfId : null;
+        const storyRole = (currentSession.memoryMode === "sliding" || novelMode)
+            && (currentSession.storyRole === "participant" || (novelLegacySelfId && currentSession.storyRole !== "observer"))
+            ? "participant" : "observer";
+        const selectedSelfId = (novelMode ? (currentSession.storySelfId || novelLegacySelfId) : currentSession.storySelfId) || activeSelfId;
+        const selectedSelf = storyRole === "participant"
+            ? (currentSession.storySelfSnapshot || customSelves.find((self: any) => self.id === selectedSelfId))
+            : null;
+        if ((currentSession.memoryMode === "sliding" || novelMode) && storyRole === "participant" && !selectedSelf) {
             showToast("请先在 Charta 创建并启用一个自设，再开始参与模式");
+            return;
+        }
+        if (novelMode && storyRole === "participant" && selectedSelf?.worldId
+            && selectedSelf.worldId !== currentSession.storyWorldline?.worldId) {
+            showToast("当前自设与小说世界线不匹配，请重新设置故事身份。");
             return;
         }
         const previousStoryTurns = (overrideMessages || currentSession.messages).filter((message: any) => message.role === "user").length;
@@ -115,10 +126,12 @@ export const useChatEngine = ({
         setSessions((prev: any) => prev.map((s: any) => s.id === currentSessionId ? {
             ...s,
             messages: [...msgs, { role: "assistant", content: "", modelName: modelToUse, characterId: activeCharacterId, ...assistantMeta }],
-            ...(s.memoryMode === "sliding" ? {
-                storyRole, storySelfId: storyRole === "participant" ? selectedSelfId : null,
+            ...((s.memoryMode === "sliding" || s.memoryMode === "novel") ? {
+                storyRole, storySelfId: storyRole === "participant" ? selectedSelf?.id || selectedSelfId : null,
                 storySelfSnapshot: storyRole === "participant" ? selectedSelf : null,
-                storyPovLocked: s.storyPovLocked || (isRegen ? previousStoryTurns >= 2 : previousStoryTurns >= 1),
+                ...(s.memoryMode === "sliding" ? {
+                    storyPovLocked: s.storyPovLocked || (isRegen ? previousStoryTurns >= 2 : previousStoryTurns >= 1),
+                } : {}),
             } : {}),
             updatedAt: Date.now(),
             voiceVariant 
@@ -160,12 +173,8 @@ export const useChatEngine = ({
                     debugFullOutput: config.terminalLog === true,
                     geminiNarrativeStyle: config.geminiNarrativeStyle === true,
                     ...(currentSession.memoryMode === "novel" ? {
-                        novelSelf: typeof configOverride?.novelConfig?.selfId === "string"
-                            ? (() => {
-                                const candidate = customSelves.find((self: any) => self.id === configOverride.novelConfig.selfId);
-                                return candidate ? asChartaSelfPromptData(candidate) : null;
-                            })()
-                            : null,
+                        storyRole,
+                        novelSelf: storyRole === "participant" && selectedSelf ? asChartaSelfPromptData(selectedSelf) : null,
                         storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.novelDraft?.selectedCharIds ?? [],
                         storyAllowCrossWorld: currentSession.storyAllowCrossWorld === true,
                         storyCastWorlds: storyWorlds.map((world: any) => ({ id: world.id, name: world.name, description: world.description, canonTimeline: world.canonTimeline })),

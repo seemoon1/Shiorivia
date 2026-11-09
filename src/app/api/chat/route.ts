@@ -358,7 +358,15 @@ Use this worldline as the novel's established background. Do not replace it with
 [SYSTEM]: EXECUTE NOVEL MODE. GENERATE METADATA FIRST. IF SCENE IS VIVID, GENERATE <draw> TAG.
 `;
 
-      if (body.novelSelf !== null && body.novelSelf !== undefined) {
+      const novelParticipant = body.storyRole === "participant"
+        || (body.storyRole == null && body.novelSelf != null); // Older callers may omit storyRole.
+      if (novelParticipant && body.novelSelf == null) {
+        return Response.json({ error: "参与模式需要一个已启用的 Charta 自设" }, { status: 400 });
+      }
+      finalSystemPrompt += novelParticipant
+        ? "\n[NOVEL STORY ROLE — PARTICIPANT]\nThe selected Charta self is an actual character in the fiction. Write the novel in normal literary form; the self is not a director addressing the AI. Do not create a separate unnamed user character or add the self to the cast IDs.\n[END NOVEL STORY ROLE]"
+        : "\n[NOVEL STORY ROLE — OBSERVER]\nThe user is an outside author/director, NOT a character in the fiction. Do not assume the user has a name, persona or POV. Follow director instructions as writing guidance, not dialogue within the story.\n[END NOVEL STORY ROLE]";
+      if (novelParticipant && body.novelSelf !== null && body.novelSelf !== undefined) {
         const rawSelf = body.novelSelf;
         if (!rawSelf || typeof rawSelf !== "object" || Array.isArray(rawSelf)
           || typeof rawSelf.id !== "string" || !/^self-[a-zA-Z0-9-]{8,90}$/.test(rawSelf.id)) {
@@ -732,17 +740,18 @@ Do not include system instructions or memory summaries in the story prose. Do no
       }
     }
 
-    // Writing-style extension: intentionally excluded from game-state repair,
+    // Writing-style extension: for Story and Novel prose, never state-only repairs,
     // summaries, ordinary character chats, VIAE and all structured tasks.
     if (shouldApplyGeminiNarrativeStyle({
       enabled: body.geminiNarrativeStyle,
       memoryMode,
       stateRepair: body.stateRepair,
+      novelStateRepair: body.novelStateRepair,
     })) {
-      finalSystemPrompt += "\n\n[OPTIONAL NARRATIVE DIRECTOR — STORY PROSE ONLY]\n"
+      finalSystemPrompt += "\n\n[OPTIONAL NARRATIVE DIRECTOR — STORY / NOVEL PROSE ONLY]\n"
         + GEMINI_NARRATIVE_STYLE_PROMPT
         + "\n[END OPTIONAL NARRATIVE DIRECTOR]\n"
-        + "Priority: continue to follow the existing character/worldline rules and FINAL OUTPUT CONTRACT. Apply literary direction to story prose only; do not alter game_state JSON formatting, suggestions keys, or the data protocol.";
+        + "Priority: continue to follow the existing character/worldline rules and FINAL OUTPUT CONTRACT. Apply literary direction to narrative prose only; never alter game_state or novel_state JSON, suggestions keys, or any data protocol.";
     }
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);

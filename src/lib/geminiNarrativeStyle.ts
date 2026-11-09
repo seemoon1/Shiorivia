@@ -55,8 +55,10 @@ export function shouldApplyGeminiNarrativeStyle(input: {
   enabled: unknown;
   memoryMode: unknown;
   stateRepair?: unknown;
+  novelStateRepair?: unknown;
 }): boolean {
   return input.enabled === true
-    && input.memoryMode === "sliding"
-    && input.stateRepair !== true;
+    && (input.memoryMode === "sliding" || input.memoryMode === "novel")
+    && input.stateRepair !== true
+    && input.novelStateRepair !== true;
 }
