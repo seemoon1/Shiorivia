@@ -103,23 +103,29 @@ const SidebarRightComponent = ({
         </div>;
     };
 
-    const SuggestionItem = ({ type, content, colorBg, colorText, colorBorder, icon }: any) => (
-        <div className={`group relative p-2.5 rounded border ${colorBg} ${colorBorder} ${colorText} text-xs transition-all hover:shadow-sm`}>
-            <div className="font-bold flex items-start justify-between gap-2 mb-1.5">
-                <span className="flex items-center gap-1">{icon} {type}</span>
-                <button type="button" disabled={!String(content || "").trim()} onClick={() => setConfirmModal({ isOpen: true, text: String(content) })}
-                    className="flex shrink-0 items-center gap-1 rounded-md border border-current/20 bg-white/60 px-2 py-1 text-[9px] font-medium hover:bg-white disabled:opacity-40"
-                    title="确认后填入发送框，可以继续编辑"><Send size={10} /> 填入发送文本框</button>
+    const SuggestionItem = ({ type, content, colorBg, colorText, colorBorder, icon }: any) => {
+        const suggestion = String(content || "").trim();
+        return (
+            <div className={`group rounded border ${colorBg} ${colorBorder} ${colorText} text-xs transition-all hover:shadow-sm`}>
+                <button type="button" disabled={!suggestion || isGenerating} onClick={() => setConfirmModal({ isOpen: true, text: suggestion })}
+                    className="block w-full rounded p-2.5 text-left transition-colors hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="查看建议并确认发送">
+                    <span className="mb-1.5 flex items-center gap-1 font-bold">{icon} {type}</span>
+                    <span className="block leading-relaxed opacity-90">{suggestion}</span>
+                </button>
+                <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5">
+                    <button type="button" disabled={!suggestion || isGenerating}
+                        onClick={() => setInput?.(suggestion)}
+                        className="flex items-center gap-1 rounded-md border border-current/20 bg-white/60 px-2 py-1 text-[10px] font-medium hover:bg-white disabled:opacity-40"
+                        title="仅填入输入框，不立即发送"><Send size={11} /> 填入输入框</button>
+                    <button type="button" disabled={!suggestion}
+                        onClick={() => { void navigator.clipboard.writeText(suggestion); }}
+                        className="rounded-md border border-current/20 bg-white/50 p-1.5 hover:bg-white disabled:opacity-40"
+                        title="复制建议"><Copy size={12} /></button>
+                </div>
             </div>
-            <div className="leading-relaxed opacity-90">{content}</div>
-            <button
-                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(content); alert("已复制"); }}
-                className="absolute bottom-1 right-1 p-1 bg-white/50 hover:bg-white rounded text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-                <Copy size={10} />
-            </button>
-        </div>
-    );
+        );
+    };
 
     return (
         <AnimatePresence>
@@ -267,8 +273,13 @@ const SidebarRightComponent = ({
                     <SuggestionModal
                         isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                         content={confirmModal.text}
-                        mode="insert"
-                        onConfirm={() => { setInput?.(confirmModal.text); setConfirmModal({ ...confirmModal, isOpen: false }); }}
+                        mode="send"
+                        onConfirm={() => {
+                            if (!isGenerating && currentSession?.memoryMode === "sliding" && confirmModal.text.trim()) {
+                                void handleSend(confirmModal.text);
+                            }
+                            setConfirmModal({ isOpen: false, text: "" });
+                        }}
                     />
                     <StoryWorldlineFateModal isOpen={worldlineOpen} value={currentSession?.storyWorldline}
                         legacyTimeline={currentSession?.timeline} worlds={worlds}
