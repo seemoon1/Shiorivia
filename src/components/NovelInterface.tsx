@@ -496,6 +496,10 @@ export const NovelInterface = ({
             showToast?.("已开始的小说绑定了自设身份；请新建小说以切换到不兼容的世界观。");
             return;
         }
+        if (changedWorld && !novelStarted && novelRole === "participant" && novelSelf?.worldId
+            && novelSelf.worldId !== next.worldId) {
+            showToast?.("所选世界线与当前自设不兼容，已恢复为旁观模式。");
+        }
         updateSessionInfo?.(currentSession.id, {
             storyWorldline: next,
             ...(changedWorld ? {
