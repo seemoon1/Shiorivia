@@ -522,7 +522,7 @@ export default function Home() {
                 <ModeHub
                     onEnter={enterMode}
                     onOpenCharta={() => { setChartaInitialSection("characters"); setShowCharta(true); }}
-                    onResume={() => { if (cloud.initLoaded) setShowModeHub(false); }}
+                    onResume={() => { if (cloud.initLoaded) { setShowModeHub(false); if (currentSession?.memoryMode === "novel") triggerCurtain(); } }}
                     onOpenSettings={() => setShowSettingsCenter(true)}
                     hasSession={Boolean(currentSession)}
                     loading={!cloud.initLoaded}
