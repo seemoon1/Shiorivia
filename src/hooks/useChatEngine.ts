@@ -8,7 +8,7 @@ import { parseDrawTag, cleanDrawTag } from "../lib/parseDraw";
 import { useLanguage } from "../context/LanguageContext";
 import { asChartaSelfPromptData, selfName } from "../lib/chartaSelf";
 import { asChartaPromptData } from "../lib/charta";
-import { parseStoryWorldline } from "../lib/storyWorldline";
+import { parseStoryWorldline, enabledWorldIds } from "../lib/storyWorldline";
 import { extractNovelState, stripNovelState } from "../lib/novelState";
 import { snapshotNovelState, restoreNovelState } from "../lib/novelStateRecovery";
 import { stripNovelSuggestions } from "../lib/novelSuggestions";
@@ -109,7 +109,7 @@ export const useChatEngine = ({
             return;
         }
         if (novelMode && storyRole === "participant" && selectedSelf?.worldId
-            && selectedSelf.worldId !== currentSession.storyWorldline?.worldId) {
+            && !enabledWorldIds(parseStoryWorldline(currentSession.storyWorldline)!).includes(selectedSelf.worldId)) {
             showToast("当前自设与小说世界线不匹配，请重新设置故事身份。");
             return;
         }
