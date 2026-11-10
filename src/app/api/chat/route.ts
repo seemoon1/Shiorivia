@@ -790,6 +790,14 @@ Do not include system instructions or memory summaries in the story prose. Do no
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
     if ((memoryMode === "sliding" || memoryMode === "novel") && sceneWorldline && body.novelStateRepair !== true) {
+      if (sceneWorldline.crossWorld?.enabled) {
+        finalSystemPrompt += "\n\n[ENABLED SECONDARY WORLDS — AUTHORITATIVE LORE BOUNDARIES]\n"
+          + sceneWorldline.crossWorld.secondary.map(world =>
+            `World: ${world.worldName} (${world.worldId})\nSetting: ${world.worldDescription.slice(0, 8000)}\nCanonical knowledge cutoff: ${world.baseEra} / ${world.basePeriod}`).join("\n\n")
+          + "\nAll other worlds and later canonical events are excluded. The main world's ERA/PERIOD controls this story's overall time."
+          + (sceneWorldline.crossWorld.includeUniversal ? "\nUniversal, unbound characters are enabled; their full lore is provided below." : "\nUnbound characters are disabled.")
+          + "\n[END ENABLED SECONDARY WORLDS]\n";
+      }
       const builtIn = sceneCast.filter(char => CHAR_DATA.some(b => b.id === char.id));
       finalSystemPrompt += "\n\n[BUILT-IN CHARACTER NAME POLICY — enabled worlds only]\n"
         + builtIn.map(char => char.id + " = " + char.name).join("; ")
