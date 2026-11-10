@@ -577,6 +577,8 @@ export default function Home() {
                     updateSession={(updater) => cloud.setSessions(prev => prev.map(s => s.id === currentSession.id ? updater(s) : s))}
                     characters={allChars}
                     customCharacters={charta.characters}
+                    worlds={worldLibrary.worlds}
+                    activeSelf={selfLibrary.activeSelf}
                     terminalRequestLogEnabled={config.terminalRequestLog}
                     terminalLogEnabled={config.terminalLog}
                     onExit={() => setShowModeHub(true)}
