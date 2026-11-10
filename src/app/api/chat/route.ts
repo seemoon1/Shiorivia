@@ -398,8 +398,10 @@ Use this worldline as the novel's established background. Do not replace it with
           if (!selfName) throw new Error("自设名称未配置");
           const profile = parseChartaLoreProfile(rawSelf.profile);
           const extras = parseChartaIdentityExtras(rawSelf);
-          const basePeriod = novelWorldline.kind === "au" ? novelWorldline.basePeriod || null : novelWorldline.period;
-          const period = selfWorldId === novelWorldline.worldId ? basePeriod : null;
+          const period = worldlinePeriodFor(novelWorldline, selfWorldId);
+          const selfStages = selfWorldId === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+            : selfWorldId === novelWorldline.worldId ? novelWorldline.canonTimeline
+            : novelWorldline.crossWorld?.secondary.find(w => w.worldId === selfWorldId)?.canonTimeline || [];
           const selfLore = formatChartaLore({
             id: rawSelf.id, name: selfName, names,
             description: typeof rawSelf.description === "string" ? rawSelf.description.slice(0, 20000) : "",
@@ -407,7 +409,7 @@ Use this worldline as the novel's established background. Do not replace it with
             gender: typeof rawSelf.gender === "string" ? rawSelf.gender : undefined,
             genderCustom: typeof rawSelf.genderCustom === "string" ? rawSelf.genderCustom : undefined,
             ...extras,
-          }, period, selfWorldId ? novelWorldline.canonTimeline : []);
+          }, period, selfStages);
           finalSystemPrompt += "\n\n[NOVEL PROTAGONIST — user-authored character data]\n"
             + selfLore + "\n[END NOVEL PROTAGONIST]\n"
             + "Use this selected Charta self as the novel protagonist; respect their authored identity, relationships and stage-specific knowledge. They are NOT an additional cast ID. Do not override the user's explicit director choices, invent an unrelated protagonist, or treat the self's future experiences as past facts.";
