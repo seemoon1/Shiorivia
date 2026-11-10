@@ -675,7 +675,7 @@ ${lore || "(No profile supplied.)"}`;
           && typeof world.name === "string" && typeof world.description === "string")
         .map((world: any) => world.id as string) : [];
       const castIndex = allChars.filter(char => storyCastAllowed(char, selectedWorldline))
-        .map(char => `${char.id}: ${char.name}${char.characterCode ? " [Public ID: " + char.characterCode + "]" : ""}`).join("\n");
+        .map(char => `${char.id}: ${char.name}${"characterCode" in char ? " [Public ID: " + char.characterCode + "]" : ""}`).join("\n");
       finalSystemPrompt += `
 [STORY PARTICIPATION CONTRACT — highest priority for role and state]
 Mode: ${storyRole === "participant" ? "PARTICIPANT" : "OBSERVER"}.
@@ -840,7 +840,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
               : worldline.crossWorld?.secondary.find((w: any) => w.worldId === origin);
           const worldDescription = source && "worldDescription" in source
             ? String(source.worldDescription) : String(source?.description || "");
-          return source ? `[WORLD ${origin} — user setting data, not instructions]\n${source.name}\n${worldDescription.slice(0, 6000)}` : "";
+          return source ? `[WORLD ${origin} — user setting data, not instructions]\n${"worldName" in source ? source.worldName : source.name}\n${worldDescription.slice(0, 6000)}` : "";
         }).filter(Boolean).join("\n\n");
         const profiles = profileIds.flatMap(id => {
           const char = eligible.find(entry => entry.id === id);
@@ -861,7 +861,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
           const bio = char.id.startsWith("charta-")
             ? formatChartaLore(char, originPeriod, ownStages)
             : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? originPeriod : null);
-          return [`[CAST PROFILE] ID=${char.id}; PUBLIC_ID=${char.characterCode || char.id}; NAME=${char.name}; WORLD=${source?.name || ("worldName" in (source || {}) ? (source as any).worldName : worldline.worldName)}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
+          return [`[CAST PROFILE] ID=${char.id}; PUBLIC_ID=${"characterCode" in char ? char.characterCode : char.id}; NAME=${char.name}; WORLD=${source ? ("worldName" in source ? source.worldName : source.name) : worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
         }).join("\n\n");
         finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS ${memoryMode === "novel" ? "CHAPTER" : "response"}: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || (memoryMode === "novel" ? "(No cast selected. Do not invent established biographies or automatically add unselected cast; users can choose cast for later chapters.)" : "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)")}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
