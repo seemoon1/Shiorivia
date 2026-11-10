@@ -12,7 +12,12 @@ import type { PublicLocalProvider, LocalModelGroup } from "../lib/localProviders
 import { useSavedModels } from "../hooks/useSavedModels";
 import { MemoryVaultModal } from "./MemoryVaultModal";
 import { useViaeEngine } from "../hooks/useViaeEngine";
-import { ViaeTimelineSelect } from "./ViaeTimelineSelect";
+import { ViaeWorldlineEditor } from "./ViaeWorldlineEditor";
+import { parseStoryWorldline, worldlineFor, describeStoryWorldline, BANG_DREAM_WORLD_ID } from "../lib/storyWorldline";
+import { viaeWorldline } from "../lib/viaeWorldline";
+import { storyCastAllowed } from "../lib/storyCast";
+import type { ChartaWorld } from "../lib/chartaWorld";
+import type { ChartaSelf } from "../lib/chartaSelf";
 import { useLanguage } from "../context/LanguageContext";
 import { characterDisplayName } from "../lib/characterNames";
 import { deepText } from "../lib/i18nDeep";
@@ -67,6 +72,8 @@ interface ViaeProps {
   updateSession: (updater: (current: Session) => Session) => void;
   characters: { id: string; name: string; avatar: string; hex: string; sub?: string }[];
   customCharacters?: import("../lib/charta").ChartaCharacter[];
+  worlds?: ChartaWorld[];
+  activeSelf?: ChartaSelf | null;
   onExit: () => void;
   onSettings: () => void;
   providers: PublicLocalProvider[];
@@ -81,7 +88,7 @@ interface ViaeProps {
   terminalLogEnabled?: boolean;
 }
 
-export function ViaeInterface({ session, updateSession, characters, customCharacters = [], onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify, terminalRequestLogEnabled = false, terminalLogEnabled = false }: ViaeProps) {
+export function ViaeInterface({ session, updateSession, characters, customCharacters = [], worlds = [], activeSelf = null, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify, terminalRequestLogEnabled = false, terminalLogEnabled = false }: ViaeProps) {
   const { locale } = useLanguage();
   const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useViaeEngine({
     session, updateSession, provider, model: customModel.trim() || model, notify, customCharacters, terminalRequestLogEnabled, terminalLogEnabled,
@@ -104,10 +111,23 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
   const [copyIndex, setCopyIndex] = useState<number | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [routeDraft, setRouteDraft] = useState({ reality: "canon" as "canon" | "au", timeline: "5-6", auContext: "" });
+  const [routeDraft, setRouteDraft] = useState(worldlineFor(null));
+  const [draftWorldline, setDraftWorldline] = useState(worldlineFor(null));
+  const [worldFilter, setWorldFilter] = useState("all");
   const currentAudio = useRef<HTMLAudioElement | null>(null);
   const bottom = useRef<HTMLDivElement | null>(null);
   const conversations = session.limeGroups || [];
+  const participantAvailable = Boolean(activeSelf);
+  const memberOrigin = (id: string): string | null =>
+    customCharacters.find(c => c.id === id)?.worldId ||
+      (characters.some(c => c.id === id) ? (customCharacters.some(c => c.id === id) ? null : BANG_DREAM_WORLD_ID) : null);
+  const draftValidWorldline = parseStoryWorldline(draftWorldline);
+  const allowedToSelect = (id: string) => Boolean(draftValidWorldline && storyCastAllowed({ id, worldId: memberOrigin(id) }, draftValidWorldline));
+  const availableDraftCharacters = characters.filter(c => allowedToSelect(c.id));
+  const multiWorld = Boolean(draftValidWorldline?.crossWorld?.enabled && draftValidWorldline.crossWorld.secondary.length);
+  const shownDraftCharacters = availableDraftCharacters.filter(c => worldFilter === "all" || memberOrigin(c.id) === worldFilter);
+  const worldNameFor = (id: string | null): string =>
+    !id ? "通用角色" : id === BANG_DREAM_WORLD_ID ? "BanG Dream!" : worlds.find(w => w.id === id)?.name || "未知世界观";
   const providerConfigured = providers.some(p => p.id === provider);
   const who = (id: string) => {
     const c = characters.find(c => c.id === id);
@@ -142,9 +162,15 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
     setCreating(false); setOpenMemory(false); setShowModels(false); setShowManage(false); setShowRouteEditor(false); setShowDetails(false);
   };
   const resetCreate = (nextKind: "direct" | "group") => {
-    setKind(nextKind); setSelected([]); setDraftName(""); setAuContext(""); setReality("canon"); setTimeline("5-6"); setPov(nextKind === "direct" ? "insider" : "outsider"); setCreating(true);
+    setKind(nextKind); setSelected([]); setDraftName(""); setAuContext(""); setReality("canon"); setTimeline("5-6"); setDraftWorldline(worldlineFor(null)); setWorldFilter("all"); setPov("outsider"); setCreating(true);
   };
   const create = () => {
+    const validWorldline = parseStoryWorldline(draftWorldline);
+    if (!validWorldline) { notify("请先完成道路世界线：WORLD、ERA、PERIOD；AU 或附属世界观还需基准时期。"); return; }
+    if (pov === "insider" && !participantAvailable) { notify("请先在 Charta 启用自设，才能使用参与模式。"); return; }
+    if (selected.some(id => !storyCastAllowed({ id, worldId: memberOrigin(id) }, validWorldline))) {
+      notify("同行者必须属于当前启用的世界观，或已启用的通用角色。"); return;
+    }
     const expected = kind === "direct" ? (pov === "outsider" ? 2 : 1) : 2;
     if (kind === "direct" ? selected.length !== expected : selected.length < expected) {
       notify(kind === "direct" ? (pov === "outsider" ? "旁观小径必须选择恰好两位角色" : "参与小径只能选择一位角色") : "路口至少需要两位角色");
@@ -155,7 +181,8 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
       : deepText(locale, "viae.untitledGroup"));
     const group: ViaeConversation = {
       id: makeId(), name, type: kind, members: [...selected], pov,
-      defaultPovChar: selected[0], reality, timeline: reality === "canon" ? timeline.trim() || "5-6" : "AU",
+      defaultPovChar: selected[0], storyWorldline: validWorldline,
+      reality: validWorldline.kind, timeline: validWorldline.kind === "canon" ? validWorldline.period.replace(/^T-/, "") : "AU",
       auContext: reality === "au" ? auContext.trim() : "", messages: [],
       stm: "", ltm: "", turnCount: 0, updatedAt: Date.now(),
     };
@@ -179,6 +206,7 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
     });
   };
   const changeDraftPov = (next: "outsider" | "insider") => {
+    if (next === "insider" && !participantAvailable) { notify("参与模式需要当前启用的 Charta 自设。"); return; }
     setPov(next);
     if (kind === "direct" && next === "insider") setSelected(prev => prev.slice(0, 1));
   };
@@ -188,6 +216,7 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
   };
   const changeExistingMode = (next: "outsider" | "insider") => {
     if (!activeGroup || isLoading || next === activeGroup.pov) return;
+    if (next === "insider" && !participantAvailable) { notify("请先启用 Charta 自设。"); return; }
     if (activeGroup.type === "direct" && activeGroup.messages.length > 0) {
       notify(deepText(locale, "viae.tools.historyLock"));
       return;
@@ -200,12 +229,18 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
   };
   const editRoute = () => {
     if (!activeGroup) return;
-    setRouteDraft({ reality: activeGroup.reality, timeline: activeGroup.timeline, auContext: activeGroup.auContext || "" });
+    setRouteDraft(viaeWorldline(activeGroup));
     setShowRouteEditor(true); setShowModels(false); setShowManage(false); setShowDetails(false);
   };
   const saveRoute = () => {
     if (!activeGroup || isLoading) return;
-    updateGroup(activeGroup.id, g => ({ ...g, reality: routeDraft.reality, timeline: routeDraft.reality === "canon" ? routeDraft.timeline.trim() || "5-6" : "AU", auContext: routeDraft.reality === "au" ? routeDraft.auContext.trim() : "", updatedAt: Date.now() }));
+    const parsed = parseStoryWorldline(routeDraft);
+    if (!parsed) { notify("请完整配置世界线与附属世界观的基准时间线。"); return; }
+    if (activeGroup.members.some(id => !storyCastAllowed({ id, worldId: memberOrigin(id) }, parsed))) {
+      notify("新世界线不包含当前同行者，请先调整世界线。"); return;
+    }
+    updateGroup(activeGroup.id, g => ({ ...g, storyWorldline: parsed, reality: parsed.kind,
+      timeline: parsed.kind === "canon" ? parsed.period.replace(/^T-/, "") : "AU", updatedAt: Date.now() }));
     setShowRouteEditor(false); notify("新的路线已保存");
   };
   const playVoice = async (text: string, id: string) => {
