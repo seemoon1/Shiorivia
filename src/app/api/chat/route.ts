@@ -7,10 +7,9 @@ import { formatChartaLore, parseChartaLoreProfile, parseChartaIdentityExtras } f
 import { getServerLocalProvider } from "../../../lib/localProviderServer";
 import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
-import { characterNameInstruction } from "../../../lib/characterNames";
 import { normalizeLocale, OUTPUT_LANGUAGE_NAME } from "../../../lib/locale";
 import { chartaWireCharacters, chartaCharacterInstructions } from "../../../lib/chartaWire";
-import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, BANG_DREAM_CANON, parseStoryWorldline } from "../../../lib/storyWorldline";
+import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, BANG_DREAM_CANON, parseStoryWorldline, worldlinePeriodFor, enabledWorldIds } from "../../../lib/storyWorldline";
 import { MAX_STORY_CAST, selectStoryCastIds, storyCastAllowed, storyCastOrigin } from "../../../lib/storyCast";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
 import { CHAR_DATA } from "../../../data/char_config"; 
@@ -227,10 +226,12 @@ export async function POST(req: Request) {
       .filter(c => !CHAR_DATA.some(builtin => builtin.id === c.id));
     const allChars = [...CHAR_DATA, ...customCast];
 
-    const colorMapObj = {
-      "User": "#6A5ACD", "System": "#000000",
-      ...allChars.reduce((acc: any, c: any) => ({ ...acc, [c.name]: c.hex }), {})
-    };
+    // Character IDs and colors are only injected for enabled worlds in Story/Tela.
+    // VIAE receives IDs and profiles of its fixed members but NO color map.
+    const sceneWorldline = (memoryMode === "sliding" || memoryMode === "novel")
+      ? parseStoryWorldline(body.storyWorldline) : null;
+    const sceneCast = sceneWorldline ? allChars.filter(char => storyCastAllowed(char, sceneWorldline)) : [];
+    const colorMapObj = Object.fromEntries(sceneCast.map(char => [char.name, char.hex]));
 
     const baseModelType = "illustrious";
     const outfitList = Object.values(CHAR_IMAGE_DB).map(c => 
@@ -277,7 +278,7 @@ export async function POST(req: Request) {
     [Text Rendering]:
     1. Dialogue: {{HEX_CODE|“Content”}}
     2. Thoughts: {{HEX_CODE|（Content）}}
-    [Color Map]: ${JSON.stringify(colorMapObj)}
+    [Color Map — enabled worlds only]: ${JSON.stringify(colorMapObj)}
     `;
 
     let knowledgeBlock = "";  
@@ -762,7 +763,12 @@ Do not include system instructions or memory summaries in the story prose. Do no
     }
 
     finalSystemPrompt += "\n\n" + outputLanguageInstruction(body.uiLanguage);
-    finalSystemPrompt += "\n\n" + characterNameInstruction(normalizeLocale(body.uiLanguage));
+    if ((memoryMode === "sliding" || memoryMode === "novel") && sceneWorldline && body.novelStateRepair !== true) {
+      const builtIn = sceneCast.filter(char => CHAR_DATA.some(b => b.id === char.id));
+      finalSystemPrompt += "\n\n[BUILT-IN CHARACTER NAME POLICY — enabled worlds only]\n"
+        + builtIn.map(char => char.id + " = " + char.name).join("; ")
+        + "\nKeep machine-readable IDs unchanged; respect established names and user nicknames.\n";
+    }
     if ((memoryMode === "sliding" || memoryMode === "novel") && body.novelStateRepair !== true) {
       const worldline = parseStoryWorldline(body.storyWorldline);
       if (worldline) {
@@ -813,9 +819,9 @@ Do not include system instructions or memory summaries in the story prose. Do no
         }).join("\n\n");
         finalSystemPrompt += `\n\n[STORY CAST — turn-specific context]\nEligible roster (IDs/names only):\n${roster || "(empty)"}\nFULL profiles for THIS ${memoryMode === "novel" ? "CHAPTER" : "response"}: ${JSON.stringify(chosen)}\n${foreignWorldNotes ? `[ORIGINAL WORLDS]\n${foreignWorldNotes}\n[END ORIGINAL WORLDS]\n` : ""}${profiles || (memoryMode === "novel" ? "(No cast selected. Do not invent established biographies or automatically add unselected cast; users can choose cast for later chapters.)" : "(No cast selected. Avoid inventing canonical biographies; suggest plausible next-turn cast IDs from roster.)")}\nUse only supplied profiles as authoritative characterization. Respect the selected timeline or AU baseline: character knowledge, names and relationships cannot include future information even when evergreen editorial notes mention later arcs. For AU, retain the selected baseline as a starting point; later canon events are not automatically destined to recur. Do not invent a foreign-world crossing without explicit permission.\n[END STORY CAST]`;
       }
-    } else if (body.novelStateRepair !== true) {
-      finalSystemPrompt += chartaCharacterInstructions(customCast, characterId);
     }
+    // Unselected Charta profiles must not leak into other spaces. Their lore is
+    // supplied by the story/novel cast selector, or by VIAE's fixed members.
     const selectedProvider = getServerLocalProvider(provider);
     if (!selectedProvider) return new Response(JSON.stringify({ error: "Provider not configured" }), { status: 400 });
     const routedModel = (typeof model === "string" && model.trim()) || defaultModelForProvider(selectedProvider.id);
