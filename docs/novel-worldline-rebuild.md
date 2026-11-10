@@ -6,7 +6,7 @@ This change updates **Shiorivia Local**, not Shiorivia_Cloud.
 
 - Novel uses the same WORLD / ERA / PERIOD chooser as Story, including mandatory AU baseline ERA/PERIOD.
 - Choose the worldline from the novel sidebar, directly above the next-chapter cast selector.
-- Next-chapter cast reuses Story's picker, the maximum of six full character biographies, same-world filtering, and optional cross-world setting.
+- Next-chapter cast reuses Story's picker and its six-character prediction/selection limit. Cross-world enablement and universal-character selection now belong to the shared worldline editor, never to the cast picker. The AI gets lore only from the current main world, up to three explicitly configured secondary worlds, and opt-in universal characters.
 - Novel does **not** emit Story `<game_state>`. Instead, the novelist ends each chapter with `<novel_state>` containing `environment`, `event`, and `nextSceneCastIds`. AI predicts the next chapter cast; the shared picker shows its prediction and requires confirmation before a manual override after the novel has started.
 - The selected cast and worldline are saved on the novel session. Replacing the world with a different world clears the old cast selection and the optional self protagonist.
 - Built-in BanG Dream character biographies and Charta's five-section profiles are injected through the same period-aware logic as Story. In AU, the baseline period is the knowledge cutoff.
@@ -43,6 +43,7 @@ node scripts/check-novel-mode.mjs
 node --experimental-strip-types scripts/check-novel-state.mjs
 node --experimental-strip-types scripts/check-tela-novel-improvements.mjs
 node scripts/check-tela-interaction-title-transition.mjs
+node scripts/check-cross-world-viae.mjs
 node --experimental-strip-types scripts/check-tela-story-role.mjs
 npm run build
 ```
@@ -52,7 +53,7 @@ Manual smoke test matrix:
 2. Select BanG Dream T-3-4, choose one character, generate and check the terminal request for the time-limited full biography.
 3. Set AU current period to an imagined future and baseline to T-3-4; late-canon facts must not appear as existing knowledge.
 4. Add a custom Charta world, linked Charta character and linked self; verify their timeline-gated details enter the model prompt.
-5. Change worlds; stale cast and self selections should be cleared. Cross-world cast selection requires an explicit opt-in.
+5. Change worlds; stale cast and incompatible self selections should be cleared. Cross-world eligibility is configured in the worldline modal, not in the next-cast picker. Configure three secondary worlds with separate canonical baseline ERA/PERIOD values; a fourth must be impossible. Unbound characters require the explicit universal-character switch.
 6. Generate a chapter and check that <novel_state> is not printed in the reading pane, that Environment/Event update, and that the selected next-chapter cast becomes the AI prediction.
 7. Try manually editing the two fields or the predicted cast after the first chapter: each route must require a confirmation.
 8. Break the JSON or omit <novel_state> with a model and verify state-only recovery. If repair fails, the previous state must remain intact.
@@ -77,3 +78,7 @@ Manual smoke test matrix:
 26. Generate a chapter, manually unlock Environment/Event, change both, use **保存并锁定**, and verify the fields become read-only again. Style must remain editable.
 27. For each conversation mode (Officina, Via Lata, Umbra, Tela), use turn 1, then 6, then 11: check AI keeps an accurate title or replaces one rendered stale after deleting/restarting turns. A manually renamed title must never change. Also test old imported sessions without `titleAutoManaged`.
 28. Toggle **Tela 幕布转场** off/on in Developer settings. Enter both existing and fresh Tela sessions and exit to the hub repeatedly on desktop and mobile; only enabled mode should play curtain animations.
+
+29. With DeepSeek, generate two consecutive chapters: both must have a `<meta>` title; when the second header is missing, a one-shot chapter-title review should reuse an apt preceding title or create a new one when the scene changes. The session title is never overwritten by this recovery.
+30. In Participant mode, let another character initiate interaction with the Charta self: confirm the chapter contains the self's natural in-scene response and actions, not just suggestions in `<novel_choices>`.
+31. In main-world-only mode, verify color map and eligible character IDs contain only characters from the primary world; neither `User` nor `System` has a fixed color and universal characters are absent. VIAE should never receive a character-color map.
