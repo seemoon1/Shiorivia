@@ -439,6 +439,21 @@ export const useChatEngine = ({
                     };
                 }
                 currentText = stripNovelState(currentText);
+                // A provider may omit <meta> on continuations even when instructed.
+                // Keep the chapter readable and titled without changing manual session titles.
+                const chapterMeta = /^\s*<meta\s+title=["'][^"']+["']\s+chapter=["'][^"']+["']\s*\/\s*>/i;
+                if (currentText.trim() && !chapterMeta.test(currentText)) {
+                    const earlier = [...msgs].reverse().find((m: any) =>
+                        m.role === "assistant" && typeof m.content === "string" &&
+                        /<meta\s+title=["'][^"']+["']\s+chapter=["'][^"']+["']\s*\//i.test(m.content));
+                    const previousTitle = earlier?.content?.match(/<meta\s+[^>]*chapter=["']([^"']+)["']/i)?.[1];
+                    const chapterCount = msgs.filter((m: any) => m.role === "assistant" &&
+                        typeof m.content === "string" && m.content.includes("<meta ")).length + 1;
+                    const fallbackTitle = previousTitle || `第 ${chapterCount} 章`;
+                    const title = String(currentSession.title || "小说").replace(/["<>]/g, "").slice(0, 100);
+                    const chapter = String(fallbackTitle).replace(/["<>]/g, "").slice(0, 100);
+                    currentText = `<meta title="${title}" chapter="${chapter}" />\n${currentText.trim()}`;
+                }
             }
             let capturedState: any = null;
             let newFiles: Record<string, any> = {};
