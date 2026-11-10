@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Check, CircleDot, Compass, Globe2, Orbit, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, Check, CircleDot, Compass, Globe2, Orbit, RotateCcw, Sparkles, X, Plus, Trash2 } from "lucide-react";
 import type { ChartaWorld } from "../lib/chartaWorld";
 import {
   BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, describeStoryWorldline,
@@ -50,6 +50,32 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
     const world = worlds.find(item => item.id === id) || null;
     setDraft(worldlineFor(world)); setError("");
   };
+  const crossWorld = draft.crossWorld || { enabled: false, includeUniversal: false, secondary: [] };
+  const addSecondary = () => {
+    if (!crossWorld.enabled || crossWorld.secondary.length >= 3) return;
+    const available = choices.find(item => item.id !== draft.worldId &&
+      !crossWorld.secondary.some(secondary => secondary.worldId === item.id));
+    if (!available) { setError("没有可添加的其他世界观，请先在 Charta 创建。"); return; }
+    const custom = worlds.find(item => item.id === available.id);
+    const newWorld = { worldId: available.id, worldName: available.name,
+      worldDescription: custom?.description || "",
+      canonTimeline: available.id === BANG_DREAM_WORLD_ID ? (worldlineFor(null).canonTimeline) : (custom?.canonTimeline || []),
+      baseEra: "", basePeriod: "" };
+    setDraft(prev => ({ ...prev, crossWorld: { ...crossWorld,
+      secondary: [...crossWorld.secondary, newWorld] } }));
+  };
+  const changeSecondary = (index: number, worldId: string) => {
+    const world = worlds.find(item => item.id === worldId);
+    const next = { worldId, worldName: world?.name || BANG_DREAM_WORLD_NAME,
+      worldDescription: world?.description || "",
+      canonTimeline: worldId === BANG_DREAM_WORLD_ID ? worldlineFor(null).canonTimeline : world?.canonTimeline || [],
+      baseEra: "", basePeriod: "" };
+    setDraft(prev => ({ ...prev, crossWorld: { ...crossWorld,
+      secondary: crossWorld.secondary.map((item, i) => i === index ? next : item) } }));
+  };
+  const changeSecondaryBaseline = (index: number, era: string, period: string) =>
+    setDraft(prev => ({ ...prev, crossWorld: { ...crossWorld, secondary: crossWorld.secondary.map((item, i) =>
+      i === index ? { ...item, baseEra: era, basePeriod: period } : item) } }));
   const chooseEra = (era: string) => setDraft(prev => ({ ...prev, era,
     period: !era || prev.canonTimeline.some(stage => stage.era === era && stage.period === prev.period) ? prev.period : "" }));
   const choosePeriod = (period: string) => setDraft(prev => ({ ...prev, period,
@@ -98,6 +124,53 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
             <div className="flex items-center justify-between gap-3"><label htmlFor="fate-world-select" className="text-xs font-bold tracking-[.14em]" style={geometric}><Globe2 size={15} className="mr-2 inline text-[#7a956e]"/>01 · WORLD / 世界观</label>{onOpenCharta && <button type="button" onClick={onOpenCharta} className="flex items-center gap-1 text-[11px] font-semibold text-[#667e6c] hover:underline">Charta · 创造世界 <ArrowUpRight size={12}/></button>}</div>
             <select id="fate-world-select" value={draft.worldId} onChange={e=>chooseWorld(e.target.value)} className={inputStyle}>{choices.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
             <p className="text-[11px] leading-6 text-[#7d9286]">{draft.worldDescription ? `${draft.worldDescription.slice(0,180)}${draft.worldDescription.length>180 ? "…" : ""}` : "世界观未添加补充设定。模型将根据已有知识与剧情上下文理解这一世界。"}</p>
+          </section>
+          <section className="rounded-2xl border border-[#dbe5d9] bg-white/75 p-4 space-y-4">
+            <label className="flex items-center justify-between gap-3 text-xs font-semibold text-[#496453]">
+              <span>跨世界观 · CROSS-WORLD <span className="ml-1 text-[10px] font-normal text-[#89998d]">（默认关闭）</span></span>
+              <input type="checkbox" checked={crossWorld.enabled} onChange={e => setDraft(prev => ({
+                ...prev, crossWorld: { ...crossWorld, enabled: e.target.checked, includeUniversal: e.target.checked && crossWorld.includeUniversal },
+              }))} className="h-4 w-4 accent-[#577d67]" />
+            </label>
+            {crossWorld.enabled && <>
+              <p className="text-[11px] leading-5 text-[#7a9180]">以主世界观的 ERA / PERIOD 为叙事时间；其他世界观分别设定原作认知截止时期，最多三项。</p>
+              {crossWorld.secondary.map((entry, index) => {
+                const eras = [...new Set(entry.canonTimeline.map(stage => stage.era))];
+                const periods = entry.canonTimeline.filter(stage => !entry.baseEra || stage.era === entry.baseEra);
+                return <div key={index} className="space-y-3 rounded-xl border border-[#dae6d9] bg-[#f7faf6] p-3">
+                  <div className="flex items-center justify-between"><span className="text-xs font-semibold">其他世界观 {index + 1}</span>
+                    <button type="button" onClick={() => setDraft(prev => ({ ...prev, crossWorld: { ...crossWorld,
+                      secondary: crossWorld.secondary.filter((_, i) => i !== index) } }))} aria-label="移除世界观" className="text-[#a27d73]"><Trash2 size={15}/></button></div>
+                  <select value={entry.worldId} onChange={e => changeSecondary(index, e.target.value)} className={inputStyle}>
+                    {choices.filter(item => item.id === entry.worldId || (item.id !== draft.worldId && !crossWorld.secondary.some(s => s.worldId === item.id))).map(item =>
+                      <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-[11px] text-[#526b5b]">基准 ERA *
+                      <select className={inputStyle} value={entry.baseEra} onChange={e => changeSecondaryBaseline(index, e.target.value, "")}>
+                        <option value="">请选择 ERA</option>{eras.map(era => <option key={era} value={era}>{era}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-[#526b5b]">基准 PERIOD *
+                      <select className={inputStyle} value={entry.basePeriod}
+                        onChange={e => changeSecondaryBaseline(index, entry.canonTimeline.find(stage => stage.period === e.target.value)?.era || entry.baseEra, e.target.value)}>
+                        <option value="">请选择 PERIOD</option>{periods.map(stage => <option key={stage.period} value={stage.period}>{stage.period}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </div>;
+              })}
+              <button type="button" disabled={crossWorld.secondary.length >= 3} onClick={addSecondary}
+                className="flex items-center gap-2 rounded-lg border border-[#bad0bc] bg-[#f0f7ef] px-3 py-2 text-xs text-[#4a7059] disabled:opacity-40">
+                <Plus size={14}/> 添加其他世界观 · {crossWorld.secondary.length}/3
+              </button>
+              <label className="flex items-center justify-between rounded-xl border border-[#e2e9df] bg-[#fbfdf9] px-3 py-3 text-xs">
+                <span>启用通用角色 <span className="text-[#94a597]">（未绑定世界观）</span></span>
+                <input type="checkbox" checked={crossWorld.includeUniversal}
+                  onChange={e => setDraft(prev => ({ ...prev, crossWorld: { ...crossWorld, includeUniversal: e.target.checked } }))}
+                  className="h-4 w-4 accent-[#577d67]" />
+              </label>
+            </>}
           </section>
           <section className="space-y-3">
             <h3 className="text-xs font-bold tracking-[.14em]" style={geometric}><Compass size={15} className="mr-2 inline text-[#9d8859]"/>02 · DESTINY / 时间线分歧</h3>
