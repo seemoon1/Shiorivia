@@ -15,6 +15,7 @@ import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { StoryCastPicker } from "./StoryCastPicker";
 import { parseStoryWorldline, describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
+import { storyCastAllowed } from "../lib/storyCast";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModalV2";
 import { useMusic } from "../context/MusicContext";
@@ -491,6 +492,8 @@ export const NovelInterface = ({
     };
     const updateWorldline = (next: StoryWorldline) => {
         const changedWorld = currentSession.storyWorldline?.worldId !== next.worldId;
+        const allowed = new Set([...CHARACTERS, ...customCharacters].filter(char => storyCastAllowed(char, next)).map(char => char.id));
+        const safeSelection = selectedCharIds.filter(id => allowed.has(id));
         if (changedWorld && novelStarted && novelRole === "participant" && novelSelf?.worldId
             && novelSelf.worldId !== next.worldId) {
             showToast?.("已开始的小说绑定了自设身份；请新建小说以切换到不兼容的世界观。");
@@ -502,6 +505,10 @@ export const NovelInterface = ({
         }
         updateSessionInfo?.(currentSession.id, {
             storyWorldline: next,
+            ...(!changedWorld ? {
+                storyNextCastIds: safeSelection,
+                novelDraft: { ...(currentSession.novelDraft || {}), selectedCharIds: safeSelection },
+            } : {}),
             ...(changedWorld ? {
                 storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [],
                 ...(!novelStarted && novelRole === "participant" && novelSelf?.worldId && novelSelf.worldId !== next.worldId
@@ -513,7 +520,7 @@ export const NovelInterface = ({
             } : {}),
             updatedAt: Date.now(),
         });
-        if (changedWorld) setSelectedCharIds([]);
+        setSelectedCharIds(changedWorld ? [] : safeSelection);
     };
     const updateCast = (ids: string[], allowCrossWorld: boolean) => {
         setSelectedCharIds(ids);
