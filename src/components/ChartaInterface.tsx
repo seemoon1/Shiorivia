@@ -21,9 +21,10 @@ import { ChartaPortrait } from "./ChartaPortrait";
 import { ChartaLoreEditor } from "./ChartaLoreEditor";
 import { emptyChartaLore, validateChartaTimelineLinks, validateChartaRelationshipTargets } from "../lib/chartaLore";
 import { BANG_DREAM_CANON } from "../lib/storyWorldline";
+import { CHAR_DATA } from "../data/char_config";
 
 type Draft = ChartaCharacter;
-const newDraft = (language: string): Draft => ({ id: makeChartaId(), primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", profile: emptyChartaLore(), gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
+const newDraft = (language: string): Draft => ({ id: makeChartaId(), characterCode: "", primaryLanguage: language, names: { [language]: "" }, hex: "#799783", avatar: "", description: "", profile: emptyChartaLore(), gender: "undisclosed", createdAt: Date.now(), updatedAt: Date.now() });
 const editingProfile = (draft: Draft) => draft.profile || { ...emptyChartaLore(), intro: draft.description || "" };
 const colors = ["#799783", "#688ca4", "#ba8295", "#a38ebc", "#c1a276", "#4d7972", "#bd7674", "#65728d"];
 
@@ -89,8 +90,19 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
     setDraft(next); setDirty(false); setShowAdd(false); setMessage("");
   };
   const start = () => select(newDraft(locale));
+  const codeUsedBy = (code: string, exceptId?: string) =>
+    [...CHAR_DATA, ...characters].find(c =>
+      c.id !== exceptId &&
+      ((("characterCode" in c ? String(c.characterCode || c.id) : c.id).toLowerCase() === code.trim().toLowerCase())
+        || c.id.toLowerCase() === code.trim().toLowerCase()));
   const saveDraft = async () => {
     if (busy || !draft) return;
+    if (!draft.characterCode?.trim() || !/^[a-zA-Z][a-zA-Z0-9_-]{1,63}$/.test(draft.characterCode.trim())) {
+      setMessage("请填写有效角色 ID（2–64 位，字母开头；仅允许字母、数字、下划线、短横线）。"); return;
+    }
+    if (codeUsedBy(draft.characterCode, draft.id)) {
+      setMessage("这个角色 ID 已被内置角色或其他自定义角色使用，请更换。"); return;
+    }
     if (!draft.names[draft.primaryLanguage]?.trim() || !draft.hex || !draft.avatar) { setMessage(txt("required")); return; }
     if (draft.worldId && draft.worldId !== BANG_DREAM_WORLD_ID && !worldLibrary.worlds.some(world => world.id === draft.worldId)) {
       setMessage("所属世界观不存在，请先在 Charta 创建世界观后再绑定。"); return;
@@ -289,6 +301,20 @@ export function ChartaInterface({ characters, save, remove, usedIds, onExit, loa
               <div className="grid gap-3 sm:grid-cols-[1fr_190px_auto] sm:items-end"><label className="block text-xs text-[#6e8472]">{txt("primary")} *<input value={draft.names[draft.primaryLanguage] || ""} maxLength={100} onChange={e => update({ ...draft, names: { ...draft.names, [draft.primaryLanguage]: e.target.value } })} className="mt-2 w-full rounded-xl border border-[#d7e0d6] bg-[#fbfcf9] px-3 py-3 text-sm outline-none focus:border-[#7e9f86]" /></label>
                 <label className="block text-xs text-[#6e8472]">{txt("language")} *<select value={CHARTA_LANGUAGES.some(o=>o.code===draft.primaryLanguage) ? draft.primaryLanguage : "other"} onChange={e => {const lang = e.target.value; if(lang!=="other") {setPrimaryOther(false);update({...draft, primaryLanguage:lang,names:{...draft.names,[lang]:draft.names[lang]||""}});} else setPrimaryOther(true);}} className="mt-2 w-full rounded-xl border border-[#d7e0d6] bg-[#fbfcf9] px-3 py-3 text-sm outline-none">{CHARTA_LANGUAGES.map(o=><option key={o.code} value={o.code}>{o.label}</option>)}</select></label>
                 <button type="button" onClick={() => setShowAdd(!showAdd)} title={txt("addName")} aria-label={txt("addName")} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#d7e0d6] text-[#5b8168] hover:bg-[#eaf1e9]"><Plus size={18}/></button>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs text-[#6e8472]">角色 ID · CHARACTER ID *（与内置及自定义角色唯一）
+                  <input value={draft.characterCode || ""} maxLength={64}
+                    onChange={e => update({ ...draft, characterCode: e.target.value.trim() })}
+                    placeholder="例如: sakiko_alt"
+                    className="mt-2 w-full rounded-xl border border-[#d7e0d6] bg-[#fbfcf9] px-3 py-3 font-mono text-sm outline-none focus:border-[#7e9f86]" />
+                </label>
+                {draft.characterCode?.trim() && <p role="status" className={`text-[11px] ${/^[a-zA-Z][a-zA-Z0-9_-]{1,63}$/.test(draft.characterCode)
+                  && !codeUsedBy(draft.characterCode, draft.id) ? "text-emerald-700" : "text-rose-600"}`}>
+                  {/^[a-zA-Z][a-zA-Z0-9_-]{1,63}$/.test(draft.characterCode)
+                    ? (codeUsedBy(draft.characterCode, draft.id) ? "此角色 ID 已被使用" : "✓ 此角色 ID 可用")
+                    : "角色 ID 需要字母开头，长度 2–64 位"}
+                </p>}
               </div>
               {primaryOther && <div className="flex flex-wrap items-end gap-2 rounded-xl border border-[#dce4dc] bg-[#f7f9f5] p-3"><label className="min-w-[160px] flex-1 text-xs">{txt("otherLanguage")}<input value={primaryLangInput} onChange={e=>setPrimaryLangInput(e.target.value)} placeholder="fr / de / es" className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"/></label><button type="button" className="rounded-lg bg-[#456b57] px-3 py-2 text-xs text-white" onClick={()=>{const lang=primaryLangInput.trim();if(!/^[a-z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}$/.test(lang)){setMessage(txt("required"));return;}update({...draft,primaryLanguage:lang,names:{...draft.names,[lang]:draft.names[lang]||""}});setPrimaryOther(false);}}>{txt("language")}</button></div>}
               {showAdd && <div className="grid items-end gap-2 rounded-xl border border-[#e1e8dc] bg-[#f7f9f5] p-3 sm:grid-cols-[1fr_1fr_auto]"><label className="text-xs">{txt("language")}<select value={extraLang} onChange={e=>setExtraLang(e.target.value)} className="mt-1 w-full rounded-lg border p-2 text-sm">{CHARTA_LANGUAGES.map(o=><option key={o.code} value={o.code}>{o.label}</option>)}</select></label>{extraLang==="other"?<input value={customLang} onChange={e=>setCustomLang(e.target.value)} placeholder={txt("otherLanguage")} className="rounded-lg border p-2 text-sm"/>:<span/>}<button type="button" onClick={addLanguage} className="rounded-lg bg-[#65876d] p-2 text-xs text-white">{txt("addName")}</button></div>}
