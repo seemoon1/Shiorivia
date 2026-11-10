@@ -48,6 +48,7 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
   const basePeriods = stages.filter(s => !draft.baseEra || s.era === draft.baseEra);
   const chooseWorld = (id: string) => {
     const world = worlds.find(item => item.id === id) || null;
+    if (id === draft.worldId) return;
     setDraft(worldlineFor(world)); setError("");
   };
   const crossWorld = draft.crossWorld || { enabled: false, includeUniversal: false, secondary: [] };
@@ -129,7 +130,8 @@ export function StoryWorldlineFateModal({ isOpen, value, legacyTimeline, worlds,
             <label className="flex items-center justify-between gap-3 text-xs font-semibold text-[#496453]">
               <span>跨世界观 · CROSS-WORLD <span className="ml-1 text-[10px] font-normal text-[#89998d]">（默认关闭）</span></span>
               <input type="checkbox" checked={crossWorld.enabled} onChange={e => setDraft(prev => ({
-                ...prev, crossWorld: { ...crossWorld, enabled: e.target.checked, includeUniversal: e.target.checked && crossWorld.includeUniversal },
+                ...prev, crossWorld: { ...crossWorld, enabled: e.target.checked, includeUniversal: e.target.checked && crossWorld.includeUniversal,
+                  secondary: e.target.checked ? crossWorld.secondary : [] },
               }))} className="h-4 w-4 accent-[#577d67]" />
             </label>
             {crossWorld.enabled && <>
