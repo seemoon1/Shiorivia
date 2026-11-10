@@ -450,8 +450,32 @@ export const useChatEngine = ({
                     const chapterCount = msgs.filter((m: any) => m.role === "assistant" &&
                         typeof m.content === "string" && m.content.includes("<meta ")).length + 1;
                     const fallbackTitle = previousTitle || `第 ${chapterCount} 章`;
+                    let chapterTitle = fallbackTitle;
+                    // One state-aware recovery pass only when the model omitted metadata.
+                    // DeepSeek may otherwise silently skip the title on later chapters.
+                    try {
+                        const previousProse = typeof earlier?.content === "string"
+                            ? stripNovelSuggestions(stripNovelState(earlier.content)).slice(-1700) : "";
+                        const response = await fetch("/api/summarize", {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                mode: "chapter_title", currentTitle: previousTitle || "",
+                                text: `PREVIOUS CHAPTER:\n${previousProse}\n\nNEW CHAPTER:\n${stripNovelSuggestions(currentText).slice(0, 3000)}`,
+                                provider: apiProvider, model: modelToUse, uiLanguage: locale,
+                            }),
+                            signal: abortControllerRef.current?.signal,
+                        });
+                        if (response.ok) {
+                            const result = await response.json();
+                            const proposed = typeof result?.summary === "string"
+                                ? result.summary.replace(/["<>]/g, "").trim().slice(0, 100) : "";
+                            if (proposed.length >= 2 && proposed !== "KEEP") chapterTitle = proposed;
+                        }
+                    } catch (error) {
+                        console.warn("Chapter title recovery skipped:", error);
+                    }
                     const title = String(currentSession.title || "小说").replace(/["<>]/g, "").slice(0, 100);
-                    const chapter = String(fallbackTitle).replace(/["<>]/g, "").slice(0, 100);
+                    const chapter = String(chapterTitle).replace(/["<>]/g, "").slice(0, 100);
                     currentText = `<meta title="${title}" chapter="${chapter}" />\n${currentText.trim()}`;
                 }
             }
