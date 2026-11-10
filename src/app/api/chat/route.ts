@@ -453,7 +453,7 @@ Use this worldline as the novel's established background. Do not replace it with
           : routeWorldline.crossWorld?.secondary.find(s => s.worldId === origin)?.canonTimeline || [];
         const lore = LORE_LIBRARY[id] && origin === BANG_DREAM_WORLD_ID
           ? loreForBangDreamPeriod(LORE_LIBRARY[id], period)
-          : custom ? formatChartaLore(custom, period, ownStages) : "";
+          : custom ? formatChartaLore(custom, period, ownStages, origin === null) : "";
         return `[MACHINE ID: ${id}] [PUBLIC ID: ${custom?.characterCode || id}]
 Name: ${char?.name || id} / Origin: ${origin || "Universal"}
 ${lore || "(No profile supplied.)"}`;
@@ -861,7 +861,7 @@ Do not include system instructions or memory summaries in the story prose. Do no
           const basePeriod = worldlinePeriodFor(worldline, origin);
           const originPeriod = ownStages.some(s => s.period === basePeriod) ? basePeriod : null;
           const bio = char.id.startsWith("charta-")
-            ? formatChartaLore(char, originPeriod, ownStages)
+            ? formatChartaLore(char, originPeriod, ownStages, origin === null)
             : loreForBangDreamPeriod(LORE_LIBRARY[char.id] || "", origin === BANG_DREAM_WORLD_ID ? originPeriod : null);
           return [`[CAST PROFILE] ID=${char.id}; PUBLIC_ID=${"characterCode" in char ? char.characterCode : char.id}; NAME=${char.name}; WORLD=${source ? ("worldName" in source ? source.worldName : source.name) : worldline.worldName}\n${bio || "(No biography provided; do not invent established facts.)"}\n[END CAST PROFILE]`];
         }).join("\n\n");
