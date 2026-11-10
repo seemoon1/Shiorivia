@@ -9,6 +9,7 @@ import { defaultModelForProvider } from "../../../lib/localProviders";
 import { outputLanguageInstruction } from "../../../lib/locale";
 import { normalizeLocale, OUTPUT_LANGUAGE_NAME } from "../../../lib/locale";
 import { chartaWireCharacters } from "../../../lib/chartaWire";
+import { viaeWorldline } from "../../../lib/viaeWorldline";
 import { BANG_DREAM_WORLD_ID, BANG_DREAM_WORLD_NAME, BANG_DREAM_CANON, parseStoryWorldline, worldlinePeriodFor, enabledWorldIds } from "../../../lib/storyWorldline";
 import { MAX_STORY_CAST, selectStoryCastIds, storyCastAllowed, storyCastOrigin } from "../../../lib/storyCast";
 import { CHAR_IMAGE_DB } from "../../../data/image_config";
@@ -424,9 +425,15 @@ Use this worldline as the novel's established background. Do not replace it with
     } else if (memoryMode === "lime") { // Persisted VIAE mode ID, kept for older saves.
       console.log("🛤️ Mode: Viae / Semita / Compitum");
       const group = body.viaeGroup || body.limeGroup || {}; // Accept older clients.
+      const modernWorldline = parseStoryWorldline(group.storyWorldline);
+      const routeWorldline = modernWorldline || viaeWorldline(group);
+      if (group.storyWorldline !== undefined && !modernWorldline) {
+        return Response.json({ error: "VIAE 世界线无效，请重新配置。" }, { status: 400 });
+      }
       const requestedMembers = Array.isArray(group.members) ? group.members : [];
       const members: string[] = [...new Set(requestedMembers
-        .filter((id: unknown): id is string => typeof id === "string" && allChars.some((c: any) => c.id === id)))].slice(0, 10);
+        .filter((id: unknown): id is string => typeof id === "string" && allChars.some((char: any) =>
+          char.id === id && (!modernWorldline || storyCastAllowed(char, modernWorldline)))))].slice(0, 10);
       const isDirect = group.type === "direct";
       const observing = group.pov === "outsider";
       if (isDirect ? members.length !== (observing ? 2 : 1) : members.length < 2) {
@@ -437,16 +444,33 @@ Use this worldline as the novel's established background. Do not replace it with
       const cast = members.map((id: string) => {
         const char = allChars.find((c: any) => c.id === id);
         const custom = customCast.find(c => c.id === id);
-        const lore = LORE_LIBRARY[id]
-          ? loreForBangDreamPeriod(LORE_LIBRARY[id], group.reality === "au" ? null : String(group.timeline || "5-6"))
-          : custom ? formatChartaLore(custom, null, [], true) : "";
-        return `[${id}] ${char?.name || id} (${char?.sub || ""})\n${lore || ""}`;
+        const origin = char ? storyCastOrigin(char) : null;
+        const period = worldlinePeriodFor(routeWorldline, origin);
+        const ownStages = origin === BANG_DREAM_WORLD_ID ? BANG_DREAM_CANON
+          : origin === routeWorldline.worldId ? routeWorldline.canonTimeline
+          : routeWorldline.crossWorld?.secondary.find(s => s.worldId === origin)?.canonTimeline || [];
+        const lore = LORE_LIBRARY[id] && origin === BANG_DREAM_WORLD_ID
+          ? loreForBangDreamPeriod(LORE_LIBRARY[id], period)
+          : custom ? formatChartaLore(custom, period, ownStages) : "";
+        return `[MACHINE ID: ${id}] [PUBLIC ID: ${custom?.characterCode || id}]
+Name: ${char?.name || id} / Origin: ${origin || "Universal"}
+${lore || "(No profile supplied.)"}`;
       }).join("\n\n");
+      const routeWorlds = routeWorldline.crossWorld?.enabled ? routeWorldline.crossWorld.secondary : [];
+      const routeSetting = [
+        `主世界观：${routeWorldline.worldName}；设定：${routeWorldline.worldDescription.slice(0, 6000)}`,
+        `主时间线：${routeWorldline.kind === "canon" ? "原作" : "AU"}；ERA=${routeWorldline.era}；PERIOD=${routeWorldline.period}`,
+        routeWorldline.kind === "au" ? `主世界观原作认知基准：${routeWorldline.baseEra} / ${routeWorldline.basePeriod}` : "",
+        ...routeWorlds.map(world => `附属世界观：${world.worldName}（${world.worldId}）。原作认知截至 ${world.baseEra} / ${world.basePeriod}。设定：${world.worldDescription.slice(0, 4000)}`),
+        routeWorldline.crossWorld?.enabled && routeWorldline.crossWorld.includeUniversal
+          ? "通用角色已启用；他们不属于固定世界。" : "",
+        group.reality === "au" && group.auContext ? `旧道路 AU 补充设定：${String(group.auContext).slice(0, 4000)}` : "",
+      ].filter(Boolean).join("\n");
       const directorTag = "[SCENE_DIRECTION / 场外剧情提示 — NOT SPOKEN IN CHAT]";
       finalSystemPrompt = [
         "[VIAE · 角色即时通讯] 模拟真实角色之间的私聊/群聊；你不是通用 AI 助手，也不是正在与用户闲聊的旁白。",
         `聊天名称：${String(group.name || "Viae").slice(0, 100)}；类型：${isDirect ? "Semita 小径" : "Compitum 路口"}。`,
-        `世界设定：${group.reality === "au" ? `自定义时间线：${String(group.auContext || "").slice(0, 5000)}` : `BanG Dream 时间线 T-${String(group.timeline || "5-6").slice(0, 50)}`}。`,
+        `[启用的世界线与角色认知截止]\n${routeSetting}\n未配置的世界不属于这条道路，不要引入其角色或未来原作事件。`,
         `当前手机视角角色：${ownerId}。视角仅决定用户观看哪位角色的手机，不会把场外用户变成聊天参与者。`,
         observing
           ? "[旁观模式 / DIRECTOR ONLY] 用户不是聊天成员！每条 SCENE_DIRECTION 都是场外导演写的剧情提示、情景条件或推进建议。消息不会出现在角色手机上，也不会以聊天气泡形式发送。角色不知道有导演存在；绝对不要对用户、导演或剧情提示直接答话、解释指令或感谢。你必须生成角色相互之间的真实即时消息。"
@@ -458,7 +482,9 @@ Use this worldline as the novel's established background. Do not replace it with
         "你的最终输出只能是一个 <lime_chat>...</lime_chat>，内容必须是 JSON 数组，元素严格为 {\"charId\":\"角色ID\",\"text\":\"聊天文字\"}，每个元素代表一条真实发给其他角色的聊天消息。",
         `格式示例（示例仅展示结构，实际必须替换为允许角色）：<lime_chat>[{\"charId\":\"${responseIds[0]}\",\"text\":\"今晚的星星真好看。\"},{\"charId\":\"${responseIds[1] || responseIds[0]}\",\"text\":\"嗯，和昨天很不一样。\"}]</lime_chat>`,
         "禁止输出 Markdown 代码围栏、对用户的解释、旁白、额外说明、game_state、file、draw、audio、thinking 等控制标签。",
-        `[人物设定与说话风格]\n${cast}`,
+        `[人物设定与说话风格 — 仅固定同行者]\n${cast}`,
+        !observing && body.viaeSelf && typeof body.viaeSelf === "object"
+          ? `[参与者 Charta 自设资料 — 用户在聊天中的身份参照，不另造 charId]\n${JSON.stringify(body.viaeSelf).slice(0, 14000)}` : "",
         ltm?.trim() ? `[这条道路的 LTM]\n${String(ltm).slice(0, 7000)}` : "",
         stm?.trim() ? `[这条道路的 STM]\n${String(stm).slice(0, 4000)}` : "",
       ].filter(Boolean).join("\n\n");
