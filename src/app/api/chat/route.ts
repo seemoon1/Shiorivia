@@ -382,7 +382,7 @@ Use this worldline as the novel's established background. Do not replace it with
           return new Response(JSON.stringify({ error: "小说自设资料无效" }), { status: 400, headers: { "Content-Type": "application/json" } });
         }
         const selfWorldId = typeof rawSelf.worldId === "string" ? rawSelf.worldId : null;
-        if (selfWorldId && selfWorldId !== novelWorldline.worldId) {
+        if (selfWorldId && !enabledWorldIds(novelWorldline).includes(selfWorldId)) {
           return new Response(JSON.stringify({ error: "小说自设不属于当前世界观" }), { status: 400, headers: { "Content-Type": "application/json" } });
         }
         try {
