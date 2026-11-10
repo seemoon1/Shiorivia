@@ -91,7 +91,7 @@ interface ViaeProps {
 export function ViaeInterface({ session, updateSession, characters, customCharacters = [], worlds = [], activeSelf = null, onExit, onSettings, providers, provider, onProviderChange, model, customModel, onModelChange, onCustomModelChange, notify, terminalRequestLogEnabled = false, terminalLogEnabled = false }: ViaeProps) {
   const { locale } = useLanguage();
   const { activeGroup, input, setInput, isLoading, send, stop, deleteMessage } = useViaeEngine({
-    session, updateSession, provider, model: customModel.trim() || model, notify, customCharacters, terminalRequestLogEnabled, terminalLogEnabled,
+    session, updateSession, provider, model: customModel.trim() || model, notify, customCharacters, activeSelf, terminalRequestLogEnabled, terminalLogEnabled,
   });
   const [creating, setCreating] = useState(false);
   const [kind, setKind] = useState<"direct" | "group">("direct");
