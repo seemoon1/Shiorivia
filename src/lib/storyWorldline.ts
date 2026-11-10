@@ -17,6 +17,21 @@ export const BANG_DREAM_CANON: ChartaTimelineStage[] = [
   { era: "未来", period: "T-9-10" },
 ];
 
+export type SecondaryStoryWorld = {
+  worldId: string;
+  worldName: string;
+  worldDescription: string;
+  canonTimeline: ChartaTimelineStage[];
+  baseEra: string;
+  basePeriod: string;
+};
+export type StoryCrossWorld = {
+  enabled: boolean;
+  includeUniversal: boolean;
+  /** Up to three separately chosen worlds, each with its own canonical knowledge cutoff. */
+  secondary: SecondaryStoryWorld[];
+};
+
 export type StoryWorldline = {
   worldId: string;
   worldName: string;
@@ -29,6 +44,7 @@ export type StoryWorldline = {
   era: string;
   period: string;
   event: string;
+  crossWorld?: StoryCrossWorld;
 };
 
 export const worldlineFor = (world: ChartaWorld | null): StoryWorldline => ({
@@ -72,11 +88,55 @@ export function parseStoryWorldline(input: unknown): StoryWorldline | null {
         && stage.era === (baseEra || legacyBase?.era))
     : undefined;
   if (kind === "au" && !reference) return null;
+  const rawCross = value.crossWorld;
+  const crossWorld: StoryCrossWorld = { enabled: false, includeUniversal: false, secondary: [] };
+  if (rawCross !== undefined) {
+    if (!rawCross || typeof rawCross !== "object" || Array.isArray(rawCross)) return null;
+    const config = rawCross as Record<string, unknown>;
+    if (typeof config.enabled !== "boolean" || typeof config.includeUniversal !== "boolean"
+        || !Array.isArray(config.secondary) || config.secondary.length > 3) return null;
+    crossWorld.enabled = config.enabled;
+    crossWorld.includeUniversal = config.enabled && config.includeUniversal;
+    const seen = new Set<string>([value.worldId]);
+    for (const raw of config.secondary) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      const item = raw as Record<string, unknown>;
+      if (typeof item.worldId !== "string" || !/^(?:bang-dream|world-[a-zA-Z0-9-]{8,90})$/.test(item.worldId)
+        || seen.has(item.worldId) || typeof item.worldName !== "string" || !item.worldName.trim()
+        || item.worldName.length > 100 || typeof item.worldDescription !== "string" || item.worldDescription.length > 20000
+        || !Array.isArray(item.canonTimeline) || item.canonTimeline.length > 80
+        || typeof item.baseEra !== "string" || typeof item.basePeriod !== "string") return null;
+      const timeline: ChartaTimelineStage[] = [];
+      for (const t of item.canonTimeline) {
+        if (!t || typeof t !== "object" || typeof t.era !== "string" || typeof t.period !== "string"
+          || !t.era.trim() || !t.period.trim() || t.era.length > 100 || t.period.length > 100) return null;
+        timeline.push({ era: t.era.trim(), period: t.period.trim() });
+      }
+      if (!timeline.some(t => t.era === item.baseEra && t.period === item.basePeriod)) return null;
+      seen.add(item.worldId);
+      crossWorld.secondary.push({ worldId: item.worldId, worldName: item.worldName.trim(),
+        worldDescription: item.worldDescription, canonTimeline: timeline,
+        baseEra: item.baseEra, basePeriod: item.basePeriod });
+    }
+  }
   return {
     worldId: value.worldId, worldName, worldDescription, canonTimeline: stages,
-    kind, era, period, event,
+    kind, era, period, event, crossWorld,
     ...(kind === "au" ? { baseEra: reference!.era, basePeriod: reference!.period } : {}),
   };
+}
+
+/** World availability and lore cutoffs are shared by Via Lata, Tela and VIAE. */
+export function enabledWorldIds(worldline: StoryWorldline): string[] {
+  return [worldline.worldId, ...(worldline.crossWorld?.enabled
+    ? worldline.crossWorld.secondary.map(world => world.worldId) : [])];
+}
+
+export function worldlinePeriodFor(worldline: StoryWorldline, worldId: string | null): string | null {
+  if (worldId === worldline.worldId) return worldline.kind === "au"
+    ? worldline.basePeriod || null : worldline.period;
+  if (!worldline.crossWorld?.enabled) return null;
+  return worldline.crossWorld.secondary.find(item => item.worldId === worldId)?.basePeriod || null;
 }
 
 /** An existing legacy timeline is never silently discarded or rewritten. */
