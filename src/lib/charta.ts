@@ -17,6 +17,8 @@ export const CHARTA_LANGUAGES = [
 export type ChartaGender = "male" | "female" | "undisclosed" | "custom";
 export type ChartaCharacter = ChartaIdentityExtras & {
   id: string;
+  /** Unique user-facing character code, separate from stable storage/session ID. */
+  characterCode: string;
   /** Optional existing world ID; undefined means a world-neutral character. */
   worldId?: string;
   primaryLanguage: string;
@@ -63,9 +65,11 @@ export function parseChartaCharacter(input: unknown): ChartaCharacter {
     throw new Error("Invalid character world binding.");
   }
   const id = typeof input.id === "string" && /^charta-[a-zA-Z0-9-]{8,90}$/.test(input.id) ? input.id : makeChartaId();
+  const characterCode = input.characterCode === undefined ? id : input.characterCode;
+  if (typeof characterCode !== "string" || !/^[a-zA-Z][a-zA-Z0-9_-]{1,63}$/.test(characterCode)) throw new Error("角色 ID 必填，必须以字母开头，使用 2–64 位字母、数字、下划线或短横线。");
   const portrait = typeof input.portrait === "string" && new RegExp(`^/api/local/charta\\?portrait=${id}&v=[0-9]{1,14}$`).test(input.portrait)
     ? input.portrait : undefined;
-  return { id, ...(worldId ? { worldId } : {}), primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description, profile, ...identity, gender, ...(gender === "custom" ? { genderCustom } : {}),
+  return { id, characterCode, ...(worldId ? { worldId } : {}), primaryLanguage: input.primaryLanguage, names, hex: input.hex, avatar: input.avatar, portrait, description, profile, ...identity, gender, ...(gender === "custom" ? { genderCustom } : {}),
     createdAt: Number.isFinite(input.createdAt) ? Number(input.createdAt) : Date.now(), updatedAt: Date.now() };
 }
 
@@ -86,7 +90,7 @@ export function toChartaCharConfig(char: ChartaCharacter, locale: Locale): CharC
 }
 
 export function asChartaPromptData(char: ChartaCharacter) {
-  return { id: char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, profile: char.profile, aliases: char.aliases, hairColor: char.hairColor, eyeColor: char.eyeColor, height: char.height, birthday: char.birthday, zodiac: char.zodiac, moeTags: char.moeTags, hex: char.hex, worldId: char.worldId || null, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
+  return { id: char.id, characterCode: char.characterCode || char.id, name: char.names[char.primaryLanguage], names: char.names, description: char.description, profile: char.profile, aliases: char.aliases, hairColor: char.hairColor, eyeColor: char.eyeColor, height: char.height, birthday: char.birthday, zodiac: char.zodiac, moeTags: char.moeTags, hex: char.hex, worldId: char.worldId || null, gender: char.gender || "undisclosed", genderCustom: char.genderCustom || "" };
 }
 
 export function decodeChartaImport(value: unknown): ChartaCharacter {
