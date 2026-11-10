@@ -26,6 +26,13 @@ export async function POST(req: Request) {
 ${String(text).slice(0, 3500)}
 
 Output KEEP or a single suitable replacement title:`;
+    } else if (mode === "chapter_title") {
+        systemPrompt = `You name chapters in a continuing novel. Compare the previous chapter's title and opening context with the NEW completed chapter. If the new chapter develops essentially the same central scene/theme, reuse its previous chapter title exactly. If the subject, setting, dramatic focus or event materially changes, create a distinct evocative chapter title that reflects the new chapter. Write in the user's UI language. Return ONLY the chapter title, no quotes, explanations, metadata tags or numbering prefixes. Do not make up events not in the text.`;
+        userPrompt = `[Previous chapter title]: ${typeof currentTitle === "string" ? currentTitle.slice(0, 100) : ""}
+[Compare previous and current chapter]:
+${String(text).slice(0, 5000)}
+
+Output the most fitting CHAPTER title:`;
     } else if (mode === 'novel_chapter') {
         systemPrompt = `
 You are a 'Novel Plot Recorder'.
@@ -74,11 +81,11 @@ Rules:
         model: routedModel,
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.3,
-        max_tokens: mode === "title" ? 100 : 500,
+        max_tokens: (mode === "title" || mode === "chapter_title") ? 100 : 500,
       });
       summary = response.choices[0]?.message?.content || "";
     }
-    if (mode === "title") {
+    if (mode === "title" || mode === "chapter_title") {
         summary = String(summary).split(/\r?\n/)[0].replace(/<[^>]+>/g, "").replace(/^[\s\"'`*#]+|[\s\"'`*#]+$/g, "").trim().slice(0, 60);
         if (/^KEEP[.!]?$/i.test(summary)) summary = "KEEP";
     }
