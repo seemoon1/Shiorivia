@@ -92,6 +92,8 @@ export type ViaeConversation = {
   reality: "canon" | "au";
   timeline: string;
   auContext?: string;
+  /** Worldline snapshot used by new VIAE routes; legacy fields above remain readable. */
+  storyWorldline?: StoryWorldline;
   messages: ViaeMessage[];
   stm?: string;
   ltm?: string;
