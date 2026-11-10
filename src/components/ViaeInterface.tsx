@@ -313,12 +313,66 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <header className="flex items-center gap-3 border-b border-[#e9edf0] bg-white px-5 py-5"><button onClick={() => setCreating(false)} aria-label={deepText(locale, "viae.paths")} className="rounded-lg p-2 text-[#64758c] hover:bg-[#f4f6f8]"><ArrowLeft size={18}/></button><PathEmblem size={30}/><div><h2 className="text-base font-semibold">{deepText(locale, kind === "direct" ? "viae.startDirect" : "viae.startGroup")}</h2><p className="text-xs text-[#96a1ad]">{kind === "direct" ? "Semita" : "Compitum"} · {deepText(locale, kind === "direct" ? "viae.directDesc" : "viae.groupDesc")}</p></div></header>
             <div className="mx-auto w-full max-w-2xl space-y-6 px-5 py-8 sm:px-8">
-              <div className="grid grid-cols-2 gap-3">{(["direct", "group"] as const).map(choice => <button key={choice} type="button" onClick={() => { setKind(choice); setSelected([]); setPov(choice === "direct" ? "insider" : "outsider"); }} className={`rounded-2xl border p-4 text-left transition ${kind === choice ? "border-[#bdad91] bg-[#fffdfa]" : "border-[#e4e9ef] bg-white hover:border-[#bdad91]"}`}><span className="mb-3 inline-flex rounded-xl bg-[#edf2f6] p-2 text-[#29415e]">{choice === "direct" ? <Route size={21}/> : <GitMerge size={21}/>}</span><span className="block text-sm font-semibold">{choice === "direct" ? "Semita · 小径" : "Compitum · 路口"}</span><span className="mt-1 block text-xs leading-5 text-[#8e9aaa]">{choice === "direct" ? "参与时一位角色，旁观时两位角色" : "多条道路在这里交会"}</span></button>)}</div>
+              <div className="grid grid-cols-2 gap-3">{(["direct", "group"] as const).map(choice => <button key={choice} type="button" onClick={() => { setKind(choice); setSelected([]); setPov("outsider"); }} className={`rounded-2xl border p-4 text-left transition ${kind === choice ? "border-[#bdad91] bg-[#fffdfa]" : "border-[#e4e9ef] bg-white hover:border-[#bdad91]"}`}><span className="mb-3 inline-flex rounded-xl bg-[#edf2f6] p-2 text-[#29415e]">{choice === "direct" ? <Route size={21}/> : <GitMerge size={21}/>}</span><span className="block text-sm font-semibold">{choice === "direct" ? "Semita · 小径" : "Compitum · 路口"}</span><span className="mt-1 block text-xs leading-5 text-[#8e9aaa]">{choice === "direct" ? "参与时一位角色，旁观时两位角色" : "多条道路在这里交会"}</span></button>)}</div>
               <label className="block space-y-2"><span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.name")}</span><input maxLength={70} value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={deepText(locale, kind === "direct" ? "viae.nameDefault" : "viae.nameExample")} className="w-full rounded-xl border border-[#e2e7eb] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/></label>
-              <div className="space-y-3"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.members")}</span><span className="text-xs text-[#9fa9b5]">{deepText(locale, "viae.selected")} {selected.length}{kind === "direct" ? ` / ${pov === "outsider" ? 2 : 1}` : ""}</span></div><div className="grid max-h-[240px] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">{characters.map(c => <button type="button" key={c.id} onClick={() => toggleMember(c.id)} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${selected.includes(c.id) ? "border-[#bba26d] bg-[#fffaf0]" : "border-[#e9edf0] bg-white hover:border-[#cdd7e0]"}`}><span className="text-xl">{c.avatar}</span><span className="min-w-0 flex-1 truncate text-xs font-medium">{characterDisplayName(c.id, c.name, locale)}</span>{selected.includes(c.id) && <Check size={14} color={GOLD}/>}</button>)}</div></div>
-              <div className="space-y-2"><span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.mode")}</span><div className="flex flex-wrap gap-2">{(["outsider", "insider"] as const).map(value => <button key={value} type="button" onClick={() => changeDraftPov(value)} className={`rounded-lg border px-4 py-2 text-xs ${pov === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] text-[#718296]"}`}>{deepText(locale, value === "outsider" ? "viae.outsider" : "viae.insider")}</button>)}</div><p className="text-[11px] leading-5 text-[#8a98a8]">{deepText(locale, pov === "outsider" ? (kind === "direct" ? "viae.observeDirect" : "viae.observeGroup") : (kind === "direct" ? "viae.joinDirect" : "viae.joinGroup"))}</p></div>
-              {pov === "outsider" && selected.length > 0 && <label className="block space-y-2"><span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.viewpoint")} / Viewpoint</span><p className="text-[11px] text-[#8a98a8]">{deepText(locale, "viae.viewHelp")}</p><span className="block rounded-xl border border-[#e2e7eb] bg-white px-3"><select value={selected[0]} onChange={e => setSelected(prev => [e.target.value, ...prev.filter(id => id !== e.target.value)])} className="w-full bg-transparent py-3 text-sm text-[#263a51] outline-none">{selected.map(id => <option key={id} value={id}>{who(id)?.name || id}</option>)}</select></span></label>}
-              <div className="space-y-3"><span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.world")}</span><div className="flex gap-2">{(["canon", "au"] as const).map(value => <button key={value} onClick={() => setReality(value)} type="button" className={`rounded-xl border px-4 py-2 text-xs ${reality === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] bg-white text-[#718296]"}`}>{value === "canon" ? "BanG Dream 时间线" : "自定义时间线"}</button>)}</div>{reality === "canon" ? <ViaeTimelineSelect value={timeline} onChange={setTimeline} className="w-full rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/> : <textarea rows={4} value={auContext} onChange={e => setAuContext(e.target.value)} placeholder={deepText(locale, "viae.auPlaceholder")} className="w-full resize-y rounded-xl border border-[#e4e9ee] bg-white px-4 py-3 text-sm outline-none focus:border-[#bba26d]"/>}</div>
+              <section className="rounded-2xl border border-[#e5e9ec] bg-[#f9faf9] p-4">
+                <ViaeWorldlineEditor value={draftWorldline} worlds={worlds}
+                  onChange={next => {
+                    setDraftWorldline(next); setWorldFilter("all");
+                    const valid = parseStoryWorldline(next);
+                    setSelected(prev => prev.filter(id => valid && storyCastAllowed({ id, worldId: memberOrigin(id) }, valid)));
+                  }} />
+              </section>
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.mode")}</span>
+                <div className="flex flex-wrap gap-2">{(["outsider", "insider"] as const).map(value =>
+                  <button key={value} type="button" disabled={value === "insider" && !participantAvailable}
+                    onClick={() => changeDraftPov(value)}
+                    className={`rounded-lg border px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${pov === value ? "border-[#bba26d] bg-[#fffaf0] text-[#6f5b36]" : "border-[#e4e9ee] text-[#718296]"}`}>
+                    {deepText(locale, value === "outsider" ? "viae.outsider" : "viae.insider")}
+                  </button>)}</div>
+                {!participantAvailable && <p className="text-[11px] text-[#a08b69]">请先在 Charta 启用自设，才能使用参与模式。</p>}
+                <p className="text-[11px] leading-5 text-[#8a98a8]">{deepText(locale,
+                  pov === "outsider" ? (kind === "direct" ? "viae.observeDirect" : "viae.observeGroup")
+                    : (kind === "direct" ? "viae.joinDirect" : "viae.joinGroup"))}</p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.members")}</span>
+                  <span className="text-xs text-[#9fa9b5]">{deepText(locale, "viae.selected")} {selected.length}{kind === "direct" ? ` / ${pov === "outsider" ? 2 : 1}` : ""}</span>
+                </div>
+                {multiWorld && <label className="block text-[11px] text-[#8190a2]">按世界观筛选
+                  <select value={worldFilter} onChange={e => setWorldFilter(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-[#e2e7eb] bg-white px-3 py-2 text-xs text-[#3d5572]">
+                    <option value="all">全部已启用世界观</option>
+                    {[draftValidWorldline!.worldId, ...(draftValidWorldline!.crossWorld?.secondary.map(w => w.worldId) || [])].map(id =>
+                      <option key={id} value={id}>{worldNameFor(id)}</option>)}
+                    {draftValidWorldline!.crossWorld?.includeUniversal && <option value="universal">通用角色</option>}
+                  </select>
+                </label>}
+                <div className="grid max-h-[260px] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                  {shownDraftCharacters.filter(c => worldFilter !== "universal" || memberOrigin(c.id) === null).map(char =>
+                    <button type="button" key={char.id} onClick={() => toggleMember(char.id)}
+                      className={`flex min-w-0 flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition ${selected.includes(char.id) ? "border-[#bba26d] bg-[#fffaf0]" : "border-[#e9edf0] bg-white hover:border-[#cdd7e0]"}`}>
+                      <span className="flex w-full items-center gap-2"><span className="text-lg">{char.avatar}</span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold">{characterDisplayName(char.id, char.name, locale)}</span>
+                        {selected.includes(char.id) && <Check size={13} color={GOLD}/>}
+                      </span>
+                      <span className="max-w-full truncate rounded bg-[#eef1f4] px-1.5 py-0.5 text-[9px] text-[#7f90a1]">{worldNameFor(memberOrigin(char.id))}</span>
+                    </button>)}
+                </div>
+                {!draftValidWorldline && <p className="text-xs text-[#9b8b71]">完成世界线后即可筛选同行者。</p>}
+              </div>
+              {pov === "outsider" && selected.length > 0 && <label className="block space-y-2">
+                <span className="text-xs font-semibold text-[#52667f]">{deepText(locale, "viae.viewpoint")} / Viewpoint</span>
+                <p className="text-[11px] text-[#8a98a8]">{deepText(locale, "viae.viewHelp")}</p>
+                <span className="block rounded-xl border border-[#e2e7eb] bg-white px-3">
+                  <select value={selected[0]} onChange={e => setSelected(prev => [e.target.value, ...prev.filter(id => id !== e.target.value)])}
+                    className="w-full bg-transparent py-3 text-sm text-[#263a51] outline-none">
+                    {selected.map(id => <option key={id} value={id}>{who(id)?.name || id}</option>)}
+                  </select>
+                </span>
+              </label>
               <button type="button" onClick={create} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#182e49] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#294562]"><Sparkles size={16} color="#e8cc97"/> {deepText(locale, kind === "direct" ? "viae.createDirect" : "viae.createGroup")}</button>
             </div>
           </div>
