@@ -1,5 +1,5 @@
 import { CHAR_DATA } from "../data/char_config";
-import { BANG_DREAM_WORLD_ID } from "./storyWorldline";
+import { BANG_DREAM_WORLD_ID, enabledWorldIds, type StoryWorldline } from "./storyWorldline";
 
 /** Limit full character biographies per request to control prompt size. */
 export const MAX_STORY_CAST = 6;
@@ -11,11 +11,18 @@ export function storyCastOrigin(character: StoryCastIdentity): string | null {
   return builtinIds.has(character.id) ? BANG_DREAM_WORLD_ID : character.worldId || null;
 }
 
-/** Unbound Charta characters are world-neutral; foreign-world ones need opt-in. */
-export function storyCastAllowed(character: StoryCastIdentity, worldId: string, allowCrossWorld: boolean, registeredWorldIds: readonly string[]): boolean {
+/** Only explicitly configured worlds can contribute characters; universal cast is opt-in. */
+export function storyCastAllowed(character: StoryCastIdentity, worldline: StoryWorldline): boolean;
+/** Compatibility overload for legacy callers; no longer allows arbitrary foreign worlds. */
+export function storyCastAllowed(character: StoryCastIdentity, worldId: string, allowCrossWorld: boolean, registeredWorldIds: readonly string[]): boolean;
+export function storyCastAllowed(
+  character: StoryCastIdentity, world: StoryWorldline | string,
+  _legacyCross?: boolean, _legacyWorlds?: readonly string[],
+): boolean {
   const origin = storyCastOrigin(character);
-  if (!origin || origin === worldId) return true;
-  return allowCrossWorld && (origin === BANG_DREAM_WORLD_ID || registeredWorldIds.includes(origin));
+  if (typeof world === "string") return origin === world;
+  if (!origin) return world.crossWorld?.enabled === true && world.crossWorld.includeUniversal === true;
+  return enabledWorldIds(world).includes(origin);
 }
 
 export function selectStoryCastIds(value: unknown, allowed: ReadonlySet<string>): string[] {
