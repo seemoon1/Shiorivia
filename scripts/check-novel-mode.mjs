@@ -36,7 +36,7 @@ assert.ok(engine.includes('novelSelf: storyRole === "participant" && selectedSel
 assert.ok(engine.includes('storyNextCastIds: currentSession.storyNextCastIds ?? currentSession.novelDraft?.selectedCharIds ?? []'));
 assert.ok(api.includes("const novelWorldline = parseStoryWorldline(body.storyWorldline)"));
 assert.ok(api.includes("memoryMode === \"sliding\" || memoryMode === \"novel\""));
-assert.ok(api.includes("const basePeriod = worldline.kind === \"au\" ? worldline.basePeriod"));
+assert.ok(api.includes("worldlinePeriodFor(worldline, origin)"));
 assert.ok(api.includes("[NOVEL PROTAGONIST — user-authored character data]"));
 assert.ok(api.includes("Default: a substantive chapter"));
 assert.ok(api.includes("explicit word-count instruction in Style"));
