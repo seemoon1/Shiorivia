@@ -14,7 +14,7 @@ import { NovelArchiveActions } from "./NovelArchiveActions";
 import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { StoryCastPicker } from "./StoryCastPicker";
-import { parseStoryWorldline, describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
+import { parseStoryWorldline, describeStoryWorldline, enabledWorldIds, type StoryWorldline } from "../lib/storyWorldline";
 import { storyCastAllowed } from "../lib/storyCast";
 import { MiniPlayer } from "./MiniPlayer";
 import { MusicPlayerModal } from "./MusicPlayerModalV2";
@@ -214,7 +214,7 @@ export const NovelInterface = ({
         : {};
     // Identity can be chosen before worldline setup; compatibility is checked after world selection.
     const canParticipate = Boolean(activeNovelSelf && (!novelWorldline || !activeNovelSelf.worldId
-        || activeNovelSelf.worldId === novelWorldline.worldId));
+        || enabledWorldIds(novelWorldline).includes(activeNovelSelf.worldId)));
     // The same model/provider state powers Engineering, Chat, VIAE and Novel.
     const activeModel = (customModelId || "").trim() || selectedModel || initialSelectedModel || "";
     const [providerModels, setProviderModels] = useState<LocalModelGroup[]>([]);
@@ -420,7 +420,7 @@ export const NovelInterface = ({
             return;
         }
         if (novelRole === "participant" && (!novelSelf || (novelSelf.worldId
-            && novelSelf.worldId !== novelWorldline.worldId))) {
+            && !enabledWorldIds(novelWorldline).includes(novelSelf.worldId)))) {
             showToast?.("当前自设不属于选定世界观，请重新选择自设主角。");
             return;
         }
@@ -495,12 +495,12 @@ export const NovelInterface = ({
         const allowed = new Set([...CHARACTERS, ...customCharacters].filter(char => storyCastAllowed(char, next)).map(char => char.id));
         const safeSelection = selectedCharIds.filter(id => allowed.has(id));
         if (changedWorld && novelStarted && novelRole === "participant" && novelSelf?.worldId
-            && novelSelf.worldId !== next.worldId) {
+            && !enabledWorldIds(next).includes(novelSelf.worldId)) {
             showToast?.("已开始的小说绑定了自设身份；请新建小说以切换到不兼容的世界观。");
             return;
         }
         if (changedWorld && !novelStarted && novelRole === "participant" && novelSelf?.worldId
-            && novelSelf.worldId !== next.worldId) {
+            && !enabledWorldIds(next).includes(novelSelf.worldId)) {
             showToast?.("所选世界线与当前自设不兼容，已恢复为旁观模式。");
         }
         updateSessionInfo?.(currentSession.id, {
@@ -511,11 +511,11 @@ export const NovelInterface = ({
             } : {}),
             ...(changedWorld ? {
                 storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [],
-                ...(!novelStarted && novelRole === "participant" && novelSelf?.worldId && novelSelf.worldId !== next.worldId
+                ...(!novelStarted && novelRole === "participant" && novelSelf?.worldId && !enabledWorldIds(next).includes(novelSelf.worldId)
                     ? { storyRole: "observer", storySelfId: null, storySelfSnapshot: null } : {}),
                 novelDraft: {
                     ...(currentSession.novelDraft || {}), selectedCharIds: [],
-                    selfId: novelRole === "participant" && (!novelSelf?.worldId || novelSelf.worldId === next.worldId) ? novelSelfId : null,
+                    selfId: novelRole === "participant" && (!novelSelf?.worldId || enabledWorldIds(next).includes(novelSelf.worldId)) ? novelSelfId : null,
                 },
             } : {}),
             updatedAt: Date.now(),
