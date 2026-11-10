@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { CHAR_DATA } from "../../../../data/char_config";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
@@ -92,6 +93,14 @@ export async function PUT(request: Request) {
     if (!Array.isArray(body) || body.length > 100) return json({ error: "Invalid character library" }, 400);
     const characters = body.map(parseChartaCharacter);
     if (new Set(characters.map(c => c.id)).size !== characters.length) return json({ error: "Duplicate character ID" }, 400);
+    const codes = new Set(CHAR_DATA.map(char => char.id.toLowerCase()));
+    for (const char of characters) {
+      const code = char.characterCode.toLowerCase();
+      if (codes.has(code) || CHAR_DATA.some(b => b.id.toLowerCase() === char.id.toLowerCase())) {
+        return json({ error: "角色 ID 与内置角色或自定义角色重复：" + char.characterCode }, 400);
+      }
+      codes.add(code);
+    }
     let worlds: ReturnType<typeof parseChartaWorld>[] = [];
     try {
       const saved = JSON.parse(await fs.readFile(WORLDS, "utf8"));
