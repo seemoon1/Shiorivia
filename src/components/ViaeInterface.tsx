@@ -373,7 +373,7 @@ export function ViaeInterface({ session, updateSession, characters, customCharac
                     {selected.map(id => <option key={id} value={id}>{who(id)?.name || id}</option>)}
                   </select>
                 </span>
-              </label>
+              </label>}
               <button type="button" onClick={create} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#182e49] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#294562]"><Sparkles size={16} color="#e8cc97"/> {deepText(locale, kind === "direct" ? "viae.createDirect" : "viae.createGroup")}</button>
             </div>
           </div>
