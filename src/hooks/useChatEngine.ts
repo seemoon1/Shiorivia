@@ -380,10 +380,8 @@ export const useChatEngine = ({
             if (currentSession.memoryMode === "novel" && !extractNovelState(fullText)) {
                 try {
                     const worldline = parseStoryWorldline(currentSession.storyWorldline);
-                    const registeredIds = storyWorlds.map((item: any) => item.id as string);
                     const knownCast = [...CHARACTERS, ...customCharacters].filter((character: any) =>
-                        worldline && storyCastAllowed(character, worldline.worldId,
-                            currentSession.storyAllowCrossWorld === true, registeredIds))
+                        worldline && storyCastAllowed(character, worldline))
                         .map((character: any) => ({ id: character.id, name: character.name || character.names?.[locale] || character.names?.[character.primaryLanguage] }));
                     const earlier = currentSession.novelState || {
                         environment: configOverride?.novelConfig?.environment || "",
@@ -432,10 +430,8 @@ export const useChatEngine = ({
                     showToast("本章没有返回完整的 novel_state：正文已保留，环境、事件和下章阵容未更新。");
                 } else {
                     const worldline = parseStoryWorldline(currentSession.storyWorldline);
-                    const worldIds = storyWorlds.map((world: any) => world.id as string);
                     const allowed = new Set([...CHARACTERS, ...customCharacters].filter((char: any) =>
-                        worldline && storyCastAllowed(char, worldline.worldId,
-                            currentSession.storyAllowCrossWorld === true, worldIds)
+                        worldline && storyCastAllowed(char, worldline)
                     ).map((char: any) => char.id as string));
                     novelState = {
                         ...novelState,
@@ -553,10 +549,9 @@ export const useChatEngine = ({
                     capturedState = parsed;
 
                     if (currentSession.memoryMode === "sliding") {
-                        const worldId = currentSession.storyWorldline?.worldId || "";
-                        const validWorlds = storyWorlds.map((world: any) => world.id as string);
+                        const worldline = parseStoryWorldline(currentSession.storyWorldline);
                         const catalog = [...CHARACTERS, ...customCharacters.map((c: any) => ({ id: c.id, name: c.names?.[locale] || c.names?.[c.primaryLanguage] || c.id, worldId: c.worldId }))]
-                            .filter(char => storyCastAllowed(char, worldId, currentSession.storyAllowCrossWorld === true, validWorlds));
+                            .filter(char => worldline && storyCastAllowed(char, worldline));
                         const knownCast = new Set(catalog.map(c => c.id));
                         capturedState.nextSceneCastIds = selectStoryCastIds(
                             Array.isArray(capturedState.nextSceneCastIds) ? capturedState.nextSceneCastIds : capturedState.sceneCastIds,
