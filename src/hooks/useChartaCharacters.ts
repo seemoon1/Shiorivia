@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { CHAR_DATA } from "../data/char_config";
 import { CHARTA_STORAGE_KEY, parseChartaCharacter, type ChartaCharacter } from "../lib/charta";
 
 /** Charta lives in data_storage/charta, independently of session sync. */
@@ -43,6 +44,11 @@ export function useChartaCharacters() {
     if (!loaded) return false;
     try {
       const valid = parseChartaCharacter(item);
+      const code = valid.characterCode.toLowerCase();
+      if ([...CHAR_DATA, ...characters.filter(c => c.id !== valid.id)].some(c =>
+        c.id.toLowerCase() === code || ("characterCode" in c && String(c.characterCode).toLowerCase() === code))) {
+        throw new Error("角色 ID 已存在，请输入不与内置角色或其他角色重复的 ID。");
+      }
       const next = [valid, ...characters.filter(c => c.id !== valid.id)];
       if (next.length > 100) throw new Error("Charta supports up to 100 characters.");
       const response = await fetch("/api/local/charta", {
