@@ -27,16 +27,14 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
   const { locale } = useLanguage();
   const [open, setOpen] = useState(false);
   const [draftIds, setDraftIds] = useState<string[]>([]);
-  const [cross, setCross] = useState(false);
   const world = parseStoryWorldline(session.storyWorldline);
   const started = session.messages.some(message => message.role === "user");
-  const registeredIds = useMemo(() => worlds.map(item => item.id), [worlds]);
   const catalog = useMemo<CastOption[]>(() => [
     ...CHAR_DATA.map(char => ({ id: char.id, name: char.name, color: char.hex, origin: BANG_DREAM_WORLD_ID })),
     ...customCharacters.map(char => ({ id: char.id, name: nameForCharta(char, locale), color: char.hex, origin: storyCastOrigin(char) })),
   ], [customCharacters, locale]);
   const currentIds = session.storyNextCastIds ?? (mode === "novel" ? session.novelDraft?.selectedCharIds : session.sceneCastIds) ?? [];
-  const available = catalog.filter(char => world && storyCastAllowed({ id: char.id, worldId: char.origin }, world.worldId, cross, registeredIds));
+  const available = catalog.filter(char => world && storyCastAllowed({ id: char.id, worldId: char.origin }, world));
   const allowedIds = new Set(available.map(char => char.id));
   const chosen = selectStoryCastIds(currentIds, new Set(catalog.map(char => char.id)));
   const names = chosen.map(id => catalog.find(char => char.id === id)?.name).filter(Boolean);
@@ -50,7 +48,6 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
 
   const begin = () => {
     if (!world || busy) return;
-    setCross(session.storyAllowCrossWorld === true);
     setDraftIds([...chosen]);
     setOpen(true);
   };
@@ -61,7 +58,7 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
   const apply = () => {
     const selected = selectStoryCastIds(draftIds, allowedIds);
     if (started && !window.confirm(mode === "novel" ? "小说已开始，确定覆盖 AI 预测的下一章登场角色吗？" : "故事已开始。确认手动覆盖 AI 对下一轮登场角色的预选吗？")) return;
-    onApply(selected, cross);
+    onApply(selected, world?.crossWorld?.enabled === true);
     setOpen(false);
   };
   const worldTitle = (id: string | null) => !id ? "通用 · 未绑定" : id === BANG_DREAM_WORLD_ID
@@ -95,14 +92,9 @@ export function StoryCastPicker({ session, worlds, customCharacters, busy, onApp
                 <h2 className="mt-1 font-serif text-lg text-[#345340]">下一轮登场角色</h2></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="关闭" className="rounded-lg p-2 text-[#8ba090] hover:bg-[#edf3ed]"><X size={17}/></button>
             </header>
-            <div className="border-b border-[#edf0eb] px-5 py-3">
-              <label className="flex items-center justify-between gap-3 text-xs text-[#526e59]">
-                <span>允许跨世界观 <span className="text-[10px] text-[#94a597]">（仅限已绑定世界观）</span></span>
-                <input type="checkbox" checked={cross} onChange={event => { setCross(event.target.checked); }}
-                  className="h-4 w-4 accent-[#5b8268]" />
-              </label>
-              <p className="mt-2 text-[10px] leading-5 text-[#91a394]">仅当前世界观与未绑定角色默认可选。跨世界角色会额外注入其原世界设定。</p>
-            </div>
+            <p className="border-b border-[#edf0eb] px-5 py-3 text-[10px] leading-5 text-[#91a394]">
+              可选角色由世界线面板决定：主世界、最多三个已启用的附属世界，以及开启时的通用角色。
+            </p>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {available.map(char => <label key={char.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-[#f1f6f0]">
                 <input type="checkbox" checked={draftIds.includes(char.id)} disabled={!draftIds.includes(char.id) && draftIds.filter(id => allowedIds.has(id)).length >= MAX_STORY_CAST}
