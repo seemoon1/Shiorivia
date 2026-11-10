@@ -5,17 +5,19 @@ import type { ViaeConversation, ViaeMessage, Session } from "../types";
 import { formatLocalMemoryEntries, LOCAL_STM_SLOTS, parseLocalMemoryEntries } from "../lib/localMemory";
 import { useLanguage } from "../context/LanguageContext";
 import { asChartaPromptData, type ChartaCharacter } from "../lib/charta";
+import { asChartaSelfPromptData, type ChartaSelf } from "../lib/chartaSelf";
 
 const newId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /** Viae messages live *inside* the Viae workspace; they never enter normal chat history. */
-export function useViaeEngine({ session, updateSession, provider, model, notify, customCharacters = [], terminalRequestLogEnabled = false, terminalLogEnabled = false }: {
+export function useViaeEngine({ session, updateSession, provider, model, notify, customCharacters = [], activeSelf = null, terminalRequestLogEnabled = false, terminalLogEnabled = false }: {
   session: Session;
   updateSession: (updater: (current: Session) => Session) => void;
   provider: string;
   model: string;
   notify?: (message: string) => void;
   customCharacters?: ChartaCharacter[];
+  activeSelf?: ChartaSelf | null;
   terminalRequestLogEnabled?: boolean;
   terminalLogEnabled?: boolean;
 }) {
@@ -39,6 +41,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify,
 
   const send = async (regenerate = false) => {
     if (busyRef.current || !activeGroup || !provider || !model) return;
+    if (activeGroup.pov === "insider" && !activeSelf) { notify?.("参与模式需要当前 Charta 启用的自设。"); return; }
     if (activeGroup.type === "direct" && activeGroup.members.length !== (activeGroup.pov === "outsider" ? 2 : 1)) {
       notify?.(activeGroup.pov === "outsider" ? "旁观小径需要两位角色" : "参与小径需要一位角色");
       return;
@@ -75,6 +78,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify,
           debugRequestPayload: terminalRequestLogEnabled,
           debugFullOutput: terminalLogEnabled,
           customCharacters: customCharacters.map(asChartaPromptData),
+          viaeSelf: activeGroup.pov === "insider" && activeSelf ? asChartaSelfPromptData(activeSelf) : null,
           messages: context.map(msg => ({ role: msg.role, content: msg.content, kind: msg.kind })),
           stm: activeGroup.stm || "", ltm: activeGroup.ltm || "",
           viaeGroup: {
@@ -86,6 +90,7 @@ export function useViaeEngine({ session, updateSession, provider, model, notify,
             reality: activeGroup.reality,
             auContext: activeGroup.auContext,
             timeline: activeGroup.timeline,
+            storyWorldline: activeGroup.storyWorldline,
           },
         }),
       });
