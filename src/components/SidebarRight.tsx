@@ -9,6 +9,7 @@ import { SuggestionModal } from "./Modals";
 import { StoryWorldlineFateModal } from "./StoryWorldlineFateModal";
 import { StoryCastPicker } from "./StoryCastPicker";
 import { describeStoryWorldline, type StoryWorldline } from "../lib/storyWorldline";
+import { storyCastAllowed } from "../lib/storyCast";
 import { selfName } from "../lib/chartaSelf";
 
 const SidebarRightComponent = ({
@@ -70,12 +71,17 @@ const SidebarRightComponent = ({
 
     const handleWorldlineUpdate = (next: StoryWorldline) => {
         if (!setSessions || !currentSessionId) return;
-        setSessions((prev: any) => prev.map((s: any) =>
-            s.id === currentSessionId ? {
-                ...s, storyWorldline: next,
-                ...(s.storyWorldline?.worldId !== next.worldId ? { storyNextCastIds: [], storyAllowCrossWorld: false, sceneCastIds: [] } : {}),
-            } : s
-        ));
+        const allowed = new Set([...CHAR_DATA, ...customCharacters].filter(char =>
+            storyCastAllowed(char, next)).map(char => char.id));
+        setSessions((prev: any) => prev.map((s: any) => {
+            if (s.id !== currentSessionId) return s;
+            const changed = s.storyWorldline?.worldId !== next.worldId;
+            return { ...s, storyWorldline: next,
+                storyNextCastIds: changed ? [] : (s.storyNextCastIds || []).filter((id: string) => allowed.has(id)),
+                storyAllowCrossWorld: next.crossWorld?.enabled === true,
+                ...(changed ? { sceneCastIds: [] } : {}),
+            };
+        }));
     };
     const handleCastSelection = (ids: string[], allowCrossWorld: boolean) => {
         if (!setSessions || !currentSessionId || isGenerating) return;
