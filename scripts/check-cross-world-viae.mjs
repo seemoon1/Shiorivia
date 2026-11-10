@@ -1,0 +1,92 @@
+// Run: node scripts/check-cross-world-viae.mjs
+// Structural regression guards. Run npx tsc --noEmit and npm run build separately.
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const read = file => readFileSync(new URL("../" + file, import.meta.url), "utf8");
+
+const world = read("src/lib/storyWorldline.ts");
+const cast = read("src/lib/storyCast.ts");
+const modal = read("src/components/StoryWorldlineFateModal.tsx");
+const picker = read("src/components/StoryCastPicker.tsx");
+const charta = read("src/lib/charta.ts");
+const chartaUI = read("src/components/ChartaInterface.tsx");
+const chartaStore = read("src/hooks/useChartaCharacters.ts");
+const chartaAPI = read("src/app/api/local/charta/route.ts");
+const wire = read("src/lib/chartaWire.ts");
+const viae = read("src/components/ViaeInterface.tsx");
+const viaeEditor = read("src/components/ViaeWorldlineEditor.tsx");
+const viaeEngine = read("src/hooks/useViaeEngine.ts");
+const viaeLegacy = read("src/lib/viaeWorldline.ts");
+const api = read("src/app/api/chat/route.ts");
+const engine = read("src/hooks/useChatEngine.ts");
+const page = read("src/app/page.tsx");
+const novel = read("src/components/NovelInterface.tsx");
+const summary = read("src/app/api/summarize/route.ts");
+const story = read("src/components/SidebarRight.tsx");
+const types = read("src/types.ts");
+
+assert.ok(world.includes("export type SecondaryStoryWorld"));
+assert.ok(world.includes("secondary: SecondaryStoryWorld[]"));
+assert.ok(world.includes("config.secondary.length > 3"));
+assert.ok(world.includes("seen.has(item.worldId)"));
+assert.ok(world.includes("timeline.some(t => t.era === item.baseEra && t.period === item.basePeriod)"));
+assert.ok(world.includes("export function enabledWorldIds"));
+assert.ok(world.includes("export function worldlinePeriodFor"));
+assert.ok(cast.includes("world.crossWorld.includeUniversal === true"));
+assert.ok(cast.includes("enabledWorldIds(world).includes(origin)"));
+assert.ok(!cast.includes("if (!origin || origin === worldId) return true"));
+assert.ok(modal.includes("跨世界观 · CROSS-WORLD"));
+assert.ok(modal.includes("添加其他世界观"));
+assert.ok(modal.includes("启用通用角色"));
+assert.ok(!picker.includes("允许跨世界观"));
+assert.ok(picker.includes("storyCastAllowed({ id: char.id, worldId: char.origin }, world)"));
+assert.ok(story.includes("storyCastAllowed(char, next)"));
+assert.ok(novel.includes("safeSelection"));
+
+assert.ok(charta.includes("characterCode: string"));
+assert.ok(charta.includes("input.characterCode === undefined ? id"));
+assert.ok(chartaUI.includes("角色 ID · CHARACTER ID *"));
+assert.ok(chartaUI.includes("此角色 ID 已被使用"));
+assert.ok(chartaStore.includes("角色 ID 已存在"));
+assert.ok(chartaAPI.includes("角色 ID 与内置角色或自定义角色重复"));
+assert.ok(wire.includes("const characterCode ="));
+assert.ok(wire.includes("Public character ID:"));
+
+assert.ok(types.includes("storyWorldline?: StoryWorldline;"));
+assert.ok(viae.includes("worlds = [], activeSelf = null"));
+assert.ok(viae.includes("worldFilter"));
+assert.ok(viae.includes("全部已启用世界观"));
+assert.ok(viae.includes("worldNameFor(memberOrigin(char.id))"));
+assert.ok(viae.includes('value === "insider" && !participantAvailable'));
+assert.ok(viae.includes("storyWorldline: validWorldline"));
+assert.ok(viae.includes("eligibleManage"));
+assert.ok(viae.includes("ViaeWorldlineEditor value={routeDraft}"));
+assert.ok(viaeEditor.includes("基准 PERIOD"));
+assert.ok(viaeEditor.includes("启用通用角色"));
+assert.ok(viaeEditor.includes("cross.secondary.length >= 3"));
+assert.ok(viaeEngine.includes("storyWorldline: activeGroup.storyWorldline"));
+assert.ok(viaeEngine.includes("viaeSelf:"));
+assert.ok(page.includes("worlds={worldLibrary.worlds}"));
+assert.ok(page.includes("activeSelf={selfLibrary.activeSelf}"));
+assert.ok(viaeLegacy.includes("parseStoryWorldline(group.storyWorldline)"));
+
+assert.ok(api.includes('const modernWorldline = parseStoryWorldline(group.storyWorldline)'));
+assert.ok(api.includes("const routeWorldline = modernWorldline || viaeWorldline(group)"));
+assert.ok(api.includes("const cast = members.map"));
+assert.ok(api.includes("worldlinePeriodFor(routeWorldline, origin)"));
+assert.ok(api.includes("仅固定同行者"));
+assert.ok(api.includes("const colorMapObj = Object.fromEntries(sceneCast.map"));
+assert.ok(!api.includes('"User": "#6A5ACD"'));
+assert.ok(!api.includes('"System": "#000000"'));
+assert.ok(api.includes("storyCastAllowed(char, selectedWorldline)"));
+assert.ok(api.includes("worldlinePeriodFor(worldline, origin)"));
+assert.ok(api.includes("universalProfiles"));
+assert.ok(api.includes("ENABLED SECONDARY WORLDS"));
+assert.ok(!api.includes("finalSystemPrompt += chartaCharacterInstructions(customCast, characterId)"));
+
+assert.ok(api.includes("METADATA — EVERY CHAPTER, NO EXCEPTIONS"));
+assert.ok(api.includes("You are the novelist controlling all in-scene characters"));
+assert.ok(engine.includes('mode: "chapter_title"'));
+assert.ok(summary.includes('mode === "chapter_title"'));
+assert.ok(summary.includes("Compare the previous chapter"));
+console.log("PASS: multi-world scopes, Charta IDs, VIAE routes, fixed lore, narrative agency and chapter-title recovery wiring.");
